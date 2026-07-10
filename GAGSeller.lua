@@ -84,6 +84,14 @@ local running = false
 local gui             -- forward decl (ScreenGui utama)
 local log, setStatus  -- forward decl
 local function alive() return gui ~= nil and gui.Parent ~= nil end
+-- Beberapa executor nurunin capability thread di task.spawn -> nggak bisa akses Instance.
+-- Naikkan balik identity ke 8 (elevated) di awal tiap background thread.
+local function elevate()
+	pcall(function()
+		local f = setthreadidentity or setidentity or (syn and syn.set_thread_identity) or (getgenv and getgenv().setthreadidentity)
+		if f then f(8) end
+	end)
+end
 
 local STATE_FILE = "GAGSeller_state.json"
 local function persistState()
@@ -228,6 +236,7 @@ local function anyProfileActive()
 	return false
 end
 local function mainLoop()
+	elevate()
 	while running and alive() do
 		if not anyProfileActive() then
 			setStatus("Pilih pet di profil listing dulu.")
@@ -513,22 +522,28 @@ setStatus("idle")
 
 -- supervisor auto-claim: SATU loop permanen, cek CFG.autoClaim tiap tick (anti-race, nggak bisa mati diam2)
 task.spawn(function()
+	elevate()
 	local lastState
 	while alive() do
-		if CFG.autoClaim then
-			local owns = ownsBooth()
-			if owns then
-				if lastState ~= "own" then log("Booth aman: " .. tostring(owns):sub(1,8)); lastState = "own" end
-				task.wait(6)
+		local delay = 3
+		local ok, err = pcall(function()
+			if CFG.autoClaim then
+				local owns = ownsBooth()
+				if owns then
+					if lastState ~= "own" then log("Booth aman: " .. tostring(owns):sub(1,8)); lastState = "own" end
+					delay = 6
+				else
+					if lastState ~= "hunt" then log("Booth hilang, cari terdekat..."); lastState = "hunt" end
+					tryClaimNearest()   -- klaim booth kosong terdekat
+					delay = 5            -- hormati cooldown claim server
+				end
 			else
-				if lastState ~= "hunt" then log("Booth hilang, cari terdekat..."); lastState = "hunt" end
-				tryClaimNearest()   -- klaim booth kosong terdekat
-				task.wait(5)        -- hormati cooldown claim server
+				lastState = nil
+				delay = 1
 			end
-		else
-			lastState = nil
-			task.wait(1)
-		end
+		end)
+		if not ok then log("claim-loop err: " .. tostring(err)) end  -- error nggak matiin loop
+		task.wait(delay)
 	end
 end)
 
