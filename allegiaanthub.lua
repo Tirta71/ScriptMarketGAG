@@ -32,6 +32,15 @@ local BuyListing  = RS.GameEvents.TradeEvents.Booths.BuyListing
 local PetEggs     = require(RS.Data.PetRegistry.PetEggs)
 local MutReg      = require(RS.Data.PetRegistry.PetMutationRegistry)
 local EnumToMut   = MutReg.EnumToPetMutation
+-- util resmi game buat bikin itemData default (dipakai FindSellers). fallback ke tangan kalau gagal require.
+local okU, TokenRAPUtil = pcall(require, RS.Modules.TradeTokens.TokenRAPUtil)
+local function buildItemData(petType)
+	if okU and TokenRAPUtil and TokenRAPUtil.GetDefaultItemData then
+		local d = TokenRAPUtil.GetDefaultItemData("Pet", petType)
+		if d then return d end
+	end
+	return { PetType = petType, PetData = { MutationType = "Normal", Level = 0, LevelProgress = 0, Hunger = 0, BaseWeight = 1, Boosts = {} }, PetAbility = {} }
+end
 
 -- opsi dropdown = kombinasi "Pet - Egg" (premium vs biasa otomatis kebedain).
 -- key yang disimpan = label; saat cocokkan listing pakai PetType .. " - " .. HatchedFrom
@@ -76,6 +85,7 @@ local CFG = {
 	webhookUrl     = "",
 	webhookEnabled = false,
 	profiles       = {},
+	snipeCounts    = {},  -- [petType] = total kebeli (persist antar-hop)
 }
 for i = 1, NUM_PROFILES do
 	CFG.profiles[i] = { pets = {}, muts = {}, maxPrice = 0 }
@@ -105,6 +115,7 @@ do
 		CFG.webhookUrl     = st.webhookUrl or CFG.webhookUrl
 		CFG.webhookEnabled = st.webhookEnabled or false
 		CFG.autoSnipe      = st.autoSnipe or false
+		if type(st.snipeCounts) == "table" then CFG.snipeCounts = st.snipeCounts end
 		if type(st.profiles) == "table" then
 			for i = 1, NUM_PROFILES do
 				local sp = st.profiles[i] or st.profiles[tostring(i)]
@@ -184,8 +195,35 @@ local function sendWebhook(payload)
 	end)
 end
 
+-- daftar petType unik yang lagi dicentang di semua profil (buat rekap)
+local function selectedPetTypes()
+	local set, order = {}, {}
+	for pi = 1, NUM_PROFILES do
+		for petKey in pairs(CFG.profiles[pi].pets) do
+			local pt = (string.split(petKey, " - ")[1]) or petKey
+			if not set[pt] then set[pt] = true; order[#order+1] = pt end
+		end
+	end
+	table.sort(order)
+	return order
+end
+
+-- teks rekap: "Sea Horse: 10\nSea Anemone: 10\n..." + total
+local function buildSummary()
+	local lines, total = {}, 0
+	for _, pt in ipairs(selectedPetTypes()) do
+		local c = CFG.snipeCounts[pt] or 0
+		total = total + c
+		lines[#lines+1] = ("%s: %d"):format(pt, c)
+	end
+	return (#lines > 0 and table.concat(lines, "\n") or "-"), total
+end
+
 local function notifyBuy(t)
 	local seller = (t.owner and (t.owner.DisplayName or t.owner.Name)) or "?"
+	local summary, total = buildSummary()
+	local tok = getTokens()
+	tok = (tok == math.huge) and "?" or tostring(tok)
 	sendWebhook({
 		username = "GAG Sniper",
 		embeds = {{
@@ -198,6 +236,8 @@ local function notifyBuy(t)
 				{ name = "Nickname", value = tostring(t.name),  inline = true },
 				{ name = "Profile",  value = "Snipe " .. t.profile, inline = true },
 				{ name = "Seller",   value = "@" .. seller,     inline = true },
+				{ name = ("📊 Total Sniped (%d)"):format(total), value = summary, inline = false },
+				{ name = "💰 Sisa Token", value = tok .. " Tokens", inline = false },
 			},
 			footer = { text = "JobId: " .. tostring(game.JobId) },
 		}},
@@ -297,96 +337,67 @@ local function serverHop()
 		return nil
 	end
 
+	-- loop pencarian (bukan rekursi -> nggak numpuk di stack)
 	local function attempt()
-		if not running then return end
+		while running do
+			-- Acak searchTargets agar bervariasi setiap kali pencarian di-retry
+			for i = #searchTargets, 2, -1 do
+				local j = math.random(1, i)
+				searchTargets[i], searchTargets[j] = searchTargets[j], searchTargets[i]
+			end
 
-		-- Acak searchTargets agar bervariasi setiap kali pencarian di-retry
-		for i = #searchTargets, 2, -1 do
-			local j = math.random(1, i)
-			searchTargets[i], searchTargets[j] = searchTargets[j], searchTargets[i]
-		end
+			if #searchTargets > 0 then
+				setStatus("Mencari seller online di Global Index...")
+				for _, petType in ipairs(searchTargets) do
+					if not running then return end
+					setStatus(("Mencari seller: %s"):format(petType))
 
-		-- Coba cari seller via Global Index
-		if #searchTargets > 0 then
-			setStatus("Mencari seller online di Global Index...")
-			for _, petType in ipairs(searchTargets) do
-				if not running then return end
-				setStatus(("Mencari seller: %s"):format(petType))
-				
-				-- Buat itemData default (seperti saat klik pet di UI game)
-				local itemData = {
-					PetType = petType,
-					PetData = {
-						MutationType = "Normal",
-						Level = 0,
-						LevelProgress = 0,
-						Hunger = 0,
-						BaseWeight = 1,
-						Boosts = {}
-					},
-					PetAbility = {}
-				}
-				
-				local ok, success, tpData = pcall(function()
-					return RS.GameEvents.TradeEvents.TokenRAPs.FindSellers:InvokeServer("Pet", itemData)
-				end)
-				
-				if ok and success and tpData then
-					local targetJobId = findJobId(tpData)
-					if targetJobId then
+					local itemData = buildItemData(petType)
+					local ok, success, tpData = pcall(function()
+						return RS.GameEvents.TradeEvents.TokenRAPs.FindSellers:InvokeServer("Pet", itemData)
+					end)
+
+					if ok and success and tpData then
+						-- tpData dari game = string JobId langsung (terbukti dari tes live)
+						local targetJobId = (type(tpData) == "string" and tpData) or findJobId(tpData)
 						if targetJobId == game.JobId then
-							log(("Seller %s ada di server saat ini. Lewati."):format(petType))
-						elseif visited[targetJobId] then
-							log(("Seller %s ada di server yang sudah dikunjungi (%s). Lewati."):format(petType, targetJobId:sub(1, 8)))
-						else
+							log(("Seller %s ada di server ini (harga > limit). Lewati."):format(petType))
+						elseif targetJobId and visited[targetJobId] then
+							-- server sudah dikunjungi dalam TTL -> skip diam-diam
+						elseif targetJobId then
 							setStatus(("Seller ditemukan! Teleport ke %s..."):format(petType))
-							markVisited(targetJobId) -- Tandai server agar tidak kembali ke sini
-							local tpOk = pcall(function()
-								return RS.GameEvents.TradeEvents.TokenRAPs.TeleportToListing:InvokeServer(tpData, true)
+							markVisited(targetJobId) -- catat SEBELUM teleport
+							pcall(function()
+								RS.GameEvents.TradeEvents.TokenRAPs.TeleportToListing:InvokeServer(tpData, true)
 							end)
-							if tpOk then
-								return -- Teleport sukses dikirim ke server
-							end
-						end
-					else
-						-- Fallback jika JobId tidak terdeteksi di table, coba langsung teleport
-						setStatus(("Teleport ke seller %s..."):format(petType))
-						local tpOk = pcall(function()
-							return RS.GameEvents.TradeEvents.TokenRAPs.TeleportToListing:InvokeServer(tpData, true)
-						end)
-						if tpOk then
-							return
+							-- ANTI-NYANGKUT: kalau teleport benar terjadi, game unload & thread ini mati.
+							-- Kalau setelah 8 detik masih hidup di server yang sama = teleport gagal senyap.
+							local t0 = os.clock()
+							repeat task.wait(1) until (not running) or (os.clock() - t0) >= 8
+							if not running then return end
+							log(("Teleport ke %s gagal, lanjut cari yang lain..."):format(petType))
 						end
 					end
-				end
-				task.wait(0.4) -- jeda kecil antar pencarian pet agar tidak spam remote
-			end
-		end
 
-		-- Jika tidak ada seller baru/valid di Global Index, tunggu 2.5 detik lalu coba lagi (tanpa random hop)
-		setStatus("Tidak ada seller baru/valid. Menunggu 2.5 detik...")
-		task.wait(2.5)
-		if running then
-			attempt()
+					if not running then return end
+					task.wait(1.5) -- jeda anti rate-limit FindSellers (balik nil kalau terlalu cepat)
+				end
+			end
+
+			if not running then return end
+			setStatus("Tidak ada seller baru/valid. Menunggu 3 detik...")
+			task.wait(3)
 		end
 	end
 
 	local conn
 	conn = TeleportService.TeleportInitFailed:Connect(function(plr, _, msg)
-		if plr == LP then
-			log("Teleport gagal: " .. tostring(msg))
-			task.wait(1.5)
-			if running then attempt() end
-		end
+		if plr == LP then log("Teleport gagal: " .. tostring(msg)) end
 	end)
 
-	task.spawn(function()
-		repeat task.wait(1) until not running or not hopInProgress
-		if conn then conn:Disconnect() end
-		hopInProgress = false
-	end)
-
-	attempt()
+	attempt()                         -- blok sampai running=false atau ke-teleport (game unload)
+	if conn then conn:Disconnect() end
+	hopInProgress = false
 end
 
 ------------------------------------------------------------------ core loop
@@ -405,7 +416,9 @@ local function buyPass()
 				local ok, success, m = pcall(function() return BuyListing:InvokeServer(t.owner, t.uuid) end)
 				if ok and success then
 					bought += 1
-					log(("BUY %s [%s] @%d (P%d)"):format(t.pet, t.mut, t.price, t.profile))
+					CFG.snipeCounts[t.pet] = (CFG.snipeCounts[t.pet] or 0) + 1
+					persistState()
+					log(("BUY %s [%s] @%d (P%d) | total %s:%d"):format(t.pet, t.mut, t.price, t.profile, t.pet, CFG.snipeCounts[t.pet]))
 					notifyBuy(t)
 				else
 					log(("FAIL %s @%d (%s)"):format(t.pet, t.price, tostring(m or success)))
@@ -695,6 +708,23 @@ function log(msg)
 	logBox.Text = table.concat(logLines, "\n")
 end
 function setStatus(s) statusLbl.Text = ("Status: %s | %s"):format(CFG.autoSnipe and "ON" or "OFF", s) end
+
+-- Counter rekap snipe (tab Misc)
+sectionLabel(misc, "Snipe Counter", nil, 8)
+local cntBox = mk("TextLabel", { Size = UDim2.new(1, 0, 0, 90), BackgroundColor3 = C.bg, Text = "", TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Font = Enum.Font.Code, TextSize = 12, TextColor3 = C.txt, TextWrapped = true, LayoutOrder = 9 }, misc)
+corner(cntBox, 6); pad(cntBox, 8)
+local function renderCounter()
+	local summary, total = buildSummary()
+	local tok = getTokens(); tok = (tok == math.huge) and "?" or tostring(tok)
+	cntBox.Text = ("Total Sniped (%d):\n%s\n\nSisa Token: %s"):format(total, summary, tok)
+end
+local resetBtn = mk("TextButton", { Size = UDim2.new(1, 0, 0, 34), BackgroundColor3 = C.red, Text = "Reset Counter", Font = Enum.Font.GothamBold, TextSize = 13, TextColor3 = Color3.new(1,1,1), LayoutOrder = 10 }, misc)
+corner(resetBtn, 8)
+resetBtn.MouseButton1Click:Connect(function()
+	CFG.snipeCounts = {}; persistState(); renderCounter(); log("Snipe counter direset.")
+end)
+tabBtns["Misc"].MouseButton1Click:Connect(renderCounter)  -- refresh saat buka tab Misc
+renderCounter()
 
 ------------------------------------------------------------------ init
 -- default tab
