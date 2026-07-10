@@ -85,7 +85,6 @@ local CFG = {
 	webhookUrl     = "",
 	webhookEnabled = false,
 	profiles       = {},
-	snipeCounts    = {},  -- [petType] = total kebeli (persist antar-hop)
 }
 for i = 1, NUM_PROFILES do
 	CFG.profiles[i] = { pets = {}, muts = {}, maxPrice = 0 }
@@ -115,7 +114,6 @@ do
 		CFG.webhookUrl     = st.webhookUrl or CFG.webhookUrl
 		CFG.webhookEnabled = st.webhookEnabled or false
 		CFG.autoSnipe      = st.autoSnipe or false
-		if type(st.snipeCounts) == "table" then CFG.snipeCounts = st.snipeCounts end
 		if type(st.profiles) == "table" then
 			for i = 1, NUM_PROFILES do
 				local sp = st.profiles[i] or st.profiles[tostring(i)]
@@ -208,11 +206,25 @@ local function selectedPetTypes()
 	return order
 end
 
--- teks rekap: "Sea Horse: 10\nSea Anemone: 10\n..." + total
+-- hitung jumlah tiap pet yang ADA DI INVENTORY sekarang (total punya, bukan cuma yg baru snipe)
+local function inventoryCounts()
+	local counts = {}
+	local ok, data = pcall(function() return DataService:GetData() end)
+	if ok and type(data) == "table" and data.PetsData and data.PetsData.PetInventory and data.PetsData.PetInventory.Data then
+		for _, v in pairs(data.PetsData.PetInventory.Data) do
+			local pt = v and v.PetType
+			if pt then counts[pt] = (counts[pt] or 0) + 1 end
+		end
+	end
+	return counts
+end
+
+-- teks rekap: "Sea Horse: 10\nSea Anemone: 10\n..." + total (dari inventory)
 local function buildSummary()
+	local counts = inventoryCounts()
 	local lines, total = {}, 0
 	for _, pt in ipairs(selectedPetTypes()) do
-		local c = CFG.snipeCounts[pt] or 0
+		local c = counts[pt] or 0
 		total = total + c
 		lines[#lines+1] = ("%s: %d"):format(pt, c)
 	end
@@ -236,7 +248,7 @@ local function notifyBuy(t)
 				{ name = "Nickname", value = tostring(t.name),  inline = true },
 				{ name = "Profile",  value = "Snipe " .. t.profile, inline = true },
 				{ name = "Seller",   value = "@" .. seller,     inline = true },
-				{ name = ("📊 Total Sniped (%d)"):format(total), value = summary, inline = false },
+				{ name = ("📊 Total Punya (%d)"):format(total), value = summary, inline = false },
 				{ name = "💰 Sisa Token", value = tok .. " Tokens", inline = false },
 			},
 			footer = { text = "JobId: " .. tostring(game.JobId) },
@@ -416,9 +428,7 @@ local function buyPass()
 				local ok, success, m = pcall(function() return BuyListing:InvokeServer(t.owner, t.uuid) end)
 				if ok and success then
 					bought += 1
-					CFG.snipeCounts[t.pet] = (CFG.snipeCounts[t.pet] or 0) + 1
-					persistState()
-					log(("BUY %s [%s] @%d (P%d) | total %s:%d"):format(t.pet, t.mut, t.price, t.profile, t.pet, CFG.snipeCounts[t.pet]))
+					log(("BUY %s [%s] @%d (P%d)"):format(t.pet, t.mut, t.price, t.profile))
 					notifyBuy(t)
 				else
 					log(("FAIL %s @%d (%s)"):format(t.pet, t.price, tostring(m or success)))
@@ -709,20 +719,18 @@ function log(msg)
 end
 function setStatus(s) statusLbl.Text = ("Status: %s | %s"):format(CFG.autoSnipe and "ON" or "OFF", s) end
 
--- Counter rekap snipe (tab Misc)
-sectionLabel(misc, "Snipe Counter", nil, 8)
+-- Counter jumlah pet di inventory (tab Misc)
+sectionLabel(misc, "Pet Counter (Inventory)", nil, 8)
 local cntBox = mk("TextLabel", { Size = UDim2.new(1, 0, 0, 90), BackgroundColor3 = C.bg, Text = "", TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Font = Enum.Font.Code, TextSize = 12, TextColor3 = C.txt, TextWrapped = true, LayoutOrder = 9 }, misc)
 corner(cntBox, 6); pad(cntBox, 8)
 local function renderCounter()
 	local summary, total = buildSummary()
 	local tok = getTokens(); tok = (tok == math.huge) and "?" or tostring(tok)
-	cntBox.Text = ("Total Sniped (%d):\n%s\n\nSisa Token: %s"):format(total, summary, tok)
+	cntBox.Text = ("Total Punya (%d):\n%s\n\nSisa Token: %s"):format(total, summary, tok)
 end
-local resetBtn = mk("TextButton", { Size = UDim2.new(1, 0, 0, 34), BackgroundColor3 = C.red, Text = "Reset Counter", Font = Enum.Font.GothamBold, TextSize = 13, TextColor3 = Color3.new(1,1,1), LayoutOrder = 10 }, misc)
-corner(resetBtn, 8)
-resetBtn.MouseButton1Click:Connect(function()
-	CFG.snipeCounts = {}; persistState(); renderCounter(); log("Snipe counter direset.")
-end)
+local refreshBtn = mk("TextButton", { Size = UDim2.new(1, 0, 0, 34), BackgroundColor3 = C.acc, Text = "Refresh", Font = Enum.Font.GothamBold, TextSize = 13, TextColor3 = Color3.new(1,1,1), LayoutOrder = 10 }, misc)
+corner(refreshBtn, 8)
+refreshBtn.MouseButton1Click:Connect(renderCounter)
 tabBtns["Misc"].MouseButton1Click:Connect(renderCounter)  -- refresh saat buka tab Misc
 renderCounter()
 
