@@ -494,16 +494,47 @@ mk("UIStroke", { Color = C.acc, Thickness = 1, Transparency = 0.3 }, main)
 local bar = mk("Frame", { Size = UDim2.new(1, 0, 0, 40), BackgroundColor3 = C.panel, BorderSizePixel = 0 }, main)
 corner(bar, 12)
 mk("TextLabel", {
-	Size = UDim2.new(1, -50, 1, 0), Position = UDim2.fromOffset(14, 0), BackgroundTransparency = 1,
+	Size = UDim2.new(1, -90, 1, 0), Position = UDim2.fromOffset(14, 0), BackgroundTransparency = 1,
 	Text = "Allegiaant Hub | GAG Sniper", TextXAlignment = Enum.TextXAlignment.Left,
 	Font = Enum.Font.GothamBold, TextSize = 15, TextColor3 = C.acc,
 }, bar)
+
+-- Floating Maximize Button (Draggable)
+local maxIcon = mk("TextButton", {
+	Size = UDim2.fromOffset(45, 45), Position = UDim2.new(0, 15, 0.5, -22),
+	BackgroundColor3 = C.panel, Text = "AH", Font = Enum.Font.GothamBold, TextSize = 14,
+	TextColor3 = C.acc, Visible = false, Active = true,
+}, gui)
+corner(maxIcon, 22)
+mk("UIStroke", { Color = C.acc, Thickness = 1.5, Transparency = 0.3 }, maxIcon)
+do
+	local dragging, ds, sp
+	maxIcon.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging = true; ds = i.Position; sp = maxIcon.Position end end)
+	UserInputService.InputChanged:Connect(function(i) if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then local d = i.Position - ds; maxIcon.Position = UDim2.new(sp.X.Scale, sp.X.Offset + d.X, sp.Y.Scale, sp.Y.Offset + d.Y) end end)
+	UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging = false end end)
+end
+
 local closeBtn = mk("TextButton", {
 	Size = UDim2.fromOffset(30, 30), Position = UDim2.new(1, -36, 0, 5), BackgroundColor3 = C.row,
 	Text = "✕", Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = C.txt,
 }, bar)
 corner(closeBtn, 8)
 closeBtn.MouseButton1Click:Connect(function() gui.Enabled = not gui.Enabled end)
+
+local minBtn = mk("TextButton", {
+	Size = UDim2.fromOffset(30, 30), Position = UDim2.new(1, -72, 0, 5), BackgroundColor3 = C.row,
+	Text = "—", Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = C.txt,
+}, bar)
+corner(minBtn, 8)
+
+minBtn.MouseButton1Click:Connect(function()
+	main.Visible = false
+	maxIcon.Visible = true
+end)
+maxIcon.MouseButton1Click:Connect(function()
+	maxIcon.Visible = false
+	main.Visible = true
+end)
 do
 	local dragging, ds, sp
 	bar.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging = true; ds = i.Position; sp = main.Position end end)
