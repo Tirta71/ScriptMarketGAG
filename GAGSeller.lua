@@ -11,10 +11,8 @@
 	Jalan: loadstring(readfile("GAGSeller.lua"))()  (atau autoexec)
 --]]
 
-if type(getgenv) == "function" then
-	if getgenv().__GAGSellerLoaded then return end
-	getgenv().__GAGSellerLoaded = true
-end
+-- Anti-double & anti-"mati suri setelah hop": loop hidup selama GUI-nya masih ada (lihat alive()).
+-- GUI lama dihapus saat re-run / auto ke-destroy saat pindah server -> loop lama berhenti sendiri.
 
 local Players          = game:GetService("Players")
 local RS               = game:GetService("ReplicatedStorage")
@@ -83,7 +81,9 @@ for i = 1, NUM_PROFILES do
 	CFG.profiles[i] = { pets = {}, muts = {}, minW = 0, maxW = 0, maxList = 0, price = 100 }
 end
 local running = false
+local gui             -- forward decl (ScreenGui utama)
 local log, setStatus  -- forward decl
+local function alive() return gui ~= nil and gui.Parent ~= nil end
 
 local STATE_FILE = "GAGSeller_state.json"
 local function persistState()
@@ -133,19 +133,24 @@ local function weightOf(petType, pd)
 	return (ok and w) or (pd.BaseWeight or 0)
 end
 
--- pastikan punya booth; kalau belum & autoClaim ON, klaim booth kosong TERDEKAT.
--- return true = sudah punya booth (siap listing), false = belum (baru diklaim / gagal)
-local function ensureBooth()
+-- apakah kita sudah punya booth? return (bool, dataBooths)
+local function ownsBooth()
 	local ok, data = pcall(function() return RR.new("Booths"):GetDataAsync() end)
-	if not ok or not data then return false end
+	if not ok or not data then return false, nil end
 	local id = myPlayerId()
-	if data.Players and data.Players[id] and data.Players[id].Booth then return true end
-	if not CFG.autoClaim then return false end
+	local has = data.Players and data.Players[id] and data.Players[id].Booth and true or false
+	return has, data
+end
 
+-- klaim booth kosong TERDEKAT (nearest dulu; kalau keserobot, pass berikutnya ambil yg belakang)
+local function tryClaimNearest()
+	local owns, data = ownsBooth()
+	if owns then return true end
+	if not data then return false end
 	local charPos
 	local char = LP.Character
 	if char and char:FindFirstChild("HumanoidRootPart") then charPos = char.HumanoidRootPart.Position end
-	local best, bestDist
+	local list = {}
 	for _, inst in ipairs(CollectionService:GetTagged("TradeBooth")) do
 		local b = data.Booths and data.Booths[inst.Name]
 		if (b == nil) or (b.Owner == nil) then
@@ -154,17 +159,25 @@ local function ensureBooth()
 				local ok2, piv = pcall(function() return inst:GetPivot().Position end)
 				if ok2 then dist = (piv - charPos).Magnitude end
 			end
-			if not best or dist < bestDist then best, bestDist = inst, dist end
+			list[#list+1] = { inst = inst, dist = dist }
 		end
 	end
-	if best then
-		pcall(function() ClaimBooth:FireServer(best) end)
-		log("Claim booth " .. tostring(best.Name):sub(1, 8) .. "...")
-		return false
-	end
-	log("Tidak ada booth kosong.")
+	if #list == 0 then log("Tidak ada booth kosong."); return false end
+	table.sort(list, function(a, b) return a.dist < b.dist end) -- terdekat -> terjauh (belakang)
+	local pick = list[1]
+	pcall(function() ClaimBooth:FireServer(pick.inst) end)
+	log(("Claim booth terdekat (%dstud, %d kosong)..."):format(math.floor(pick.dist), #list))
 	return false
 end
+
+-- untuk listing: pastikan punya booth (claim kalau autoClaim ON)
+local function ensureBooth()
+	local owns = ownsBooth()
+	if owns then return true end
+	if CFG.autoClaim then return tryClaimNearest() end
+	return false
+end
+
 
 -- satu putaran listing: cek inventory, cocokkan tiap profil, buat listing
 local listedSet = {}  -- uuid -> true (jaga2 double invoke antar-pass)
@@ -215,7 +228,7 @@ local function anyProfileActive()
 	return false
 end
 local function mainLoop()
-	while running do
+	while running and alive() do
 		if not anyProfileActive() then
 			setStatus("Pilih pet di profil listing dulu.")
 			task.wait(2)
@@ -235,7 +248,15 @@ local function mainLoop()
 end
 
 ------------------------------------------------------------------ GUI
-local gui = Instance.new("ScreenGui")
+-- hapus instance lama (setelah re-run / hop) biar nggak dobel GUI
+pcall(function()
+	local host = (gethui and gethui()) or game:GetService("CoreGui")
+	local old = host:FindFirstChild("GAGSeller"); if old then old:Destroy() end
+	local pg = LP:FindFirstChild("PlayerGui")
+	if pg and pg:FindFirstChild("GAGSeller") then pg.GAGSeller:Destroy() end
+end)
+
+gui = Instance.new("ScreenGui")
 gui.Name = "GAGSeller"; gui.ResetOnSpawn = false; gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 pcall(function() gui.Parent = (gethui and gethui()) or game:GetService("CoreGui") end)
 if not gui.Parent then gui.Parent = LP:WaitForChild("PlayerGui") end
@@ -415,8 +436,11 @@ corner(statusBox, 8)
 mk("TextLabel", { Size = UDim2.new(1, -20, 0, 18), Position = UDim2.fromOffset(12, 6), BackgroundTransparency = 1, Text = "Selling Status", TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBold, TextSize = 13, TextColor3 = C.txt }, statusBox)
 local statusLbl = mk("TextLabel", { Size = UDim2.new(1, -20, 0, 28), Position = UDim2.fromOffset(12, 24), BackgroundTransparency = 1, Text = "Status: OFF", TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = C.sub, TextWrapped = true }, statusBox)
 
-makeToggle(sell, "Auto Claim Booth", "Klaim booth kosong terdekat otomatis",
-	function() return CFG.autoClaim end, function(v) CFG.autoClaim = v; persistState() end, 1)
+makeToggle(sell, "Auto Claim Booth", "Klaim booth kosong terdekat (jalan sendiri)",
+	function() return CFG.autoClaim end,
+	function(v)
+		CFG.autoClaim = v; persistState()
+	end, 1)
 
 local rAutoToggle = makeToggle(sell, "Auto List Pets", "Auto list pet dari inventory sesuai profil 1-5",
 	function() return CFG.autoSell end,
@@ -486,6 +510,27 @@ tabBtns["Sell"].BackgroundColor3 = C.acc; tabBtns["Sell"].TextColor3 = Color3.ne
 
 log("Ready. Set profil listing di tab Sell lalu Auto List ON.")
 setStatus("idle")
+
+-- supervisor auto-claim: SATU loop permanen, cek CFG.autoClaim tiap tick (anti-race, nggak bisa mati diam2)
+task.spawn(function()
+	local lastState
+	while alive() do
+		if CFG.autoClaim then
+			local owns = ownsBooth()
+			if owns then
+				if lastState ~= "own" then log("Booth aman: " .. tostring(owns):sub(1,8)); lastState = "own" end
+				task.wait(6)
+			else
+				if lastState ~= "hunt" then log("Booth hilang, cari terdekat..."); lastState = "hunt" end
+				tryClaimNearest()   -- klaim booth kosong terdekat
+				task.wait(5)        -- hormati cooldown claim server
+			end
+		else
+			lastState = nil
+			task.wait(1)
+		end
+	end
+end)
 
 if CFG.autoSell then
 	task.wait(1.5)
