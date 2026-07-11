@@ -36,10 +36,6 @@ return function(ctx)
 	end
 
 	----------------------------------------------------------------- helpers
-	local function cframeString(cf)
-		return table.concat({ cf:GetComponents() }, ", ")
-	end
-
 	local function targetPets()
 		local out = {}
 		local ok, d = pcall(function() return DataService:GetData() end)
@@ -56,24 +52,26 @@ return function(ctx)
 		return out
 	end
 
-	local function getCFrame(uuid)
+	-- posisi pet sekarang (buat naruh balik di tempat semula)
+	local function getPos(uuid)
 		if not PU then return nil end
 		local ok, model = pcall(function() return PU:FindLocalPetModel(uuid) end)
 		if ok and model and typeof(model) == "Instance" then
 			local okc, cf = pcall(function() return model:GetPivot() end)
-			if okc then return cf end
+			if okc then return cf.Position end
 		end
 		return nil
 	end
 
 	-- pick & place 1 pet, lalu tunggu sampai cooldown mulai lagi (biar nggak dobel pungut)
+	-- PENTING: EquipPet butuh objek CFrame (bukan string), rotasi identity, posisi dalam PetArea.
 	local function pnpOne(uuid)
 		if not PetsService then return false end
-		local cf = getCFrame(uuid)
-		if not cf then return false end
+		local pos = getPos(uuid)
+		if not pos then return false end
 		pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
 		task.wait(math.max(0, CFG.equipDelay))
-		pcall(function() PetsService:FireServer("EquipPet", uuid, cframeString(cf)) end)
+		pcall(function() PetsService:FireServer("EquipPet", uuid, CFrame.new(pos)) end)
 		-- tunggu skill jalan lagi (cooldown muncul) supaya loop nggak langsung pick up lagi
 		local t0 = os.clock()
 		repeat task.wait(0.1) until (not isReady(uuid)) or (os.clock() - t0) > 2.5
