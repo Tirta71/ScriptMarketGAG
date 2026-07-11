@@ -1,11 +1,10 @@
 --[[ pnp.lua — Pick & Place pet, SETELAH skill terkonfirmasi keluar.
-     Remote (dari spy):
-       pickup: PetsService:FireServer("UnequipPet", uuid)
-       place : PetsService:FireServer("EquipPet", uuid, CFrame)  (posisi semula)
-     Cooldown: PetCooldownsUpdated(uuid, { {Time=<detik>, Passive=<nama>}, ... }).
-       - Passive yang mengandung "Mutation" DIABAIKAN (itu passive mutation, bukan skill).
-     Flow baru:
-       Place → tunggu skill fired (cooldown muncul) → pickupDelay → Pickup → equipDelay → Place → repeat ]]
+     Deteksi hybrid:
+       1. GameEvents.Notification → notif teks dari server saat pet nge-skill
+       2. PetCooldownsUpdated     → konfirmasi UUID spesifik mana yang cooldown-nya aktif
+     Flow:
+       Pet sudah di tanah → tunggu notif skill + cooldown muncul
+       → pickupDelay → Pickup → equipDelay → Place → repeat ]]
 return function(ctx)
 	local DataService = ctx.deps.DataService
 	local PetsService = ctx.deps.PetsService
@@ -23,20 +22,52 @@ return function(ctx)
 		end)
 	end
 
-	-- Deteksi apakah pet SUDAH menembakkan skill-nya (cooldown muncul dengan Time > 0).
-	-- Ini kebalikan dari isReady: kita cari KONFIRMASI bahwa skill beneran keluar.
-	local function hasSkillFired(uuid, petType)
+	----------------------------------------------------------------- skill notification tracking
+	-- skillNotifAt[petType] = os.clock() terakhir kali notif skill untuk tipe pet ini diterima.
+	-- lastPlacedAt[uuid] = os.clock() saat kita terakhir menaruh pet ini (EquipPet).
+	local skillNotifAt = {}
+	local lastPlacedAt = {}
+
+	local RS = game:GetService("ReplicatedStorage")
+	local NotifEvent = RS:WaitForChild("GameEvents"):FindFirstChild("Notification")
+	if NotifEvent then
+		NotifEvent.OnClientEvent:Connect(function(text)
+			if type(text) ~= "string" then return end
+			-- Filter: hanya tangkap notif yang berkaitan dengan skill pet
+			-- Contoh: "Mimic Octopus copied ...", "Rainbow Dilophosaurus spat venom and granted 6000 XP ..."
+			if text:find("granted") or text:find("copied") or text:find("advancing") then
+				-- Cocokkan nama tipe pet dari daftar target PNP
+				for petType, _ in pairs(CFG.pnpPetTypes) do
+					if text:find(petType, 1, true) then
+						skillNotifAt[petType] = os.clock()
+					end
+				end
+				-- Jika filter pnpPetTypes kosong (semua pet), cocokkan dari pet yang sedang equipped
+				if not next(CFG.pnpPetTypes) then
+					local ok, d = pcall(function() return DataService:GetData() end)
+					if ok and d and d.PetsData and d.PetsData.PetInventory and d.PetsData.PetInventory.Data then
+						for _, petData in pairs(d.PetsData.PetInventory.Data) do
+							local pt = petData.PetType
+							if pt and text:find(pt, 1, true) then
+								skillNotifAt[pt] = os.clock()
+							end
+						end
+					end
+				end
+			end
+		end)
+	end
+
+	----------------------------------------------------------------- detection
+	-- Cek apakah UUID ini punya cooldown aktif (non-mutation, non-copied-for-mimic)
+	local function hasCooldownActive(uuid, petType)
 		local cd = cdMap[uuid]
 		if type(cd) ~= "table" then return false end
-
 		local isMimic = tostring(petType):find("Mimic") ~= nil
-
 		for _, entry in ipairs(cd) do
 			local pas = tostring(entry.Passive or "")
 			local t   = tonumber(entry.Time) or 0
 			if not pas:find("Mutation") and t > 0 then
-				-- Untuk pet Mimic, hanya deteksi cooldown bawaan "Mimicry"
-				-- (abaikan cooldown skill copasan seperti "Rainbow Frilled Reptile")
 				if isMimic then
 					if pas == "Mimicry" then return true end
 				else
@@ -45,6 +76,22 @@ return function(ctx)
 			end
 		end
 		return false
+	end
+
+	-- HYBRID: Konfirmasi skill sudah keluar lewat notifikasi + cooldown UUID.
+	local function hasSkillFired(uuid, petType)
+		-- Cek cooldown per UUID (wajib, ini konfirmasi UUID spesifik)
+		if not hasCooldownActive(uuid, petType) then return false end
+
+		-- Jika kita belum pernah menaruh pet ini sendiri (initial state saat script start),
+		-- cukup cek cooldown saja (pet sudah di tanah dari awal, langsung bisa di-PNP).
+		local placed = lastPlacedAt[uuid]
+		if not placed then return true end
+
+		-- Jika sudah pernah ditaruh oleh kita, butuh konfirmasi notifikasi skill
+		-- yang datang SETELAH kita menaruh pet ini terakhir kali.
+		local notif = skillNotifAt[petType] or 0
+		return notif > placed
 	end
 
 	----------------------------------------------------------------- helpers
@@ -64,9 +111,7 @@ return function(ctx)
 		return out
 	end
 
-	-- Posisi placement. Model pet BISA hilang (low performance mode) -> FindLocalPetModel nil.
-	-- Strategi: baca dari model kalau ada (sambil di-cache), else pakai cache terakhir,
-	-- else fallback ke PetArea kebun sendiri, terakhir posisi player.
+	-- Posisi placement. Cache posisi asli pet agar tidak drift.
 	local lastPos = {}
 	local LP = ctx.LP
 
@@ -76,11 +121,8 @@ return function(ctx)
 		return hrp and hrp.Position or nil
 	end
 
-	local RS = game:GetService("ReplicatedStorage")
 	local GetFarm = require(RS.Modules.GetFarm)
 
-	-- Cache posisi PERTAMA yang kebaca dan JANGAN ditimpa -> pet selalu balik ke spot asli
-	-- (bukan spot hasil PNP), biar nggak drift ngumpul ke player.
 	local function getPos(uuid)
 		if lastPos[uuid] then return lastPos[uuid] end
 		if PU then
@@ -90,13 +132,9 @@ return function(ctx)
 				if okc then lastPos[uuid] = cf.Position; return cf.Position end
 			end
 		end
-		-- Fallback 1: Pusat PetArea kebun kita sendiri (garansi 100% aman di dalam kebun)
 		local farm = GetFarm and GetFarm(LP)
 		local petArea = farm and farm:FindFirstChild("PetArea")
-		if petArea then
-			return petArea.Position
-		end
-		-- Fallback 2: Posisi player
+		if petArea then return petArea.Position end
 		return playerPos()
 	end
 
@@ -115,16 +153,16 @@ return function(ctx)
 				for _, p in ipairs(pets) do
 					if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
 
-					-- CEK: Apakah pet ini sudah nge-skill? (cooldown muncul = skill terkonfirmasi keluar)
+					-- CEK HYBRID: Notifikasi skill + cooldown UUID terkonfirmasi?
 					if hasSkillFired(p.uuid, p.petType) then
 						didAny = true
 
-						-- 1) Tunggu pickupDelay (biar skill selesai animasinya dulu)
+						-- 1) Tunggu pickupDelay (biar skill selesai efeknya)
 						if CFG.pickupDelay > 0 then task.wait(CFG.pickupDelay) end
 						if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
 
 						-- 2) PICKUP (cabut pet dari tanah)
-						local pos = getPos(p.uuid) -- simpan posisi SEBELUM cabut
+						local pos = getPos(p.uuid)
 						pcall(function() PetsService:FireServer("UnequipPet", p.uuid) end)
 
 						-- 3) Tunggu equipDelay
@@ -134,10 +172,13 @@ return function(ctx)
 						if pos then
 							pcall(function() PetsService:FireServer("EquipPet", p.uuid, CFrame.new(pos)) end)
 						end
+
+						-- 5) Catat waktu penempatan untuk deteksi notif berikutnya
+						lastPlacedAt[p.uuid] = os.clock()
 					end
 				end
 				setStatus(("PNP jalan: %d pet%s"):format(#pets, didAny and "" or " (nunggu skill keluar)"))
-				task.wait(0.15)  -- poll interval
+				task.wait(0.15)
 			end
 		end
 	end
@@ -145,4 +186,5 @@ return function(ctx)
 	function ctx.startPnp() task.spawn(pnpLoop) end
 	-- stop cukup set CFG.pnpEnabled=false
 end
+
 
