@@ -61,7 +61,7 @@ return function(ctx)
 	local function updateMonitor()
 		if not main or not main.Visible then return end
 		local pets = getTargetPets()
-		badgeLbl.Text = tostring(#pets)
+		if badgeLbl then badgeLbl.Text = tostring(#pets) end
 
 		-- Hapus card UI yang sudah tidak ada di targets
 		for uuid, card in pairs(uiCards) do
