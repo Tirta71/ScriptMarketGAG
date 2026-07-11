@@ -7,7 +7,7 @@
 local BASE = "https://raw.githubusercontent.com/Tirta71/ScriptMarketGAG/main/GAGSeller/garden"
 
 local function loadModule(relPath)
-	local full = BASE .. "/" .. relPath
+	local full = BASE .. "/" .. relPath .. "?t=" .. os.time()
 	local ok, src = pcall(function() return game:HttpGet(full) end)
 	if not ok or type(src) ~= "string" or src == "" then
 		error(("[AllegiaanHub/garden] gagal ambil %s: %s"):format(full, tostring(src)))
