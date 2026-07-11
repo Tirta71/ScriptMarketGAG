@@ -85,15 +85,19 @@ return function(ctx)
 		return res
 	end
 
-	-- deteksi self-fire via PetCooldownsUpdated: cooldown non-mutation lompat ready(0) -> tinggi
-	local ownCd = {}          -- uuid -> Time cooldown non-mutation terakhir
-	local longFiredAt = {}    -- uuid -> os.clock() saat self-fire terdeteksi
+	-- Deteksi READY via PetCooldownsUpdated: cooldown skill utama (non-mutation) turun ke ~0.
+	-- Aura Peacock nurunin cooldown; pas nyampe ~0 = skill READY -> langsung PNP (skip animasi).
+	-- longArmed dipakai biar sekali PNP per siklus: di-arm pas cooldown tinggi lagi (habis reset),
+	-- di-disarm pas kita PNP. Jadi nggak spam & nggak ke-trigger sama reset PNP kita sendiri.
+	local ownCd     = {}   -- uuid -> Time cooldown skill utama terkini
+	local longArmed = {}   -- uuid -> boolean, boleh trigger saat ready
+	local READY_TH  = 10   -- detik; <= ini = ready (mau nembak)
+	local RESET_TH  = 300  -- detik; > ini = cooldown baru di-reset -> arm ulang
 	local PetCD = RS:WaitForChild("GameEvents"):FindFirstChild("PetCooldownsUpdated")
 	if PetCD then
 		PetCD.OnClientEvent:Connect(function(uuid, cd)
 			if type(uuid) ~= "string" then return end
-			-- ambil Time cooldown skill utama (non-mutation). Kalau TIDAK ada di payload ini,
-			-- ABAIKAN event ini (payload cooldown itu partial/per-passive) -> anti false-fire.
+			-- Time cooldown skill utama. Kalau TIDAK ada di payload ini, abaikan (payload partial).
 			local frier
 			if type(cd) == "table" then
 				for _, e in ipairs(cd) do
@@ -103,26 +107,13 @@ return function(ctx)
 				end
 			end
 			if frier == nil then return end
-			local prev = ownCd[uuid]
-			-- Aura pet lain cuma NURUNIN cooldown. Lonjakan NAIK besar = cooldown baru di-reset.
-			-- TAPI PNP kita sendiri juga nge-reset cooldown -> harus dibedain biar nggak loop:
-			-- abaikan lonjakan yang muncul <1.2s setelah kita menaruh pet (itu reset kita, bukan fire alami).
-			if prev ~= nil and (frier - prev) > 200 then
-				local placed = lastPlacedAt[uuid]
-				if not placed or (os.clock() - placed) > 1.2 then
-					longFiredAt[uuid] = os.clock()  -- fire ALAMI = skill beneran nembak (animasi mulai)
-				end
-			end
 			ownCd[uuid] = frier
+			if frier > RESET_TH then longArmed[uuid] = true end  -- cooldown tinggi lagi -> siap trigger
 		end)
 	end
 
-	local function hasLongFired(uuid)
-		local fired = longFiredAt[uuid]
-		if not fired then return false end
-		local placed = lastPlacedAt[uuid]
-		if not placed then return true end
-		return fired > placed
+	local function hasLongReady(uuid)
+		return (longArmed[uuid] == true) and (ownCd[uuid] ~= nil) and (ownCd[uuid] <= READY_TH)
 	end
 
 	----------------------------------------------------------------- helpers
@@ -212,11 +203,13 @@ return function(ctx)
 				for _, p in ipairs(pets) do
 					if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
 
-					-- Pilih detektor: long-CD (Ferret dll) pakai self-fire cooldown biar nggak ketipu
-					-- aura & nggak loop; short-CD (Dilo/Peacock/Mimic) tetap pakai HighlightRemote (tak diubah).
+					-- Pilih detektor:
+					--   long-CD (Ferret dll): READY (cooldown ~0) -> PNP SEKETIKA biar animasi ke-skip.
+					--   short-CD (Dilo/Peacock/Mimic): HighlightRemote force-fire (tak diubah).
+					local isLong = isLongCD(p.petType)
 					local fired
-					if isLongCD(p.petType) then
-						fired = hasLongFired(p.uuid)
+					if isLong then
+						fired = hasLongReady(p.uuid)
 					else
 						fired = hasSkillFired(p.uuid)
 					end
@@ -224,24 +217,21 @@ return function(ctx)
 					if fired then
 						didAny = true
 
-						-- 1) Tunggu pickupDelay (biar skill selesai efeknya)
-						if CFG.pickupDelay > 0 then task.wait(CFG.pickupDelay) end
+						-- long-CD: langsung pick (skip animasi). short-CD: pakai pickupDelay.
+						if not isLong and CFG.pickupDelay > 0 then task.wait(CFG.pickupDelay) end
 						if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
 
-						-- 2) PICKUP (cabut pet)
+						-- PICKUP -> equipDelay -> PLACE (posisi cache/center, sama kaya pet lain)
 						local pos = getPos(p.uuid)
 						pcall(function() PetsService:FireServer("UnequipPet", p.uuid) end)
-
-						-- 3) Tunggu equipDelay
 						task.wait(math.max(0.01, CFG.equipDelay))
-
-						-- 4) PLACE (taruh pet kembali)
 						if pos then
 							pcall(function() PetsService:FireServer("EquipPet", p.uuid, CFrame.new(pos)) end)
 						end
-
-						-- 5) Catat waktu penempatan
 						lastPlacedAt[p.uuid] = os.clock()
+
+						-- disarm long-CD sampai cooldown ke-reset tinggi lagi (anti dobel-PNP)
+						if isLong then longArmed[p.uuid] = false end
 					end
 				end
 				setStatus(("PNP jalan: %d pet%s"):format(#pets, didAny and "" or " (nunggu skill keluar)"))
