@@ -20,32 +20,6 @@ return function(ctx)
 	-- lastPlacedAt[uuid] = os.clock() saat kita terakhir menaruh pet ini (EquipPet).
 	local skillFiredAt = {}
 	local lastPlacedAt = {}
-	local cdMap = {}
-	local ferretWasReady = {} -- Menandai Ferret yang cooldown-nya sudah 0 (Ready)
-
-	-- Monitor cooldown untuk mendeteksi status "Ready" pada Ferret
-	local PetCD = ctx.deps.PetCooldownsUpdated
-	if PetCD then
-		PetCD.OnClientEvent:Connect(function(uuid, cd)
-			if type(uuid) == "string" then 
-				cdMap[uuid] = cd 
-				
-				-- Cek apakah cooldown Friendly Frier milik Ferret sudah 0 (Ready)
-				local isReady = true
-				for _, entry in ipairs(cd) do
-					if tostring(entry.Passive):find("Frier") and (tonumber(entry.Time) or 0) > 0 then
-						isReady = false
-						break
-					end
-				end
-				-- Hanya tandai READY jika sudah lewat dari 1.5 detik sejak ditaruh (melewati loading server)
-				local timeSincePlaced = os.clock() - (lastPlacedAt[uuid] or 0)
-				if isReady and timeSincePlaced > 1.5 then
-					ferretWasReady[uuid] = true -- Tandai READY!
-				end
-			end
-		end)
-	end
 
 	local HighlightRemote = RS:WaitForChild("GameEvents"):FindFirstChild("HighlightRemote")
 	if HighlightRemote then
@@ -68,16 +42,9 @@ return function(ctx)
 	end
 
 	-- Apakah pet ini sudah nge-skill SETELAH terakhir kali ditaruh?
-	local function hasSkillFired(uuid, petType)
+	local function hasSkillFired(uuid)
 		local fired = skillFiredAt[uuid]
 		if not fired then return false end
-
-		-- KHUSUS FERRET: Harus berstatus READY dulu sebelum boleh di-PNP
-		if tostring(petType):find("Ferret") then
-			if not ferretWasReady[uuid] then 
-				return false -- Abaikan jika belum ready (menghindari spam pas baru spawn)
-			end
-		end
 
 		-- Jika belum pernah ditaruh oleh kita (initial state), cukup cek ada fired
 		local placed = lastPlacedAt[uuid]
@@ -147,12 +114,11 @@ return function(ctx)
 					if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
 
 					-- CEK: HighlightRemote(UUID, 3) sudah diterima = skill PASTI keluar
-					if hasSkillFired(p.uuid, p.petType) then
+					if hasSkillFired(p.uuid) then
 						didAny = true
 
-						-- 1) Jeda cabut dinamis: Ferret 0.01s (NO ANIMASI), pet lain normal
-						local delay = tostring(p.petType):find("Ferret") and 0.01 or CFG.pickupDelay
-						if delay > 0 then task.wait(delay) end
+						-- 1) Tunggu pickupDelay (biar skill selesai efeknya)
+						if CFG.pickupDelay > 0 then task.wait(CFG.pickupDelay) end
 						if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
 
 						-- 2) PICKUP (cabut pet)
@@ -169,11 +135,6 @@ return function(ctx)
 
 						-- 5) Catat waktu penempatan
 						lastPlacedAt[p.uuid] = os.clock()
-
-						-- 6) Reset status ready khusus Ferret
-						if tostring(p.petType):find("Ferret") then
-							ferretWasReady[p.uuid] = false
-						end
 					end
 				end
 				setStatus(("PNP jalan: %d pet%s"):format(#pets, didAny and "" or " (nunggu skill keluar)"))
