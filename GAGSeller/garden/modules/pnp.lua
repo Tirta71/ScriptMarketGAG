@@ -90,7 +90,7 @@ return function(ctx)
 		end)
 	end
 
-	local READY_TH = 10 -- detik; cooldown <= ini dianggap ready/siap tembak
+	local READY_TH = 0 -- detik; cooldown <= ini dianggap ready/siap tembak
 
 	local function targetPets()
 		local out = {}
