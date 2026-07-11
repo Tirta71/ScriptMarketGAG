@@ -14,6 +14,7 @@ return function(ctx)
 	local makeInput = ctx.makeInput
 	local makeSingleDropdown = ctx.makeSingleDropdown
 	local makeMultiDropdown = ctx.makeMultiDropdown
+	local makeMultiDropdownDyn = ctx.makeMultiDropdownDyn
 
 	-- sidebar tabs (urut sesuai referensi)
 	local TABS = {
@@ -45,8 +46,9 @@ return function(ctx)
 	local pet = pageRef["Pet"]
 	local pnp = makeAccordion(pet, "Automation Pickup Pet", 1, true)
 
-	makeMultiDropdown(pnp, "Select Pets for Pickup", "Pilih pet yang di-PNP (kosong = semua equipped)",
-		reg.PET_OPTIONS, CFG.pnpPetTypes, function() persist() end, 1)
+	-- Pilih pet PER-UUID dari yang lagi di-equip (buka dropdown = auto-refresh daftarnya).
+	makeMultiDropdownDyn(pnp, "Select Pets for Pickup", "Pilih pet equipped yang di-PNP (kosong = semua)",
+		function() return ctx.equippedPetOptions() end, CFG.pnpUuids, function() persist() end, 1)
 
 	makeInput(pnp, "Pickup Delay (Seconds)", "Jeda tiap siklus (idealnya = saat skill ready)",
 		function() return CFG.pickupDelay end,

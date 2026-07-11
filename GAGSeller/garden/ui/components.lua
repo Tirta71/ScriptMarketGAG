@@ -141,6 +141,63 @@ return function(ctx)
 		return updateSummary
 	end
 
+	----------------------------------------------------------------- multi dropdown DINAMIS (value/display)
+	-- getOptions() -> { {value=<key>, display=<label>}, ... }. selSet di-key pakai value.
+	-- Opsi di-rebuild tiap kali dibuka (buat list yang berubah, mis. pet equipped).
+	local function makeMultiDropdownDyn(parent, title, desc, getOptions, selSet, onChange, order)
+		local row = mk("Frame", { Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, LayoutOrder = order }, parent)
+		mk("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 4) }, row)
+		local head = mk("TextButton", { Size = UDim2.new(1, 0, 0, 52), BackgroundTransparency = 1, Text = "", AutoButtonColor = false, LayoutOrder = 1 }, row)
+		labels(head, title, desc, 200)
+		local valLbl = mk("TextLabel", { Size = UDim2.new(0, 170, 1, 0), Position = UDim2.new(1, -190, 0, 0), BackgroundTransparency = 1, Text = "Select", Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Right, TextTruncate = Enum.TextTruncate.AtEnd }, head)
+		mk("TextLabel", { Size = UDim2.fromOffset(14, 14), Position = UDim2.new(1, -14, 0.5, -7), BackgroundTransparency = 1, Text = "v", Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = C.sub }, head)
+
+		local function countSel()
+			local n = 0; for _ in pairs(selSet) do n += 1 end; return n
+		end
+		local function updateSummary()
+			local n = countSel()
+			if n == 0 then valLbl.Text = "Select (semua)"; valLbl.TextColor3 = C.sub
+			else valLbl.Text = n .. " dipilih"; valLbl.TextColor3 = C.acc end
+		end
+
+		local listFrame = mk("Frame", { Size = UDim2.new(1, 0, 0, 190), BackgroundColor3 = C.panel, Visible = false, LayoutOrder = 2 }, row)
+		corner(listFrame, 6); stroke(listFrame)
+		local search = mk("TextBox", { Size = UDim2.new(1, -12, 0, 26), Position = UDim2.fromOffset(6, 6), BackgroundColor3 = C.row, PlaceholderText = "Search...", Text = "", Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = C.txt, ClearTextOnFocus = false }, listFrame)
+		corner(search, 6); stroke(search)
+		local scroll = mk("ScrollingFrame", { Size = UDim2.new(1, -12, 1, -40), Position = UDim2.fromOffset(6, 36), BackgroundTransparency = 1, ScrollBarThickness = 4, CanvasSize = UDim2.new(), AutomaticCanvasSize = "Y", ScrollBarImageColor3 = C.acc }, listFrame)
+		mk("UIListLayout", { Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder }, scroll)
+
+		local optBtns = {}  -- {btn=, display=}
+		local function rebuild()
+			for _, o in ipairs(optBtns) do o.btn:Destroy() end
+			optBtns = {}
+			for _, opt in ipairs(getOptions()) do
+				local value, display = opt.value, opt.display
+				local ob = mk("TextButton", { Size = UDim2.new(1, 0, 0, 24), BackgroundColor3 = C.row, Text = "  " .. display, TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = C.txt, AutoButtonColor = false }, scroll)
+				corner(ob, 4)
+				local check = mk("TextLabel", { Size = UDim2.fromOffset(20, 24), Position = UDim2.new(1, -22, 0, 0), BackgroundTransparency = 1, Text = "", Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = C.green }, ob)
+				local function rend() check.Text = selSet[value] and "✓" or ""; ob.BackgroundColor3 = selSet[value] and Color3.fromRGB(45, 44, 30) or C.row end
+				ob.MouseButton1Click:Connect(function()
+					if selSet[value] then selSet[value] = nil else selSet[value] = true end
+					rend(); updateSummary(); if onChange then onChange() end
+				end)
+				rend()
+				optBtns[#optBtns + 1] = { btn = ob, display = display:lower() }
+			end
+		end
+		search:GetPropertyChangedSignal("Text"):Connect(function()
+			local q = search.Text:lower()
+			for _, o in ipairs(optBtns) do o.btn.Visible = (q == "" or o.display:find(q, 1, true) ~= nil) end
+		end)
+		head.MouseButton1Click:Connect(function()
+			listFrame.Visible = not listFrame.Visible
+			if listFrame.Visible then rebuild() end
+		end)
+		updateSummary()
+		return updateSummary
+	end
+
 	----------------------------------------------------------------- accordion
 	local function makeAccordion(parent, title, order, openByDefault)
 		local container = mk("Frame", { Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundColor3 = C.row, BorderSizePixel = 0, LayoutOrder = order }, parent)
@@ -193,6 +250,7 @@ return function(ctx)
 	ctx.makeInput = makeInput
 	ctx.makeSingleDropdown = makeSingleDropdown
 	ctx.makeMultiDropdown = makeMultiDropdown
+	ctx.makeMultiDropdownDyn = makeMultiDropdownDyn
 	ctx.makeAccordion = makeAccordion
 	ctx.makePage = makePage
 	ctx.divider = divider

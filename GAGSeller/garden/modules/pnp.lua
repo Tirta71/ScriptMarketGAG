@@ -129,12 +129,37 @@ return function(ctx)
 		local eq  = d.PetsData and d.PetsData.EquippedPets
 		local inv = d.PetsData and d.PetsData.PetInventory and d.PetsData.PetInventory.Data
 		if not eq then return out end
+		local sel = CFG.pnpUuids or {}
 		for _, uuid in ipairs(eq) do
 			local pt = inv and inv[uuid] and inv[uuid].PetType
-			if (not next(CFG.pnpPetTypes)) or (pt and CFG.pnpPetTypes[pt]) then
+			-- filter per-UUID: kosong = semua equipped; kalau ada pilihan, hanya yang dicentang
+			if (not next(sel)) or sel[uuid] then
 				out[#out + 1] = { uuid = uuid, petType = pt }
 			end
 		end
+		return out
+	end
+
+	-- daftar pet equipped (buat dropdown Select Pets): {value=uuid, display=label}
+	function ctx.equippedPetOptions()
+		local out = {}
+		local ok, d = pcall(function() return DataService:GetData() end)
+		if not ok or not d then return out end
+		local eq  = d.PetsData and d.PetsData.EquippedPets
+		local inv = d.PetsData and d.PetsData.PetInventory and d.PetsData.PetInventory.Data
+		if not eq then return out end
+		for _, uuid in ipairs(eq) do
+			local v = inv and inv[uuid]
+			local pt = v and v.PetType or "?"
+			local age = v and v.PetData and v.PetData.Level or 0
+			local mut = v and v.PetData and v.PetData.MutationType
+			local mutStr = (mut and mut ~= "" and mut ~= "Normal") and (" " .. tostring(mut)) or ""
+			out[#out + 1] = {
+				value = uuid,
+				display = ("%s%s | Age %s | #%s"):format(pt, mutStr, tostring(age), uuid:sub(2, 5)),
+			}
+		end
+		table.sort(out, function(a, b) return a.display < b.display end)
 		return out
 	end
 
