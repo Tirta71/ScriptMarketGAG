@@ -93,18 +93,22 @@ return function(ctx)
 
 	-- Skema (dari remote-spy): d.players = {p1,p2}, d.states = {[1]="None"/"Accepted", [2]=...}
 	-- state index sejajar dengan players. Lawan dianggap accept kalau statenya "Accepted"/"Confirmed".
-	local function otherState(d)
+	local function stateOf(d, wantSelf)
 		if type(d) ~= "table" then return nil end
 		local players = d.players or d.Players
 		local states  = d.states or d.States
 		if type(players) ~= "table" or type(states) ~= "table" then return nil end
-		local otherIdx
+		local idx
 		for i, p in ipairs(players) do
-			if p ~= LP then otherIdx = i end
+			if wantSelf then if p == LP then idx = i end
+			else if p ~= LP then idx = i end end
 		end
-		if not otherIdx then return nil end
-		return states[otherIdx]
+		if not idx then return nil end
+		return states[idx]
 	end
+	local function otherState(d) return stateOf(d, false) end
+	local function myState(d) return stateOf(d, true) end
+	ctx.myState = myState
 	local function otherAccepted(d)
 		local s = otherState(d)
 		return s == "Accepted" or s == "Confirmed"
@@ -166,9 +170,28 @@ return function(ctx)
 			end
 		end
 
-		-- accept dari sisi kita
-		task.wait(0.3)
-		pcall(function() Accept:FireServer() end)
+		-- Game punya cooldown ~5 detik setelah item berubah sebelum Accept aktif.
+		setStatus("Tunggu cooldown 5 dtk...")
+		local cd = 5.5
+		local c0 = os.clock()
+		repeat task.wait(0.5) until (not ctx.state.tradeRunning) or (not (TC and TC.CurrentTradeReplicator)) or (os.clock() - c0) >= cd
+		if not ctx.state.tradeRunning or not (TC and TC.CurrentTradeReplicator) then return false end
+
+		-- accept dari sisi kita + verifikasi state kita jadi Accepted (retry kalau belum)
+		setStatus("Accept...")
+		local myOk = false
+		for _ = 1, 4 do
+			if not ctx.state.tradeRunning or not (TC and TC.CurrentTradeReplicator) then return false end
+			pcall(function() Accept:FireServer() end)
+			task.wait(1.2)
+			local s = myState(replicatorData())
+			if s == "Accepted" or s == "Confirmed" then myOk = true; break end
+		end
+		if not myOk then
+			log("Accept kita belum kebaca (cooldown/anti-scam). Batalkan.")
+			pcall(function() Decline:FireServer() end)
+			return false
+		end
 		setStatus("Menunggu lawan accept...")
 
 		-- tunggu lawan accept
@@ -189,13 +212,13 @@ return function(ctx)
 			return false
 		end
 
-		-- confirm
-		pcall(function() Confirm:FireServer() end)
+		-- confirm (retry sampai trade tertutup)
 		setStatus("Confirm... menunggu selesai")
-
-		-- tunggu trade selesai (replicator hilang)
 		t0 = os.clock()
-		repeat task.wait(0.4) until (not (TC and TC.CurrentTradeReplicator)) or (os.clock() - t0) > 15
+		repeat
+			pcall(function() Confirm:FireServer() end)
+			task.wait(1.5)
+		until (not (TC and TC.CurrentTradeReplicator)) or (not ctx.state.tradeRunning) or (os.clock() - t0) > 15
 		if TC and TC.CurrentTradeReplicator then
 			log("Confirm terkirim tapi trade belum tertutup.")
 			return false
