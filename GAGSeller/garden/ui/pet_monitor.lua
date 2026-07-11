@@ -357,7 +357,7 @@ return function(ctx)
 			Font = Enum.Font.GothamBold,
 			TextSize = 11,
 			TextColor3 = C.panel,
-			TextAlignment = Enum.TextXAlignment.Center,
+			TextXAlignment = Enum.TextXAlignment.Center,
 		}, badge)
 
 		local minBtn = mk("TextButton", {
