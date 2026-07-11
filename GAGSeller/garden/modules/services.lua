@@ -46,5 +46,7 @@ return function(ctx)
 		-- PNP (pick & place): PetsService("UnequipPet",uuid) / ("EquipPet",uuid,cframeStr)
 		PetsService   = RS.GameEvents:FindFirstChild("PetsService"),
 		PU            = okPU and PU or nil,
+		-- cooldown skill: PetCooldownsUpdated(uuid, {{Time=,Passive=},...})
+		PetCooldownsUpdated = RS.GameEvents:FindFirstChild("PetCooldownsUpdated"),
 	}
 end
