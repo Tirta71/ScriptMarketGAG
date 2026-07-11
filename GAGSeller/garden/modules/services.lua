@@ -39,5 +39,8 @@ return function(ctx)
 		Decline       = TradeEvents.Decline,
 		FavoriteItem  = RS.GameEvents:FindFirstChild("Favorite_Item"),
 		Gift          = RS.GameEvents:FindFirstChild("Gift"),
+		-- Gift pet langsung (beda dari trade): GiftPet masuk, AcceptPetGift buat terima.
+		GiftPet       = RS.GameEvents:FindFirstChild("GiftPet"),
+		AcceptPetGift = RS.GameEvents:FindFirstChild("AcceptPetGift"),
 	}
 end

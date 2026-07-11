@@ -1,48 +1,40 @@
 --[[ accept.lua — Automation Accept.
-     * Accept Trades: auto-terima AJAKAN trade masuk (RespondRequest true).
-     * Accept Gifts : saat ada trade window masuk (bukan kita yang mulai),
-                      auto Accept + Confirm untuk menerima pet/gift dari lawan.
-     Guard: gift-receive hanya jalan kalau Automation Trade kita TIDAK sedang aktif. ]]
+     * Accept Gifts : gift pet LANGSUNG (tanpa trade/tiket). Remote GiftPet masuk,
+                      dijawab AcceptPetGift:FireServer(true, giftId).
+     * Accept Trades: auto-terima AJAKAN trade masuk (RespondRequest true) [menyusul].
+     Dua hal berbeda — gift ≠ trade. ]]
 return function(ctx)
-	local CFG           = ctx.CFG
-	local TC            = ctx.deps.TradingController
-	local SendRequest   = ctx.deps.SendRequest
+	local CFG            = ctx.CFG
+	local SendRequest    = ctx.deps.SendRequest
 	local RespondRequest = ctx.deps.RespondRequest
-	local Accept        = ctx.deps.Accept
-	local Confirm       = ctx.deps.Confirm
+	local GiftPet        = ctx.deps.GiftPet
+	local AcceptPetGift  = ctx.deps.AcceptPetGift
 	local function log(m) ctx.log(m) end
 
-	----------------------------------------------------------------- accept trade requests
-	-- SendRequest.OnClientEvent(requestId, senderPlayer, expireTime)
-	pcall(function()
-		SendRequest.OnClientEvent:Connect(function(requestId, sender)
-			if not CFG.acceptTrades then return end
-			log("Auto-accept ajakan trade dari " .. tostring(sender and sender.Name or "?"))
-			task.wait(0.3)
-			pcall(function() RespondRequest:FireServer(requestId, true) end)
-		end)
-	end)
-
-	----------------------------------------------------------------- receive gifts (incoming trade)
-	if TC and TC.OnTradeCreated then
-		TC.OnTradeCreated:Connect(function()
+	----------------------------------------------------------------- AUTO ACCEPT GIFT
+	-- GiftPet.OnClientEvent(giftId, petDescription, senderName)
+	if GiftPet and AcceptPetGift then
+		GiftPet.OnClientEvent:Connect(function(giftId, petDesc, sender)
 			if not CFG.acceptGifts then return end
-			if ctx.state.tradeRunning then return end -- jangan ganggu automation trade kita
-			task.spawn(function()
-				log("Gift/trade masuk — auto accept + confirm.")
-				task.wait(0.6)
-				pcall(function() Accept:FireServer() end)
-				-- tunggu lawan accept lalu confirm
-				local t0 = os.clock()
-				local ok = false
-				repeat
-					task.wait(0.5)
-					if ctx.otherAccepted and ctx.otherAccepted(ctx.replicatorData()) then ok = true; break end
-				until (not (TC and TC.CurrentTradeReplicator)) or (os.clock() - t0) > 30
-				if ok and TC.CurrentTradeReplicator then
-					pcall(function() Confirm:FireServer() end)
-					log("Gift diterima (confirm terkirim).")
-				end
+			if type(giftId) ~= "string" then return end
+			log(("Gift masuk dari %s: %s"):format(tostring(sender), tostring(petDesc)))
+			task.wait(0.4)
+			local ok = pcall(function() AcceptPetGift:FireServer(true, giftId) end)
+			log(ok and "Gift diterima ✓" or "Gift gagal diterima")
+		end)
+	else
+		warn("[AllegiaanHub] GiftPet/AcceptPetGift remote tidak ketemu — auto accept gift nonaktif.")
+	end
+
+	----------------------------------------------------------------- AUTO ACCEPT TRADE (request)
+	-- SendRequest.OnClientEvent(requestId, senderPlayer, expireTime) -> RespondRequest(reqId, true)
+	if SendRequest and RespondRequest then
+		pcall(function()
+			SendRequest.OnClientEvent:Connect(function(requestId, senderPlayer)
+				if not CFG.acceptTrades then return end
+				log("Auto-accept ajakan trade dari " .. tostring(senderPlayer and senderPlayer.Name or "?"))
+				task.wait(0.3)
+				pcall(function() RespondRequest:FireServer(requestId, true) end)
 			end)
 		end)
 	end
