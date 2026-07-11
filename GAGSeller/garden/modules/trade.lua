@@ -115,8 +115,36 @@ return function(ctx)
 	end
 	ctx.otherAccepted = otherAccepted
 
+	-- Trade cuma bisa dikirim kalau kita lagi MEGANG Trading Ticket.
+	local function equipTradingTicket()
+		local char = LP.Character
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if not hum then return false end
+		-- sudah megang tiket?
+		for _, t in ipairs(char:GetChildren()) do
+			if t:IsA("Tool") and t.Name:find("Trading Ticket") then return true end
+		end
+		local bp = LP:FindFirstChild("Backpack")
+		if not bp then return false end
+		for _, t in ipairs(bp:GetChildren()) do
+			if t:IsA("Tool") and t.Name:find("Trading Ticket") then
+				pcall(function() hum:EquipTool(t) end)
+				task.wait(0.3)
+				return true
+			end
+		end
+		return false
+	end
+	ctx.equipTradingTicket = equipTradingTicket
+
 	----------------------------------------------------------------- one trade
 	local function doOneTrade(target)
+		-- pegang tiket dulu, wajib biar panel trade kebuka
+		if not equipTradingTicket() then
+			log("Trading Ticket tidak ada / gagal di-equip. Stop.")
+			ctx.state.tradeRunning = false
+			return false
+		end
 		setStatus("Kirim ajakan ke " .. target.Name)
 		pcall(function() SendRequest:FireServer(target) end)
 
