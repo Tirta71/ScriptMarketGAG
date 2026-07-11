@@ -32,7 +32,26 @@ return function(ctx)
 	if PetCD then
 		PetCD.OnClientEvent:Connect(function(uuid, cd)
 			if type(uuid) ~= "string" then return end
-			cdMap[uuid] = { data = cd, receivedAt = tick() }
+			
+			local oldEntry = cdMap[uuid]
+			local changed = true
+			if oldEntry and type(oldEntry.data) == "table" and type(cd) == "table" and #oldEntry.data == #cd then
+				local match = true
+				for i, e in ipairs(cd) do
+					local oldE = oldEntry.data[i]
+					if not oldE or oldE.Passive ~= e.Passive or tonumber(oldE.Time) ~= tonumber(e.Time) then
+						match = false
+						break
+					end
+				end
+				if match then changed = false end
+			end
+
+			if changed or not oldEntry then
+				cdMap[uuid] = { data = cd, receivedAt = tick() }
+			else
+				cdMap[uuid].data = cd
+			end
 
 			local mainCD
 			if type(cd) == "table" then
