@@ -64,7 +64,13 @@ return function(ctx)
 		return hrp and hrp.Position or nil
 	end
 
+	local RS = game:GetService("ReplicatedStorage")
+	local GetFarm = require(RS.Modules.GetFarm)
+
+	-- Cache posisi PERTAMA yang kebaca dan JANGAN ditimpa -> pet selalu balik ke spot asli
+	-- (bukan spot hasil PNP), biar nggak drift ngumpul ke player.
 	local function getPos(uuid)
+		if lastPos[uuid] then return lastPos[uuid] end
 		if PU then
 			local ok, model = pcall(function() return PU:FindLocalPetModel(uuid) end)
 			if ok and model and typeof(model) == "Instance" then
@@ -72,7 +78,14 @@ return function(ctx)
 				if okc then lastPos[uuid] = cf.Position; return cf.Position end
 			end
 		end
-		return lastPos[uuid] or playerPos()
+		-- Fallback 1: Pusat PetArea kebun kita sendiri (garansi 100% aman di dalam kebun)
+		local farm = GetFarm and GetFarm(LP)
+		local petArea = farm and farm:FindFirstChild("PetArea")
+		if petArea then
+			return petArea.Position
+		end
+		-- Fallback 2: Posisi player
+		return playerPos()
 	end
 
 	-- pick & place 1 pet, lalu tunggu sampai cooldown mulai lagi (biar nggak dobel pungut)
@@ -84,9 +97,13 @@ return function(ctx)
 		pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
 		task.wait(math.max(0, CFG.equipDelay))
 		pcall(function() PetsService:FireServer("EquipPet", uuid, CFrame.new(pos)) end)
+		
+		-- JEDA REPLIKASI: Tunggu server memproses equip & memicu skill sebelum cek cooldown
+		task.wait(0.5)
+		
 		-- tunggu skill jalan lagi (cooldown muncul) supaya loop nggak langsung pick up lagi
 		local t0 = os.clock()
-		repeat task.wait(0.1) until (not isReady(uuid)) or (os.clock() - t0) > 2.5
+		repeat task.wait(0.1) until (not isReady(uuid)) or (os.clock() - t0) > 2.0
 		return true
 	end
 
