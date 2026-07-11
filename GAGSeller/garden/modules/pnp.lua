@@ -1,11 +1,11 @@
 --[[ pnp.lua — Pick & Place pet, SETELAH skill terkonfirmasi keluar.
-     Deteksi via HighlightRemote:
-       Server mengirim HighlightRemote(petInstance, 3) saat pet nge-skill.
-       Arg[1] = Instance pet (Name = UUID), Arg[2] = 3 (skill activation).
-       Ini sinyal paling awal & paling pasti: fire SEBELUM Notification & Cooldown.
+     Deteksi via:
+       1. Cooldown transition (0 ke > 0) -> Sempurna untuk Ferret & backup pet lain.
+       2. HighlightRemote (tipe 3)        -> Sinyal backup untuk pet lain.
      Flow:
-       Pet di tanah → HighlightRemote(UUID, 3) terkonfirmasi
-       → pickupDelay → Pickup → equipDelay → Place → repeat ]]
+       Targets dikunci dari equipped pets saat start (berdasarkan UUID backpack).
+       Jika pet target terlepas ke backpack -> otomatis dipasang kembali (Self-Healing).
+       Jika pet target mengeluarkan skill -> unequip-equip (Ferret delay 0.01s agar NO ANIMASI). ]]
 return function(ctx)
 	local DataService = ctx.deps.DataService
 	local PetsService = ctx.deps.PetsService
@@ -15,26 +15,51 @@ return function(ctx)
 
 	local RS = game:GetService("ReplicatedStorage")
 
-	----------------------------------------------------------------- skill detection via HighlightRemote
-	-- skillFiredAt[uuid] = os.clock() saat HighlightRemote(petInstance, 3) diterima.
-	-- lastPlacedAt[uuid] = os.clock() saat kita terakhir menaruh pet ini (EquipPet).
+	----------------------------------------------------------------- skill detection & transitions
 	local skillFiredAt = {}
 	local lastPlacedAt = {}
+	local lastCD = {} -- Menyimpan data detik sebelumnya untuk mendeteksi transisi
 
+	-- Sinyal 1: Deteksi perubahan cooldown dari 0 ke Non-Zero (Sempurna untuk Ferret)
+	local cdMap = {}
+	local PetCD = ctx.deps.PetCooldownsUpdated
+	if PetCD then
+		PetCD.OnClientEvent:Connect(function(uuid, cd)
+			if type(uuid) ~= "string" or type(cd) ~= "table" then return end
+			
+			local prev = lastCD[uuid] or {}
+			local current = {}
+			
+			for _, entry in ipairs(cd) do
+				local pas = tostring(entry.Passive or "")
+				local t = tonumber(entry.Time) or 0
+				
+				if not pas:find("Mutation") then
+					current[pas] = t
+					local prevTime = prev[pas] or 0
+					-- Transisi dari <= 0 ke > 0 = skill baru ditembakkan!
+					if prevTime <= 0 and t > 0 then
+						skillFiredAt[uuid] = os.clock()
+					end
+				end
+			end
+			lastCD[uuid] = current
+			cdMap[uuid] = cd
+		end)
+	end
+
+	-- Sinyal 2: HighlightRemote (Lampu sorot dari server)
 	local HighlightRemote = RS:WaitForChild("GameEvents"):FindFirstChild("HighlightRemote")
 	if HighlightRemote then
 		HighlightRemote.OnClientEvent:Connect(function(petInstance, highlightType)
-			-- Filter: hanya skill activation (type 3)
 			if highlightType ~= 3 then return end
 			if typeof(petInstance) ~= "Instance" then return end
-
-			-- Ambil UUID dari nama Instance (format: "{xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx}")
+			
 			local uuid = petInstance.Name
 			if not uuid:match("^{") then
-				-- Fallback: cek atribut UUID
 				uuid = petInstance:GetAttribute("UUID") or petInstance.Name
 			end
-
+			
 			if type(uuid) == "string" and #uuid > 0 then
 				skillFiredAt[uuid] = os.clock()
 			end
@@ -54,8 +79,39 @@ return function(ctx)
 		return fired > placed
 	end
 
-	----------------------------------------------------------------- helpers
-	local function targetPets()
+	----------------------------------------------------------------- dynamic pickup delay
+	local function getPickupDelay(uuid, petType)
+		local pt = tostring(petType)
+		
+		-- 1) Mimic pet: cek jika meniru skill berdurasi lama (Peacock/Dilo)
+		if pt:find("Mimic") then
+			local cd = cdMap[uuid]
+			if type(cd) == "table" then
+				for _, entry in ipairs(cd) do
+					local pas = tostring(entry.Passive or "")
+					if pas:find("Frilled") or pas:find("Beauty") or pas:find("Spat") then
+						return 1.5 -- Tunggu biar animasi & efek fanning/venom selesai
+					end
+				end
+			end
+		end
+
+		-- 2) Peacock / Dilophosaurus / Swan: butuh animasi selesai agar efeknya mendarat
+		if pt:find("Peacock") or pt:find("Dilophosaurus") or pt:find("Swan") then
+			return 1.5
+		end
+		
+		-- 3) French Fry Ferret / Thieving Ferret: instant unequip untuk skip visual animasi masak/jumping!
+		if pt:find("Ferret") then
+			return 0.01
+		end
+		
+		-- Default dari GUI
+		return CFG.pickupDelay or 0.4
+	end
+
+	----------------------------------------------------------------- targets & equipping helpers
+	local function getTargetUUIDs()
 		local out = {}
 		local ok, d = pcall(function() return DataService:GetData() end)
 		if not ok or not d then return out end
@@ -65,10 +121,21 @@ return function(ctx)
 		for _, uuid in ipairs(eq) do
 			local pt = inv and inv[uuid] and inv[uuid].PetType
 			if (not next(CFG.pnpPetTypes)) or (pt and CFG.pnpPetTypes[pt]) then
-				out[#out + 1] = { uuid = uuid, petType = pt }
+				out[uuid] = pt or "Unknown"
 			end
 		end
 		return out
+	end
+
+	local function isPetEquipped(uuid)
+		local ok, d = pcall(function() return DataService:GetData() end)
+		if not ok or not d then return false end
+		local eq = d.PetsData and d.PetsData.EquippedPets
+		if not eq then return false end
+		for _, u in ipairs(eq) do
+			if u == uuid then return true end
+		end
+		return false
 	end
 
 	-- Posisi placement. Cache posisi asli pet agar tidak drift.
@@ -103,41 +170,69 @@ return function(ctx)
 		ctx.state.pnpId = (ctx.state.pnpId or 0) + 1
 		local myId = ctx.state.pnpId
 		ctx.elevate()
+
+		-- Kunci target pet saat start loop
+		local targets = getTargetUUIDs()
+
+		-- Kumpulkan nama pet unik untuk status GUI
+		local uniqueNames = {}
+		for _, petType in pairs(targets) do
+			uniqueNames[petType] = true
+		end
+		local nameList = {}
+		for name, _ in pairs(uniqueNames) do
+			table.insert(nameList, name)
+		end
+		local petNamesStr = #nameList > 0 and table.concat(nameList, ", ") or "tidak ada"
+
 		while CFG.pnpEnabled and ctx.alive() and ctx.state.pnpId == myId do
-			local pets = targetPets()
-			if #pets == 0 then
+			local targetCount = 0
+			for _ in pairs(targets) do targetCount = targetCount + 1 end
+
+			if targetCount == 0 then
 				setStatus("PNP: tidak ada pet target (equip pet dulu)")
 				task.wait(1)
 			else
 				local didAny = false
-				for _, p in ipairs(pets) do
+				for uuid, petType in pairs(targets) do
 					if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
 
-					-- CEK: HighlightRemote(UUID, 3) sudah diterima = skill PASTI keluar
-					if hasSkillFired(p.uuid) then
-						didAny = true
-
-						-- 1) Tunggu pickupDelay (biar skill selesai efeknya)
-						if CFG.pickupDelay > 0 then task.wait(CFG.pickupDelay) end
-						if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
-
-						-- 2) PICKUP (cabut pet)
-						local pos = getPos(p.uuid)
-						pcall(function() PetsService:FireServer("UnequipPet", p.uuid) end)
-
-						-- 3) Tunggu equipDelay
-						task.wait(math.max(0.01, CFG.equipDelay))
-
-						-- 4) PLACE (taruh pet kembali)
+					local equipped = isPetEquipped(uuid)
+					if not equipped then
+						-- 🚨 SELF-HEALING: Pasang kembali pet ke kebun jika nyangkut di backpack
+						local pos = getPos(uuid)
 						if pos then
-							pcall(function() PetsService:FireServer("EquipPet", p.uuid, CFrame.new(pos)) end)
+							pcall(function() PetsService:FireServer("EquipPet", uuid, CFrame.new(pos)) end)
 						end
+						task.wait(0.2)
+					else
+						-- Cek apakah skill terkonfirmasi aktif
+						if hasSkillFired(uuid) then
+							didAny = true
 
-						-- 5) Catat waktu penempatan
-						lastPlacedAt[p.uuid] = os.clock()
+							-- 1) Tunggu pickupDelay dinamis berdasarkan tipe pet (Dilo/Peacock vs Ferret)
+							local delay = getPickupDelay(uuid, petType)
+							if delay > 0 then task.wait(delay) end
+							if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
+
+							-- 2) PICKUP (cabut pet)
+							local pos = getPos(uuid)
+							pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
+
+							-- 3) Tunggu equipDelay
+							task.wait(math.max(0.01, CFG.equipDelay))
+
+							-- 4) PLACE (taruh pet kembali)
+							if pos then
+								pcall(function() PetsService:FireServer("EquipPet", uuid, CFrame.new(pos)) end)
+							end
+
+							-- 5) Catat waktu penempatan
+							lastPlacedAt[uuid] = os.clock()
+						end
 					end
 				end
-				setStatus(("PNP jalan: %d pet%s"):format(#pets, didAny and "" or " (nunggu skill keluar)"))
+				setStatus(("PNP (%s)%s"):format(petNamesStr, didAny and "" or " (nunggu skill)"))
 				task.wait(0.15)
 			end
 		end
