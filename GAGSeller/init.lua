@@ -16,7 +16,7 @@ local TRADE_WORLD_PLACE = 129954712878723
 -- Pilih sub-app. Default: apa pun yang BUKAN Trade World dianggap Garden.
 local target = (game.PlaceId == TRADE_WORLD_PLACE) and "trade" or "garden"
 
-local url = ROOT .. "/" .. target .. "/init.lua"
+local url = ROOT .. "/" .. target .. "/init.lua?t=" .. os.time()
 local ok, src = pcall(function() return game:HttpGet(url) end)
 if not ok or type(src) ~= "string" or src == "" then
 	warn(("[GAGHub] gagal ambil app '%s' (PlaceId=%s): %s"):format(target, tostring(game.PlaceId), tostring(src)))
