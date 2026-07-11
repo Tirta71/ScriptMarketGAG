@@ -54,6 +54,70 @@ return function(ctx)
 		return fired > placed
 	end
 
+	----------------------------------------------------------------- LONG-CD (mis. Ferret): deteksi self-fire via cooldown
+	-- Pet long-CD (skill cooldown lama) TIDAK bisa force-fire lewat re-place, dan HighlightRemote(3)-nya
+	-- sering FALSE POSITIVE (ke-highlight aura pet lain, mis. Peacock). Sinyal bersih "pet ini beneran
+	-- nembak sendiri" = cooldown-nya sendiri LOMPAT dari ready (0) -> penuh. Aura cuma NURUNIN cooldown,
+	-- jadi transisi naik (rendah->tinggi) pasti = self-fire. PNP dipakai buat SKIP animasi skill yg lama.
+	local PetList, PassiveRegistry
+	pcall(function() PetList = require(RS.Data.PetRegistry.PetList) end)
+	pcall(function() PassiveRegistry = require(RS.Data.PetRegistry.PassiveRegistry) end)
+
+	local LONG_CD_THRESHOLD = 120  -- detik; >= ini dianggap long-CD
+
+	-- klasifikasi per petType (cache): true = long-CD
+	local longClass = {}
+	local function isLongCD(petType)
+		if not petType then return false end
+		local c = longClass[petType]
+		if c ~= nil then return c end
+		local res = false
+		local p = PetList and PetList[petType]
+		local pas = p and p.Passives
+		local passiveName = type(pas) == "table" and pas[1] or nil
+		local reg = passiveName and PassiveRegistry and PassiveRegistry[passiveName]
+		local cd = reg and reg.States and reg.States.Cooldown
+		if type(cd) == "table" then
+			local m = tonumber(cd.Min) or tonumber(cd.Base)
+			if m and m >= LONG_CD_THRESHOLD then res = true end
+		end
+		longClass[petType] = res
+		return res
+	end
+
+	-- deteksi self-fire via PetCooldownsUpdated: cooldown non-mutation lompat ready(0) -> tinggi
+	local ownCd = {}          -- uuid -> Time cooldown non-mutation terakhir
+	local longFiredAt = {}    -- uuid -> os.clock() saat self-fire terdeteksi
+	local PetCD = RS:WaitForChild("GameEvents"):FindFirstChild("PetCooldownsUpdated")
+	if PetCD then
+		PetCD.OnClientEvent:Connect(function(uuid, cd)
+			if type(uuid) ~= "string" then return end
+			local t = 0
+			if type(cd) == "table" then
+				for _, e in ipairs(cd) do
+					local pas = tostring(e.Passive or "")
+					if not pas:find("Mutation") then
+						local v = tonumber(e.Time) or 0
+						if v > t then t = v end
+					end
+				end
+			end
+			local prev = ownCd[uuid]
+			if prev ~= nil and prev <= 1 and t >= 60 then
+				longFiredAt[uuid] = os.clock()  -- ready -> penuh = baru nembak (animasi mulai)
+			end
+			ownCd[uuid] = t
+		end)
+	end
+
+	local function hasLongFired(uuid)
+		local fired = longFiredAt[uuid]
+		if not fired then return false end
+		local placed = lastPlacedAt[uuid]
+		if not placed then return true end
+		return fired > placed
+	end
+
 	----------------------------------------------------------------- helpers
 	local function targetPets()
 		local out = {}
@@ -113,8 +177,16 @@ return function(ctx)
 				for _, p in ipairs(pets) do
 					if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
 
-					-- CEK: HighlightRemote(UUID, 3) sudah diterima = skill PASTI keluar
-					if hasSkillFired(p.uuid) then
+					-- Pilih detektor: long-CD (Ferret dll) pakai self-fire cooldown biar nggak ketipu
+					-- aura & nggak loop; short-CD (Dilo/Peacock/Mimic) tetap pakai HighlightRemote (tak diubah).
+					local fired
+					if isLongCD(p.petType) then
+						fired = hasLongFired(p.uuid)
+					else
+						fired = hasSkillFired(p.uuid)
+					end
+
+					if fired then
 						didAny = true
 
 						-- 1) Tunggu pickupDelay (biar skill selesai efeknya)

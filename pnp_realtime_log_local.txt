@@ -1,0 +1,120 @@
+[21:57:20] Starting Realtime PNP Analysis Hook...
+[21:57:20] <-- CooldownUpdate: {ec54409 | Rainbow Frilled Reptile: 0s, Mimicry: 0s
+[21:57:20] <-- CooldownUpdate: {307b5d9 | Mimicry: 0s, Rainbow Frilled Reptile: 60s
+[21:57:21] <-- CooldownUpdate: {307b5d9 | Rainbow Frilled Reptile: 0s, Mimicry: 0s
+[21:57:21] <-- CooldownUpdate: {3f41694 | Mimicry: 0s, Rainbow Frilled Reptile: 58s
+[21:57:21] <-- CooldownUpdate: {307b5d9 | Mimicry: 0s
+[21:57:22] <-- CooldownUpdate: {3f41694 | Mimicry: 0s, Rainbow Frilled Reptile: 57s
+[21:57:23] <-- CooldownUpdate: {ec54409 | Mimicry: 0s
+[21:57:23] --> UnequipPet: {ec54409
+[21:57:23] --> EquipPet: {ec54409
+[21:57:23] <-- CooldownUpdate: {ec54409 | 
+[21:57:23] <-- CooldownUpdate: {ec54409 | Mimicry: -9223372036854775808s
+[21:57:23] <-- CooldownUpdate: {ec54409 | 
+[21:57:23] <-- CooldownUpdate: {ec54409 | 
+[21:57:23] <-- CooldownUpdate: {ec54409 | 
+[21:57:23] <-- CooldownUpdate: {ec54409 | 
+[21:57:23] <-- CooldownUpdate: {ec54409 | 
+[21:57:23] <-- CooldownUpdate: {ec54409 | Mimicry: 15s
+[21:57:23] <-- CooldownUpdate: {ec54409 | Mimicry: 14s
+[21:57:23] <-- CooldownUpdate: {3f41694 | Mimicry: 0s, Rainbow Frilled Reptile: 56s
+[21:57:23] <-- CooldownUpdate: {ec54409 | Mimicry: 0s
+[21:57:24] <-- CooldownUpdate: {3f41694 | Mimicry: 0s, Rainbow Frilled Reptile: 55s
+[21:57:24] <-- CooldownUpdate: {3f41694 | Rainbow Frilled Reptile: 0s, Mimicry: 0s
+[21:57:26] <-- CooldownUpdate: {ae5304d | Mimicry: 0s, Rainbow Frilled Reptile: 60s
+[21:57:26] --> UnequipPet: {307b5d9
+[21:57:26] --> EquipPet: {307b5d9
+[21:57:26] <-- CooldownUpdate: {307b5d9 | 
+[21:57:26] <-- CooldownUpdate: {307b5d9 | 
+[21:57:26] <-- CooldownUpdate: {307b5d9 | 
+[21:57:26] <-- CooldownUpdate: {307b5d9 | 
+[21:57:26] <-- CooldownUpdate: {307b5d9 | 
+[21:57:26] <-- CooldownUpdate: {307b5d9 | Mimicry: 15s
+[21:57:26] <-- CooldownUpdate: {ae5304d | Mimicry: 0s, Rainbow Frilled Reptile: 59s
+[21:57:26] <-- CooldownUpdate: {307b5d9 | Mimicry: 14s
+[21:57:26] <-- CooldownUpdate: {3f41694 | Mimicry: 0s
+[21:57:26] <-- CooldownUpdate: {ae5304d | Rainbow Frilled Reptile: 0s, Mimicry: 0s
+[21:57:27] <-- CooldownUpdate: {3f41694 | Mimicry: 14s
+[21:57:27] <-- CooldownUpdate: {7ae0900 | Rainbow Frilled Reptile: 60s
+[21:57:27] --> UnequipPet: {3f41694
+[21:57:27] <-- CooldownUpdate: {307b5d9 | Mimicry: 13s
+[21:57:27] --> EquipPet: {3f41694
+[21:57:27] <-- CooldownUpdate: {3f41694 | 
+[21:57:27] <-- CooldownUpdate: {3f41694 | 
+[21:57:27] <-- CooldownUpdate: {3f41694 | 
+[21:57:27] <-- CooldownUpdate: {3f41694 | 
+[21:57:27] <-- CooldownUpdate: {3f41694 | 
+[21:57:27] <-- CooldownUpdate: {3f41694 | Mimicry: 15s
+[21:57:28] <-- CooldownUpdate: {7ae0900 | Rainbow Frilled Reptile: 59s
+[21:57:28] --> UnequipPet: {ae5304d
+[21:57:28] <-- CooldownUpdate: {307b5d9 | Mimicry: 12s
+[21:57:28] --> EquipPet: {ae5304d
+[21:57:28] <-- CooldownUpdate: {ae5304d | 
+[21:57:28] <-- CooldownUpdate: {3f41694 | Mimicry: 14s
+[21:57:28] <-- CooldownUpdate: {ae5304d | 
+[21:57:28] <-- CooldownUpdate: {ae5304d | 
+[21:57:28] <-- CooldownUpdate: {ae5304d | 
+[21:57:28] <-- CooldownUpdate: {ae5304d | 
+[21:57:28] <-- CooldownUpdate: {ae5304d | Mimicry: 15s
+[21:57:28] <-- CooldownUpdate: {ec54409 | Mimicry: 0s, Rainbow Frilled Reptile: 60s
+[21:57:28] <-- CooldownUpdate: {7ae0900 | Rainbow Frilled Reptile: 0s
+[21:57:29] <-- CooldownUpdate: {307b5d9 | Mimicry: 11s
+[21:57:29] <-- CooldownUpdate: {3f41694 | Mimicry: 13s
+[21:57:29] <-- CooldownUpdate: {ae5304d | Mimicry: 14s
+[21:57:29] <-- CooldownUpdate: {ec54409 | Mimicry: 0s, Rainbow Frilled Reptile: 59s
+[21:57:29] --> UnequipPet: {7ae0900
+[21:57:29] --> EquipPet: {7ae0900
+[21:57:29] <-- CooldownUpdate: {7ae0900 | 
+[21:57:29] <-- CooldownUpdate: {7ae0900 | 
+[21:57:29] <-- CooldownUpdate: {7ae0900 | 
+[21:57:29] <-- CooldownUpdate: {7ae0900 | 
+[21:57:29] <-- CooldownUpdate: {7ae0900 | 
+[21:57:29] <-- CooldownUpdate: {7ae0900 | Rainbow Frilled Reptile: 60s
+[21:57:30] <-- CooldownUpdate: {307b5d9 | Mimicry: 0s
+[21:57:30] <-- CooldownUpdate: {3f41694 | Mimicry: 12s
+[21:57:30] <-- CooldownUpdate: {7ae0900 | Rainbow Frilled Reptile: 59s
+[21:57:30] <-- CooldownUpdate: {ae5304d | Mimicry: 13s
+[21:57:30] <-- CooldownUpdate: {ec54409 | Mimicry: 0s, Rainbow Frilled Reptile: 58s
+[21:57:30] --> UnequipPet: {307b5d9
+[21:57:30] --> EquipPet: {307b5d9
+[21:57:30] <-- CooldownUpdate: {307b5d9 | 
+[21:57:30] <-- CooldownUpdate: {307b5d9 | 
+[21:57:30] <-- CooldownUpdate: {307b5d9 | 
+[21:57:30] <-- CooldownUpdate: {307b5d9 | 
+[21:57:30] <-- CooldownUpdate: {307b5d9 | 
+[21:57:30] <-- CooldownUpdate: {307b5d9 | Mimicry: 15s
+[21:57:30] <-- CooldownUpdate: {307b5d9 | Mimicry: 0s
+[21:57:31] <-- CooldownUpdate: {ec54409 | Mimicry: 0s, Rainbow Frilled Reptile: 57s
+[21:57:31] <-- CooldownUpdate: {3f41694 | Mimicry: 11s
+[21:57:31] <-- CooldownUpdate: {7ae0900 | Rainbow Frilled Reptile: 58s
+[21:57:31] <-- CooldownUpdate: {ae5304d | Mimicry: 12s
+[21:57:31] <-- CooldownUpdate: {3f41694 | Mimicry: 0s
+[21:57:32] <-- CooldownUpdate: {ae5304d | Mimicry: 0s
+[21:57:32] <-- CooldownUpdate: {ec54409 | Mimicry: 0s, Rainbow Frilled Reptile: 56s
+[21:57:32] <-- CooldownUpdate: {7ae0900 | Rainbow Frilled Reptile: 57s
+[21:57:33] <-- CooldownUpdate: {ec54409 | Mimicry: 0s, Rainbow Frilled Reptile: 55s
+[21:57:33] <-- CooldownUpdate: {7ae0900 | Rainbow Frilled Reptile: 56s
+[21:57:33] --> UnequipPet: {3f41694
+[21:57:33] --> EquipPet: {3f41694
+[21:57:33] <-- CooldownUpdate: {3f41694 | 
+[21:57:33] <-- CooldownUpdate: {3f41694 | 
+[21:57:33] <-- CooldownUpdate: {3f41694 | 
+[21:57:33] <-- CooldownUpdate: {3f41694 | 
+[21:57:33] <-- CooldownUpdate: {3f41694 | 
+[21:57:33] <-- CooldownUpdate: {3f41694 | Mimicry: 15s
+[21:57:34] <-- CooldownUpdate: {ec54409 | Mimicry: 0s, Rainbow Frilled Reptile: 54s
+[21:57:34] <-- CooldownUpdate: {3f41694 | Mimicry: 14s
+[21:57:34] <-- CooldownUpdate: {7ae0900 | Rainbow Frilled Reptile: 55s
+[21:57:34] --> UnequipPet: {ae5304d
+[21:57:34] --> EquipPet: {ae5304d
+[21:57:34] <-- CooldownUpdate: {ae5304d | 
+[21:57:34] <-- CooldownUpdate: {ae5304d | 
+[21:57:34] <-- CooldownUpdate: {ae5304d | 
+[21:57:34] <-- CooldownUpdate: {ae5304d | 
+[21:57:34] <-- CooldownUpdate: {ae5304d | 
+[21:57:34] <-- CooldownUpdate: {ae5304d | Mimicry: 15s
+[21:57:35] <-- CooldownUpdate: {ae5304d | Mimicry: 0s
+[21:57:35] <-- CooldownUpdate: {3f41694 | Mimicry: 0s
+[21:57:35] <-- CooldownUpdate: {ec54409 | Mimicry: 0s, Rainbow Frilled Reptile: 53s
+[21:57:35] <-- CooldownUpdate: {7ae0900 | Rainbow Frilled Reptile: 0s
+[21:57:35] <-- CooldownUpdate: {307b5d9 | Mimicry: 0s, Rainbow Frilled Reptile: 60s
