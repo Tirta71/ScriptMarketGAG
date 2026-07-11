@@ -92,21 +92,24 @@ return function(ctx)
 	if PetCD then
 		PetCD.OnClientEvent:Connect(function(uuid, cd)
 			if type(uuid) ~= "string" then return end
-			local t = 0
+			-- ambil Time cooldown skill utama (non-mutation). Kalau TIDAK ada di payload ini,
+			-- ABAIKAN event ini (payload cooldown itu partial/per-passive) -> anti false-fire.
+			local frier
 			if type(cd) == "table" then
 				for _, e in ipairs(cd) do
-					local pas = tostring(e.Passive or "")
-					if not pas:find("Mutation") then
-						local v = tonumber(e.Time) or 0
-						if v > t then t = v end
+					if not tostring(e.Passive or ""):find("Mutation") then
+						frier = tonumber(e.Time)
 					end
 				end
 			end
+			if frier == nil then return end
 			local prev = ownCd[uuid]
-			if prev ~= nil and prev <= 1 and t >= 60 then
-				longFiredAt[uuid] = os.clock()  -- ready -> penuh = baru nembak (animasi mulai)
+			-- Aura pet lain cuma NURUNIN cooldown. Lonjakan NAIK besar = pet ini baru nembak
+			-- (cooldown reset) = animasi mulai. Kita PNP di sini buat skip animasi.
+			if prev ~= nil and (frier - prev) > 200 then
+				longFiredAt[uuid] = os.clock()
 			end
-			ownCd[uuid] = t
+			ownCd[uuid] = frier
 		end)
 	end
 
