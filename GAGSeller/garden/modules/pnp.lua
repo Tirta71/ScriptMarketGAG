@@ -104,10 +104,14 @@ return function(ctx)
 			end
 			if frier == nil then return end
 			local prev = ownCd[uuid]
-			-- Aura pet lain cuma NURUNIN cooldown. Lonjakan NAIK besar = pet ini baru nembak
-			-- (cooldown reset) = animasi mulai. Kita PNP di sini buat skip animasi.
+			-- Aura pet lain cuma NURUNIN cooldown. Lonjakan NAIK besar = cooldown baru di-reset.
+			-- TAPI PNP kita sendiri juga nge-reset cooldown -> harus dibedain biar nggak loop:
+			-- abaikan lonjakan yang muncul <1.2s setelah kita menaruh pet (itu reset kita, bukan fire alami).
 			if prev ~= nil and (frier - prev) > 200 then
-				longFiredAt[uuid] = os.clock()
+				local placed = lastPlacedAt[uuid]
+				if not placed or (os.clock() - placed) > 1.2 then
+					longFiredAt[uuid] = os.clock()  -- fire ALAMI = skill beneran nembak (animasi mulai)
+				end
 			end
 			ownCd[uuid] = frier
 		end)
@@ -140,23 +144,26 @@ return function(ctx)
 		return out
 	end
 
-	-- daftar pet equipped (buat dropdown Select Pets): {value=uuid, display=label}
-	function ctx.equippedPetOptions()
+	-- daftar pet dari INVENTORY (semua pet, bukan cuma yang di-garden) buat dropdown Select Pets.
+	-- {value=uuid, display=label}. Pet yang dipilih tapi belum di-garden bakal auto-di-taruh oleh loop.
+	function ctx.inventoryPetOptions()
 		local out = {}
 		local ok, d = pcall(function() return DataService:GetData() end)
 		if not ok or not d then return out end
-		local eq  = d.PetsData and d.PetsData.EquippedPets
 		local inv = d.PetsData and d.PetsData.PetInventory and d.PetsData.PetInventory.Data
-		if not eq then return out end
-		for _, uuid in ipairs(eq) do
-			local v = inv and inv[uuid]
-			local pt = v and v.PetType or "?"
-			local age = v and v.PetData and v.PetData.Level or 0
-			local mut = v and v.PetData and v.PetData.MutationType
+		if not inv then return out end
+		local eq = d.PetsData.EquippedPets or {}
+		local eqSet = {}; for _, u in ipairs(eq) do eqSet[u] = true end
+		for uuid, v in pairs(inv) do
+			local pt = v.PetType or "?"
+			local pd = v.PetData or {}
+			local age = pd.Level or 0
+			local mut = pd.MutationType
 			local mutStr = (mut and mut ~= "" and mut ~= "Normal") and (" " .. tostring(mut)) or ""
+			local tag = eqSet[uuid] and " [aktif]" or ""
 			out[#out + 1] = {
 				value = uuid,
-				display = ("%s%s | Age %s | #%s"):format(pt, mutStr, tostring(age), uuid:sub(2, 5)),
+				display = ("%s%s | Age %s | #%s%s"):format(pt, mutStr, tostring(age), uuid:sub(2, 5), tag),
 			}
 		end
 		table.sort(out, function(a, b) return a.display < b.display end)
