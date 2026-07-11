@@ -9,6 +9,9 @@ return function(ctx)
 	local RespondRequest = ctx.deps.RespondRequest
 	local GiftPet        = ctx.deps.GiftPet
 	local AcceptPetGift  = ctx.deps.AcceptPetGift
+	local TC             = ctx.deps.TradingController
+	local Accept         = ctx.deps.Accept
+	local Confirm        = ctx.deps.Confirm
 	local function log(m) ctx.log(m) end
 
 	----------------------------------------------------------------- AUTO ACCEPT GIFT
@@ -64,15 +67,53 @@ return function(ctx)
 		warn("[AllegiaanHub] GiftPet/AcceptPetGift remote tidak ketemu — auto accept gift nonaktif.")
 	end
 
-	----------------------------------------------------------------- AUTO ACCEPT TRADE (request)
-	-- SendRequest.OnClientEvent(requestId, senderPlayer, expireTime) -> RespondRequest(reqId, true)
+	----------------------------------------------------------------- AUTO ACCEPT TRADE
+	-- 1) Terima AJAKAN masuk: SendRequest.OnClientEvent(reqId, sender) -> RespondRequest(reqId,true)
 	if SendRequest and RespondRequest then
 		pcall(function()
 			SendRequest.OnClientEvent:Connect(function(requestId, senderPlayer)
 				if not CFG.acceptTrades then return end
-				log("Auto-accept ajakan trade dari " .. tostring(senderPlayer and senderPlayer.Name or "?"))
+				log("Auto-terima ajakan trade dari " .. tostring(senderPlayer and senderPlayer.Name or "?"))
 				task.wait(0.3)
 				pcall(function() RespondRequest:FireServer(requestId, true) end)
+			end)
+		end)
+	end
+
+	-- 2) Di window trade masuk: auto Accept (pas cooldown habis) -> tunggu lawan -> Confirm.
+	--    Penerima ngasih kosong. Guard: jangan ganggu Automation Trade kita sendiri.
+	if TC and TC.OnTradeCreated and Accept and Confirm then
+		TC.OnTradeCreated:Connect(function()
+			if not CFG.acceptTrades then return end
+			if ctx.state.tradeRunning then return end -- kita lagi jadi pengirim, jangan diganggu
+			task.spawn(function()
+				log("Window trade masuk — auto accept + confirm.")
+				-- auto accept: spam pelan sampai status KITA jadi Accepted (cooldown habis)
+				local myOk, a0 = false, os.clock()
+				repeat
+					pcall(function() Accept:FireServer() end)
+					task.wait(1)
+					local s = ctx.myState and ctx.myState(ctx.replicatorData())
+					if s == "Accepted" or s == "Confirmed" then myOk = true; break end
+				until (not (TC and TC.CurrentTradeReplicator)) or (os.clock() - a0) > 20
+				if not myOk or not (TC and TC.CurrentTradeReplicator) then return end
+
+				-- tunggu lawan accept
+				local t0 = os.clock()
+				local otherOk = false
+				repeat
+					task.wait(0.5)
+					if ctx.otherAccepted and ctx.otherAccepted(ctx.replicatorData()) then otherOk = true; break end
+				until (not (TC and TC.CurrentTradeReplicator)) or (os.clock() - t0) > 60
+				if not otherOk or not (TC and TC.CurrentTradeReplicator) then return end
+
+				-- confirm sampai trade tertutup
+				t0 = os.clock()
+				repeat
+					pcall(function() Confirm:FireServer() end)
+					task.wait(1.5)
+				until (not (TC and TC.CurrentTradeReplicator)) or (os.clock() - t0) > 15
+				log("Trade masuk selesai (confirmed).")
 			end)
 		end)
 	end
