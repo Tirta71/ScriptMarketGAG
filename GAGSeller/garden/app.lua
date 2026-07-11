@@ -19,6 +19,13 @@ return function(ctx)
 	ctx.log("AllegiaanHub Garden dimuat.")
 	ctx.setStatus("idle")
 
+	-- auto-resume PNP kalau sebelumnya aktif
+	if CFG.pnpEnabled and ctx.startPnp then
+		task.wait(1)
+		ctx.startPnp()
+		ctx.log("Auto-resume: PNP ON.")
+	end
+
 	-- auto-resume kalau sebelumnya aktif
 	if CFG.tradeEnabled then
 		task.wait(1.5)

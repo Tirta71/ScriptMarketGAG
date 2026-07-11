@@ -21,6 +21,12 @@ return function(ctx)
 		autoFavorite      = false,
 		favoritePetTypes  = {},
 
+		-- PNP (Pick & Place) pet
+		pnpPetTypes = {},     -- set pet type yang di-PNP; kosong = semua equipped
+		pickupDelay = 0.4,    -- jeda setelah place sebelum siklus berikutnya
+		equipDelay  = 0.02,   -- jeda antara unequip -> equip
+		pnpEnabled  = false,
+
 		-- webhook (opsional)
 		webhookUrl     = "",
 		webhookEnabled = false,
@@ -55,6 +61,10 @@ return function(ctx)
 			CFG.acceptTrades   = st.acceptTrades or false
 			CFG.autoFavorite   = st.autoFavorite or false
 			CFG.favoritePetTypes = (type(st.favoritePetTypes) == "table") and st.favoritePetTypes or {}
+			CFG.pnpPetTypes = (type(st.pnpPetTypes) == "table") and st.pnpPetTypes or {}
+			CFG.pickupDelay = tonumber(st.pickupDelay) or 0.4
+			CFG.equipDelay  = tonumber(st.equipDelay) or 0.02
+			CFG.pnpEnabled  = st.pnpEnabled or false
 			CFG.webhookUrl     = st.webhookUrl or ""
 			CFG.webhookEnabled = st.webhookEnabled or false
 		end

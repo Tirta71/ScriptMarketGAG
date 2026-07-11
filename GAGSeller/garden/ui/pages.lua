@@ -37,9 +37,31 @@ return function(ctx)
 		corner(box, 8); stroke(box); pad(box, 14, 14, 12, 12)
 		mk("TextLabel", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = "Fitur untuk tab ini belum tersedia.", Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top }, box)
 	end
-	for _, name in ipairs({ "Pet", "Elephant", "Growth", "Leveling", "Mutation", "Shop" }) do
+	for _, name in ipairs({ "Elephant", "Growth", "Leveling", "Mutation", "Shop" }) do
 		placeholder(pageRef[name])
 	end
+
+	------------------------------------------------------------------ PET (PNP)
+	local pet = pageRef["Pet"]
+	local pnp = makeAccordion(pet, "Automation Pickup Pet", 1, true)
+
+	makeMultiDropdown(pnp, "Select Pets for Pickup", "Pilih pet yang di-PNP (kosong = semua equipped)",
+		reg.PET_OPTIONS, CFG.pnpPetTypes, function() persist() end, 1)
+
+	makeInput(pnp, "Pickup Delay (Seconds)", "Jeda tiap siklus (idealnya = saat skill ready)",
+		function() return CFG.pickupDelay end,
+		function(txt) CFG.pickupDelay = tonumber(txt) or 0.4; persist() end, 2)
+
+	makeInput(pnp, "Equip Delay (Seconds)", "Jeda antara unequip -> equip",
+		function() return CFG.equipDelay end,
+		function(txt) CFG.equipDelay = tonumber(txt) or 0.02; persist() end, 3)
+
+	makeToggle(pnp, "Enable Automation Pickup", "Pungut & taruh lagi pet buat reset/trigger skill",
+		function() return CFG.pnpEnabled end,
+		function(v)
+			CFG.pnpEnabled = v; persist()
+			if v then ctx.startPnp() end
+		end, 4)
 
 	------------------------------------------------------------------ INVENTORY
 	local inv = pageRef["Inventory"]

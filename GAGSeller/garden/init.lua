@@ -56,6 +56,7 @@ local MODULES = {
 	"ui/theme.lua",
 	"modules/trade.lua",
 	"modules/accept.lua",
+	"modules/pnp.lua",
 	"ui/components.lua",
 	"ui/window.lua",
 	"ui/pages.lua",

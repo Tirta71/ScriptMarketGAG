@@ -16,6 +16,7 @@ return function(ctx)
 	local DataService = require(RS.Modules.DataService)
 	local PetEggs     = require(RS.Data.PetRegistry.PetEggs)
 	local MutReg      = require(RS.Data.PetRegistry.PetMutationRegistry)
+	local okPU, PU    = pcall(require, RS.Modules.PetServices.PetUtilities)
 
 	-- TradingController singleton (buat baca state trade aktif)
 	local okTC, TradingController = pcall(require, RS.Modules.TradeControllers.TradingController)
@@ -42,5 +43,8 @@ return function(ctx)
 		-- Gift pet langsung (beda dari trade): GiftPet masuk, AcceptPetGift buat terima.
 		GiftPet       = RS.GameEvents:FindFirstChild("GiftPet"),
 		AcceptPetGift = RS.GameEvents:FindFirstChild("AcceptPetGift"),
+		-- PNP (pick & place): PetsService("UnequipPet",uuid) / ("EquipPet",uuid,cframeStr)
+		PetsService   = RS.GameEvents:FindFirstChild("PetsService"),
+		PU            = okPU and PU or nil,
 	}
 end
