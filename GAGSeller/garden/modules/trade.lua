@@ -90,37 +90,24 @@ return function(ctx)
 	end
 
 	ctx.replicatorData = replicatorData
-	local loggedSchema = false
-	local function otherAccepted(d)
-		if type(d) ~= "table" then return false end
+
+	-- Skema (dari remote-spy): d.players = {p1,p2}, d.states = {[1]="None"/"Accepted", [2]=...}
+	-- state index sejajar dengan players. Lawan dianggap accept kalau statenya "Accepted"/"Confirmed".
+	local function otherState(d)
+		if type(d) ~= "table" then return nil end
 		local players = d.players or d.Players
-		if type(players) ~= "table" then return false end
-		local myIdx, otherIdx
+		local states  = d.states or d.States
+		if type(players) ~= "table" or type(states) ~= "table" then return nil end
+		local otherIdx
 		for i, p in ipairs(players) do
-			if p == LP then myIdx = i else otherIdx = otherIdx or i end
+			if p ~= LP then otherIdx = i end
 		end
-		local offers = d.offers or d.Offers
-		if otherIdx and offers then
-			local off = offers[otherIdx]
-			if type(off) == "table" then
-				if not loggedSchema then
-					loggedSchema = true
-					local keys = {}
-					for k in pairs(off) do keys[#keys + 1] = tostring(k) end
-					log("offer keys: " .. table.concat(keys, ","))
-				end
-				if off.accepted or off.Accepted or off.confirmed or off.Confirmed or off.ready or off.isReady then
-					return true
-				end
-			end
-		end
-		-- map accepted by player
-		local acc = d.accepted or d.Accepted
-		if acc and otherIdx then
-			local other = players[otherIdx]
-			if acc[other] or (other and acc[other.Name]) or (other and acc[tostring(other.UserId)]) then return true end
-		end
-		return false
+		if not otherIdx then return nil end
+		return states[otherIdx]
+	end
+	local function otherAccepted(d)
+		local s = otherState(d)
+		return s == "Accepted" or s == "Confirmed"
 	end
 	ctx.otherAccepted = otherAccepted
 
