@@ -142,15 +142,32 @@ return function(ctx)
 		end
 
 		-- add item
+		log(("Cocok %d pet. Contoh uuid=%s"):format(#pets, tostring(pets[1] and pets[1].uuid)))
 		setStatus(("Menambah %d pet..."):format(#pets))
 		for _, p in ipairs(pets) do
 			if not ctx.state.tradeRunning then break end
 			pcall(function() AddItem:FireServer("Pet", p.uuid) end)
-			task.wait(0.25)
+			task.wait(0.3)
+		end
+
+		-- verifikasi berapa pet yang benar-benar masuk ke offer kita
+		task.wait(0.5)
+		do
+			local d = replicatorData()
+			local myIdx
+			if d and d.players then for i, pl in ipairs(d.players) do if pl == LP then myIdx = i end end end
+			local n = 0
+			if d and myIdx and d.offers and d.offers[myIdx] then
+				for _ in pairs(d.offers[myIdx].items or {}) do n += 1 end
+			end
+			log(("Pet masuk ke offer: %d/%d"):format(n, #pets))
+			if n == 0 then
+				log("AddItem tidak masuk — cek: pet favorit? equipped? uuid?")
+			end
 		end
 
 		-- accept dari sisi kita
-		task.wait(0.4)
+		task.wait(0.3)
 		pcall(function() Accept:FireServer() end)
 		setStatus("Menunggu lawan accept...")
 
