@@ -26,136 +26,10 @@ return function(ctx)
 		return 60
 	end
 
-	local gui = ctx.state.gui
-	if not gui then return end
-
-	-- Floating Pet Monitor window
-	local main = mk("Frame", {
-		Size = UDim2.fromOffset(300, 420),
-		Position = UDim2.new(0.5, -520, 0.5, -210), -- di sebelah kiri main window
-		BackgroundColor3 = C.bg,
-		BorderSizePixel = 0,
-		Active = true,
-		Visible = false,
-	}, gui)
-	corner(main, 12); stroke(main, C.stroke, 1)
-
-	-- Title Bar
-	local titleBar = mk("Frame", {
-		Size = UDim2.new(1, 0, 0, 44),
-		BackgroundTransparency = 1,
-	}, main)
-	
-	-- Yellow dot
-	local dot = mk("Frame", {
-		Size = UDim2.fromOffset(8, 8),
-		Position = UDim2.new(0, 16, 0.5, -4),
-		BackgroundColor3 = C.acc,
-		BorderSizePixel = 0,
-	}, titleBar)
-	corner(dot, 4)
-
-	local titleLbl = mk("TextLabel", {
-		Size = UDim2.new(1, -130, 1, 0),
-		Position = UDim2.fromOffset(32, 0),
-		BackgroundTransparency = 1,
-		Text = "Pet Monitor",
-		Font = Enum.Font.GothamBold,
-		TextSize = 14,
-		TextColor3 = C.txt,
-		TextXAlignment = Enum.TextXAlignment.Left,
-	}, titleBar)
-
-	-- Pet Count Badge (yellow circular badge)
-	local badge = mk("Frame", {
-		Size = UDim2.fromOffset(22, 22),
-		Position = UDim2.new(1, -94, 0.5, -11),
-		BackgroundColor3 = C.acc,
-		BorderSizePixel = 0,
-	}, titleBar)
-	corner(badge, 11)
-	local badgeLbl = mk("TextLabel", {
-		Size = UDim2.new(1, 0, 1, 0),
-		BackgroundTransparency = 1,
-		Text = "0",
-		Font = Enum.Font.GothamBold,
-		TextSize = 11,
-		TextColor3 = C.panel,
-		TextAlignment = Enum.TextXAlignment.Center,
-	}, badge)
-
-	local minBtn = mk("TextButton", {
-		Size = UDim2.fromOffset(26, 26),
-		Position = UDim2.new(1, -62, 0, 9),
-		BackgroundColor3 = C.row,
-		Text = "—",
-		Font = Enum.Font.GothamBold,
-		TextSize = 12,
-		TextColor3 = C.txt,
-		AutoButtonColor = true,
-	}, titleBar)
-	corner(minBtn, 6)
-
-	local closeBtn = mk("TextButton", {
-		Size = UDim2.fromOffset(26, 26),
-		Position = UDim2.new(1, -30, 0, 9),
-		BackgroundColor3 = C.red,
-		Text = "✕",
-		Font = Enum.Font.GothamBold,
-		TextSize = 11,
-		TextColor3 = Color3.new(1, 1, 1),
-		AutoButtonColor = true,
-	}, titleBar)
-	corner(closeBtn, 6)
-
-	-- Dragging
-	do
-		local dragging, ds, sp
-		titleBar.InputBegan:Connect(function(i)
-			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-				dragging = true; ds = i.Position; sp = main.Position
-			end
-		end)
-		UserInputService.InputChanged:Connect(function(i)
-			if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
-				local d = i.Position - ds
-				main.Position = UDim2.new(sp.X.Scale, sp.X.Offset + d.X, sp.Y.Scale, sp.Y.Offset + d.Y)
-			end
-		end)
-		UserInputService.InputEnded:Connect(function(i)
-			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-				dragging = false
-			end
-		end)
-	end
-
-	-- Scrolling list of pets
-	local scroll = mk("ScrollingFrame", {
-		Size = UDim2.new(1, -16, 1, -54),
-		Position = UDim2.fromOffset(8, 46),
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-		ScrollBarThickness = 4,
-		CanvasSize = UDim2.new(),
-		AutomaticCanvasSize = "Y",
-		ScrollBarImageColor3 = C.acc,
-	}, main)
-	local listLayout = mk("UIListLayout", {
-		SortOrder = Enum.SortOrder.LayoutOrder,
-		Padding = UDim.new(0, 8),
-	}, scroll)
-
-	-- Event handlers
-	minBtn.MouseButton1Click:Connect(function()
-		main.Visible = false
-		ctx.state.pnpMonitorBtnRender() -- sync toggle UI state if any
-	end)
-	closeBtn.MouseButton1Click:Connect(function()
-		main.Visible = false
-		ctx.CFG.pnpMonitorEnabled = false
-		ctx.persistState()
-		ctx.state.pnpMonitorBtnRender() -- sync toggle
-	end)
+	local main = nil -- Jendela utama
+	local badgeLbl = nil
+	local scroll = nil
+	local uiCards = {}
 
 	local function getTargetPets()
 		local out = {}
@@ -207,10 +81,8 @@ return function(ctx)
 		return out
 	end
 
-	local uiCards = {}
-
 	local function updateMonitor()
-		if not main.Visible then return end
+		if not main or not main.Visible then return end
 		local pets = getTargetPets()
 		badgeLbl.Text = tostring(#pets)
 
@@ -221,8 +93,7 @@ return function(ctx)
 				if p.uuid == uuid then found = true; break end
 			end
 			if not found then
-				cardFrame = card.frame
-				cardFrame:Destroy()
+				card.frame:Destroy()
 				uiCards[uuid] = nil
 			end
 		end
@@ -429,6 +300,140 @@ return function(ctx)
 		end
 	end
 
+	local function createMonitorWindow()
+		if main then return end
+		local gui = ctx.state.gui
+		if not gui then return end
+
+		-- Floating Pet Monitor window
+		main = mk("Frame", {
+			Size = UDim2.fromOffset(300, 420),
+			Position = UDim2.new(0.5, -520, 0.5, -210), -- di sebelah kiri main window
+			BackgroundColor3 = C.bg,
+			BorderSizePixel = 0,
+			Active = true,
+			Visible = false,
+		}, gui)
+		corner(main, 12); stroke(main, C.stroke, 1)
+
+		-- Title Bar
+		local titleBar = mk("Frame", {
+			Size = UDim2.new(1, 0, 0, 44),
+			BackgroundTransparency = 1,
+		}, main)
+		
+		-- Yellow dot
+		local titleDot = mk("Frame", {
+			Size = UDim2.fromOffset(8, 8),
+			Position = UDim2.new(0, 16, 0.5, -4),
+			BackgroundColor3 = C.acc,
+			BorderSizePixel = 0,
+		}, titleBar)
+		corner(titleDot, 4)
+
+		local titleLbl = mk("TextLabel", {
+			Size = UDim2.new(1, -130, 1, 0),
+			Position = UDim2.fromOffset(32, 0),
+			BackgroundTransparency = 1,
+			Text = "Pet Monitor",
+			Font = Enum.Font.GothamBold,
+			TextSize = 14,
+			TextColor3 = C.txt,
+			TextXAlignment = Enum.TextXAlignment.Left,
+		}, titleBar)
+
+		-- Pet Count Badge (yellow circular badge)
+		badge = mk("Frame", {
+			Size = UDim2.fromOffset(22, 22),
+			Position = UDim2.new(1, -94, 0.5, -11),
+			BackgroundColor3 = C.acc,
+			BorderSizePixel = 0,
+		}, titleBar)
+		corner(badge, 11)
+		badgeLbl = mk("TextLabel", {
+			Size = UDim2.new(1, 0, 1, 0),
+			BackgroundTransparency = 1,
+			Text = "0",
+			Font = Enum.Font.GothamBold,
+			TextSize = 11,
+			TextColor3 = C.panel,
+			TextAlignment = Enum.TextXAlignment.Center,
+		}, badge)
+
+		local minBtn = mk("TextButton", {
+			Size = UDim2.fromOffset(26, 26),
+			Position = UDim2.new(1, -62, 0, 9),
+			BackgroundColor3 = C.row,
+			Text = "—",
+			Font = Enum.Font.GothamBold,
+			TextSize = 12,
+			TextColor3 = C.txt,
+			AutoButtonColor = true,
+		}, titleBar)
+		corner(minBtn, 6)
+
+		local closeBtn = mk("TextButton", {
+			Size = UDim2.fromOffset(26, 26),
+			Position = UDim2.new(1, -30, 0, 9),
+			BackgroundColor3 = C.red,
+			Text = "✕",
+			Font = Enum.Font.GothamBold,
+			TextSize = 11,
+			TextColor3 = Color3.new(1, 1, 1),
+			AutoButtonColor = true,
+		}, titleBar)
+		corner(closeBtn, 6)
+
+		-- Dragging
+		do
+			local dragging, ds, sp
+			titleBar.InputBegan:Connect(function(i)
+				if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+					dragging = true; ds = i.Position; sp = main.Position
+				end
+			end)
+			UserInputService.InputChanged:Connect(function(i)
+				if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
+					local d = i.Position - ds
+					main.Position = UDim2.new(sp.X.Scale, sp.X.Offset + d.X, sp.Y.Scale, sp.Y.Offset + d.Y)
+				end
+			end)
+			UserInputService.InputEnded:Connect(function(i)
+				if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+					dragging = false
+				end
+			end)
+		end
+
+		-- Scrolling list of pets
+		scroll = mk("ScrollingFrame", {
+			Size = UDim2.new(1, -16, 1, -54),
+			Position = UDim2.fromOffset(8, 46),
+			BackgroundTransparency = 1,
+			BorderSizePixel = 0,
+			ScrollBarThickness = 4,
+			CanvasSize = UDim2.new(),
+			AutomaticCanvasSize = "Y",
+			ScrollBarImageColor3 = C.acc,
+		}, main)
+		local listLayout = mk("UIListLayout", {
+			SortOrder = Enum.SortOrder.LayoutOrder,
+			Padding = UDim.new(0, 8),
+		}, scroll)
+
+		-- Event handlers
+		minBtn.MouseButton1Click:Connect(function()
+			main.Visible = false
+			ctx.state.pnpMonitorBtnRender() -- sync toggle UI state
+		end)
+		closeBtn.MouseButton1Click:Connect(function()
+			main.Visible = false
+			ctx.CFG.pnpMonitorEnabled = false
+			ctx.persistState()
+			ctx.state.pnpMonitorBtnRender() -- sync toggle
+		end)
+	end
+
 	-- Thread pemantau update visual
 	task.spawn(function()
 		while ctx.alive() do
@@ -438,16 +443,24 @@ return function(ctx)
 	end)
 
 	function ctx.showPetMonitor()
-		main.Visible = true
-		updateMonitor()
+		createMonitorWindow()
+		if main then
+			main.Visible = true
+			updateMonitor()
+		end
 	end
 
 	function ctx.hidePetMonitor()
-		main.Visible = false
+		if main then
+			main.Visible = false
+		end
 	end
 
-	-- Jalankan kondisi awal jika diaktifkan dari config
-	if ctx.CFG.pnpMonitorEnabled then
-		ctx.showPetMonitor()
-	end
+	-- Lazy activation jika diaktifkan dari config (dipanggil di app.lua setelah GUI siap)
+	task.spawn(function()
+		task.wait(1.5)
+		if ctx.CFG.pnpMonitorEnabled then
+			ctx.showPetMonitor()
+		end
+	end)
 end
