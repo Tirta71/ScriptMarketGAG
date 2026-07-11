@@ -24,7 +24,7 @@ return function(ctx)
 		-- PNP (Pick & Place) pet
 		pnpPetTypes = {},     -- set pet type yang di-PNP; kosong = semua equipped
 		pickupDelay = 0.4,    -- jeda setelah place sebelum siklus berikutnya
-		equipDelay  = 0.02,   -- jeda antara unequip -> equip
+		equipDelay  = 0.3,   -- jeda antara unequip -> equip (aman dari race condition)
 		pnpEnabled  = false,
 
 		-- webhook (opsional)
