@@ -38,7 +38,9 @@ return function(ctx)
 						break
 					end
 				end
-				if isReady then
+				-- Hanya tandai READY jika sudah lewat dari 1.5 detik sejak ditaruh (melewati loading server)
+				local timeSincePlaced = os.clock() - (lastPlacedAt[uuid] or 0)
+				if isReady and timeSincePlaced > 1.5 then
 					ferretWasReady[uuid] = true -- Tandai READY!
 				end
 			end
