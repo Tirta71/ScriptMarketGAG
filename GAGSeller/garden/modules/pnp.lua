@@ -196,6 +196,26 @@ return function(ctx)
 	end
 
 	----------------------------------------------------------------- loop
+	-- Tiap pet di-PNP di coroutine SENDIRI (paralel) supaya nggak saling nunggu.
+	-- busy[uuid] = lagi ada siklus PNP jalan buat pet itu (anti dobel-spawn).
+	local busy = {}
+	local function doPNP(uuid, isLong)
+		busy[uuid] = true
+		task.spawn(function()
+			-- long-CD: langsung pick (skip animasi). short-CD: pakai pickupDelay.
+			if not isLong and CFG.pickupDelay > 0 then task.wait(CFG.pickupDelay) end
+			local pos = getPos(uuid)
+			pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
+			task.wait(math.max(0.01, CFG.equipDelay))
+			if pos then
+				pcall(function() PetsService:FireServer("EquipPet", uuid, CFrame.new(pos)) end)
+			end
+			lastPlacedAt[uuid] = os.clock()
+			if isLong then longArmed[uuid] = false end  -- disarm sampai cooldown reset tinggi lagi
+			busy[uuid] = false
+		end)
+	end
+
 	local function pnpLoop()
 		ctx.state.pnpId = (ctx.state.pnpId or 0) + 1
 		local myId = ctx.state.pnpId
@@ -209,40 +229,19 @@ return function(ctx)
 				local didAny = false
 				for _, p in ipairs(pets) do
 					if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
-
-					-- Pilih detektor:
-					--   long-CD (Ferret dll): READY (cooldown ~0) -> PNP SEKETIKA biar animasi ke-skip.
-					--   short-CD (Dilo/Peacock/Mimic): HighlightRemote force-fire (tak diubah).
-					local isLong = isLongCD(p.petType)
-					local fired
-					if isLong then
-						fired = hasLongReady(p.uuid)
-					else
-						fired = hasSkillFired(p.uuid)
-					end
-
-					if fired then
-						didAny = true
-
-						-- long-CD: langsung pick (skip animasi). short-CD: pakai pickupDelay.
-						if not isLong and CFG.pickupDelay > 0 then task.wait(CFG.pickupDelay) end
-						if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
-
-						-- PICKUP -> equipDelay -> PLACE (posisi cache/center, sama kaya pet lain)
-						local pos = getPos(p.uuid)
-						pcall(function() PetsService:FireServer("UnequipPet", p.uuid) end)
-						task.wait(math.max(0.01, CFG.equipDelay))
-						if pos then
-							pcall(function() PetsService:FireServer("EquipPet", p.uuid, CFrame.new(pos)) end)
+					if not busy[p.uuid] then
+						-- Detektor: long-CD (Ferret) = READY cooldown; short-CD (Dilo/Peacock/Mimic) = HighlightRemote.
+						local isLong = isLongCD(p.petType)
+						local fired
+						if isLong then fired = hasLongReady(p.uuid) else fired = hasSkillFired(p.uuid) end
+						if fired then
+							didAny = true
+							doPNP(p.uuid, isLong)  -- non-blocking, tiap pet jalan sendiri
 						end
-						lastPlacedAt[p.uuid] = os.clock()
-
-						-- disarm long-CD sampai cooldown ke-reset tinggi lagi (anti dobel-PNP)
-						if isLong then longArmed[p.uuid] = false end
 					end
 				end
 				setStatus(("PNP jalan: %d pet%s"):format(#pets, didAny and "" or " (nunggu skill keluar)"))
-				task.wait(0.15)
+				task.wait(0.08)  -- scan cepat; PNP-nya non-blocking jadi loop nggak ke-block
 			end
 		end
 	end
