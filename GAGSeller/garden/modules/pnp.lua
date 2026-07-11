@@ -32,7 +32,7 @@ return function(ctx)
 	if PetCD then
 		PetCD.OnClientEvent:Connect(function(uuid, cd)
 			if type(uuid) ~= "string" then return end
-			cdMap[uuid] = cd
+			cdMap[uuid] = { data = cd, receivedAt = os.clock() }
 
 			local mainCD
 			if type(cd) == "table" then

@@ -181,9 +181,9 @@ return function(ctx)
 				end
 			end
 			-- Masukkan juga passive mutasi jika ada cooldown aktif
-			local cd = ctx.state.cdMap and ctx.state.cdMap[p.uuid]
-			if type(cd) == "table" then
-				for _, entry in ipairs(cd) do
+			local cdEntry = ctx.state.cdMap and ctx.state.cdMap[p.uuid]
+			if type(cdEntry) == "table" and type(cdEntry.data) == "table" then
+				for _, entry in ipairs(cdEntry.data) do
 					local pas = tostring(entry.Passive)
 					if pas:find("Mutation") then
 						local exists = false
@@ -263,12 +263,14 @@ return function(ctx)
 					card.passives[pasName] = row
 				end
 
-				-- Dapatkan nilai cooldown
+				-- Dapatkan nilai cooldown secara real-time (ticking down locally)
 				local timeVal = 0
-				if type(cd) == "table" then
-					for _, entry in ipairs(cd) do
+				local cdEntry = ctx.state.cdMap and ctx.state.cdMap[p.uuid]
+				if type(cdEntry) == "table" and type(cdEntry.data) == "table" then
+					local elapsed = os.clock() - cdEntry.receivedAt
+					for _, entry in ipairs(cdEntry.data) do
 						if tostring(entry.Passive) == pasName then
-							timeVal = tonumber(entry.Time) or 0
+							timeVal = math.max(0, (tonumber(entry.Time) or 0) - elapsed)
 							break
 						end
 					end
