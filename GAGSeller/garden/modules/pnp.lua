@@ -142,6 +142,8 @@ return function(ctx)
 		return 60
 	end
 
+	local processing = {} -- Lacak pet yang sedang diproses PNP agar tidak dobel thread
+
 	----------------------------------------------------------------- loop utama
 	local function pnpLoop()
 		ctx.state.pnpId = (ctx.state.pnpId or 0) + 1
@@ -163,28 +165,36 @@ return function(ctx)
 					local cdVal = expireTime and (expireTime - tick())
 					local isReady = (cdVal == nil) or (cdVal <= READY_TH)
 
-					if isReady then
+					if isReady and not processing[p.uuid] then
 						didAny = true
+						processing[p.uuid] = true
 
-						-- Jeda penjemputan dinamis sebelum dilepas
-						if CFG.pickupDelay > 0 then task.wait(CFG.pickupDelay) end
-						if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
+						task.spawn(function()
+							-- Jeda penjemputan dinamis sebelum dilepas
+							if CFG.pickupDelay > 0 then task.wait(CFG.pickupDelay) end
+							if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then
+								processing[p.uuid] = nil
+								return
+							end
 
-						-- PICKUP -> PLACE
-						local pos = getPos(p.uuid)
-						pcall(function() PetsService:FireServer("UnequipPet", p.uuid) end)
-						
-						task.wait(math.max(0.01, CFG.equipDelay))
-						if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
-						
-						if pos then
-							pcall(function() PetsService:FireServer("EquipPet", p.uuid, CFrame.new(pos)) end)
-							-- Set cooldown lokal secara instan untuk mencegah loop sebelum server mereplikasi
-							ownCd[p.uuid] = tick() + getPetMaxCd(p.petType)
-						end
-						
-						-- Jeda 0.5 detik setelah ditaruh agar server sempat sinkronisasi cooldown barunya
-						task.wait(0.5)
+							-- PICKUP -> PLACE
+							local pos = getPos(p.uuid)
+							pcall(function() PetsService:FireServer("UnequipPet", p.uuid) end)
+							
+							task.wait(math.max(0.01, CFG.equipDelay))
+							if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then
+								processing[p.uuid] = nil
+								return
+							end
+							
+							if pos then
+								pcall(function() PetsService:FireServer("EquipPet", p.uuid, CFrame.new(pos)) end)
+								-- Set cooldown lokal secara instan untuk mencegah loop sebelum server mereplikasi
+								ownCd[p.uuid] = tick() + getPetMaxCd(p.petType)
+							end
+							
+							processing[p.uuid] = nil
+						end)
 					end
 				end
 				
