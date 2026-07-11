@@ -170,28 +170,25 @@ return function(ctx)
 			end
 		end
 
-		-- Game punya cooldown ~5 detik setelah item berubah sebelum Accept aktif.
-		setStatus("Tunggu cooldown 5 dtk...")
-		local cd = 5.5
-		local c0 = os.clock()
-		repeat task.wait(0.5) until (not ctx.state.tradeRunning) or (not (TC and TC.CurrentTradeReplicator)) or (os.clock() - c0) >= cd
-		if not ctx.state.tradeRunning or not (TC and TC.CurrentTradeReplicator) then return false end
-
-		-- accept dari sisi kita + verifikasi state kita jadi Accepted (retry kalau belum)
-		setStatus("Accept...")
+		-- Auto-accept: game punya cooldown anti-scam sebelum tombol Accept aktif.
+		-- Daripada nebak durasinya, kita spam Accept pelan sampai status KITA jadi
+		-- "Accepted" (artinya cooldown sudah habis & Accept kebaca). Otomatis nunggu pas.
+		setStatus("Accept (nunggu cooldown game)...")
 		local myOk = false
-		for _ = 1, 4 do
-			if not ctx.state.tradeRunning or not (TC and TC.CurrentTradeReplicator) then return false end
+		local a0 = os.clock()
+		repeat
 			pcall(function() Accept:FireServer() end)
-			task.wait(1.2)
+			task.wait(1)
 			local s = myState(replicatorData())
 			if s == "Accepted" or s == "Confirmed" then myOk = true; break end
-		end
+		until (not ctx.state.tradeRunning) or (not (TC and TC.CurrentTradeReplicator)) or (os.clock() - a0) > 20
+		if not ctx.state.tradeRunning or not (TC and TC.CurrentTradeReplicator) then return false end
 		if not myOk then
-			log("Accept kita belum kebaca (cooldown/anti-scam). Batalkan.")
+			log("Accept kita belum kebaca setelah 20s. Batalkan.")
 			pcall(function() Decline:FireServer() end)
 			return false
 		end
+		log("Accept kita OK.")
 		setStatus("Menunggu lawan accept...")
 
 		-- tunggu lawan accept
