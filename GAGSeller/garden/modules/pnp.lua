@@ -33,18 +33,45 @@ return function(ctx)
 		PetCD.OnClientEvent:Connect(function(uuid, cd)
 			if type(uuid) ~= "string" then return end
 			
+			local oldEntry = cdMap[uuid]
 			local data = {}
 			local mainCD = nil
 			if type(cd) == "table" then
 				for _, e in ipairs(cd) do
 					local duration = tonumber(e.Time) or 0
+					
+					-- Cari passive yang sama di data lama
+					local oldPassive = nil
+					if oldEntry and type(oldEntry.data) == "table" then
+						for _, oldE in ipairs(oldEntry.data) do
+							if oldE.Passive == e.Passive then
+								oldPassive = oldE
+								break
+							end
+						end
+					end
+					
+					local expireTime
+					if oldPassive and oldPassive.expireTime then
+						local localVal = math.max(0, oldPassive.expireTime - tick())
+						-- Jika perbedaan kecil (<= 2.0 detik), pertahankan expireTime lama agar berdetik mulus
+						if math.abs(localVal - duration) <= 2.0 then
+							expireTime = oldPassive.expireTime
+						else
+							expireTime = tick() + duration
+						end
+					else
+						expireTime = tick() + duration
+					end
+					
 					table.insert(data, {
 						Passive = e.Passive,
 						Time = duration,
-						expireTime = tick() + duration
+						expireTime = expireTime
 					})
+					
 					if not tostring(e.Passive or ""):find("Mutation") then
-						mainCD = duration
+						mainCD = expireTime - tick()
 					end
 				end
 			end
