@@ -15,6 +15,21 @@ return function(ctx)
 	log("AllegiaanHub GAG Seller v1.2.5 dimuat.")
 	ctx.renderInventory()
 
+	------------------------------------------------------------------ Anti-AFK
+	-- Roblox nendang setelah ~20 menit idle. Event LocalPlayer.Idled fire tepat sebelum kick;
+	-- kita simulasi input (VirtualUser) buat reset timer idle-nya -> nggak ke-kick.
+	pcall(function()
+		local VirtualUser = game:GetService("VirtualUser")
+		ctx.LP.Idled:Connect(function()
+			pcall(function()
+				VirtualUser:CaptureController()
+				VirtualUser:ClickButton2(Vector2.new())
+			end)
+			log("Anti-AFK: reset idle timer.")
+		end)
+		log("Anti-AFK aktif.")
+	end)
+
 	------------------------------------------------------------------ Auto Claim Supervisor Loop
 	task.spawn(function()
 		ctx.elevate()

@@ -19,6 +19,19 @@ return function(ctx)
 	ctx.log("AllegiaanHub Garden dimuat.")
 	ctx.setStatus("idle")
 
+	-- Anti-AFK: reset timer idle Roblox (kick ~20 menit) tiap Idled fire, via VirtualUser.
+	pcall(function()
+		local VirtualUser = game:GetService("VirtualUser")
+		ctx.LP.Idled:Connect(function()
+			pcall(function()
+				VirtualUser:CaptureController()
+				VirtualUser:ClickButton2(Vector2.new())
+			end)
+			ctx.log("Anti-AFK: reset idle timer.")
+		end)
+		ctx.log("Anti-AFK aktif.")
+	end)
+
 	-- auto-resume PNP kalau sebelumnya aktif
 	if CFG.pnpEnabled and ctx.startPnp then
 		task.wait(1)
