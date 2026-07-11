@@ -315,9 +315,9 @@ local function buildSummary()
 	return (#lines > 0 and table.concat(lines, "\n") or "-"), total
 end
 
--- satu putaran listing: cek inventory, cocokkan tiap profil, buat listing
+-- satu putaran listing: STRICT SEQUENTIAL P1L1→P1L2→P1L3→P2L1→...
+-- Setiap listing harus TEPAT maxList sebelum lanjut ke listing berikutnya
 local listedSet = {}
-local failedSet = {}
 local function listPass()
 	local owns, bData, boothName = ownsBooth()
 	if not owns or not boothName then return 0 end
@@ -338,10 +338,13 @@ local function listPass()
 		end
 	end
 
-	-- Sinkronisasikan listedSet dengan pet yang sudah terpasang di booth saat ini
+	-- Ambil data booth & inventory TERBARU
 	local myId = myPlayerId()
 	local myRecord = bData.Players and (bData.Players[myId] or bData.Players[tostring(myId)])
 	local currentList = myRecord and myRecord.Listings or {}
+
+	-- REBUILD listedSet dari booth aktual (agar pet yang sudah dibeli otomatis hilang)
+	listedSet = {}
 	for _, l in pairs(currentList) do
 		if l.ItemId then listedSet[l.ItemId] = true end
 	end
@@ -357,81 +360,102 @@ local function listPass()
 			equippedSet[eqUuid] = true
 		end
 	end
-	
+
+	-- Track UUID booth yang sudah di-claim listing sebelumnya (anti double-count)
+	local claimedByOther = {}
 	local total = 0
+
+	-- Helper: cek pet cocok dengan listing config
+	local function petMatches(petType, pd, sub)
+		if not (sub.pets[petType] or sub.pets[comboKey(petType, pd.HatchedFrom or "?")]) then return false end
+		local mut = mutDisplay(pd.MutationType)
+		local mutOK
+		if not next(sub.muts) then mutOK = (mut == "None") else mutOK = sub.muts[mut] == true end
+		if not mutOK then return false end
+		local w = weightOf(petType, pd)
+		local minW = (sub.minW or 0) > 0 and (sub.minW - 0.5) or 0
+		local maxW = (sub.maxW or 0) > 0 and (sub.maxW - 0.5) or 0
+		return (w >= minW) and (maxW <= 0 or w <= maxW)
+	end
+
+	-- STRICT SEQUENTIAL: P1L1 → P1L2 → P1L3 → P2L1 → P2L2 → ...
 	for pi = 1, NUM_PROFILES do
 		local prof = CFG.profiles[pi]
 		if prof and type(prof.listings) == "table" then
 			for li = 1, NUM_LISTINGS do
+				if not running then return total end
 				local sub = prof.listings[li]
 				if sub and next(sub.pets) and (sub.price or 0) > 0 then
-					local cap = (sub.maxList and sub.maxList > 0) and sub.maxList or math.huge
-					local count = 0
-					for _, l in pairs(currentList) do
-						local itemUuid = l.ItemId
-						local invPet = itemUuid and pets[itemUuid]
-						if invPet and invPet.PetType and invPet.PetData then
-							local pd = invPet.PetData
-							if sub.pets[invPet.PetType] or sub.pets[comboKey(invPet.PetType, pd.HatchedFrom or "?")] then
-								local mut = mutDisplay(pd.MutationType)
-								local mutOK
-								if not next(sub.muts) then mutOK = (mut == "None") else mutOK = sub.muts[mut] == true end
-								local w = weightOf(invPet.PetType, pd)
-								local minW = (sub.minW or 0) > 0 and (sub.minW - 0.5) or 0
-								local maxW = (sub.maxW or 0) > 0 and (sub.maxW - 0.5) or 0
-								local wOK = (w >= minW) and (maxW <= 0 or w <= maxW)
-								if mutOK and wOK then
-									count = count + 1
-								end
-							end
-						end
-					end
-					for uuid, v in pairs(pets) do
-						if not running then break end
-						if count >= cap then break end
-						local pd = v.PetData
-						if v.PetType and pd and not pd.IsFavorite and not locks[uuid] and not listedSet[uuid] and not equippedSet[uuid] and not failedSet[uuid] then
-							if sub.pets[v.PetType] or sub.pets[comboKey(v.PetType, pd.HatchedFrom or "?")] then
-								local mut = mutDisplay(pd.MutationType)
-								local mutOK
-								if not next(sub.muts) then mutOK = (mut == "None") else mutOK = sub.muts[mut] == true end
-								local w = weightOf(v.PetType, pd)
-								local minW = (sub.minW or 0) > 0 and (sub.minW - 0.5) or 0
-								local maxW = (sub.maxW or 0) > 0 and (sub.maxW - 0.5) or 0
-								local wOK = (w >= minW) and (maxW <= 0 or w <= maxW)
-								if mutOK and wOK then
-									local ok2, res = pcall(function() return CreateListing:InvokeServer("Pet", uuid, math.floor(sub.price)) end)
-									if ok2 and res then
-										listedSet[uuid] = true
-										count += 1; total += 1
-										log(("LIST %s [%s] %.2fkg @%d (P%d-L%d)"):format(v.PetType, mut, w, sub.price, pi, li))
-										
-										-- Kirim notifikasi webhook jika diaktifkan
-										sendWebhook({
-											username = "GAG Seller",
-											embeds = {{
-												title = "📦 Pet Terpajang!",
-												color = 10181046,
-												fields = {
-													{ name = "Pet", value = tostring(v.PetType), inline = true },
-													{ name = "Mutation", value = tostring(mut), inline = true },
-													{ name = "Weight", value = ("%.2f KG"):format(w), inline = true },
-													{ name = "Price", value = tostring(sub.price) .. " Tokens", inline = true },
-													{ name = "Profile", value = "P" .. pi .. "-L" .. li, inline = true },
-												},
-												footer = { text = "JobId: " .. tostring(game.JobId) }
-											}}
-										})
-										task.wait(1.5)
-									else
-										log(("FAIL list %s (%s)"):format(v.PetType, tostring(res)))
-										failedSet[uuid] = true
-										task.wait(0.5)
-										break
+					local cap = (sub.maxList and sub.maxList > 0) and sub.maxList or 0
+					if cap <= 0 then -- skip listing tanpa max cap
+					else
+						-- STEP 1: Hitung berapa pet di booth yang cocok listing ini
+						local boothCount = 0
+						for _, l in pairs(currentList) do
+							local itemUuid = l.ItemId
+							if itemUuid and not claimedByOther[itemUuid] then
+								local invPet = pets[itemUuid]
+								if invPet and invPet.PetType and invPet.PetData then
+									if petMatches(invPet.PetType, invPet.PetData, sub) then
+										boothCount = boothCount + 1
+										claimedByOther[itemUuid] = true
 									end
 								end
 							end
 						end
+
+						-- STEP 2: Kalau belum penuh, tambah sampai tepat cap
+						local needed = cap - boothCount
+						if needed > 0 then
+							log(("P%d-L%d: %d/%d di booth, perlu +%d"):format(pi, li, boothCount, cap, needed))
+							local added = 0
+							for uuid, v in pairs(pets) do
+								if not running then return total end
+								if added >= needed then break end
+								local pd = v.PetData
+								if v.PetType and pd and not pd.IsFavorite 
+									and not locks[uuid] and not listedSet[uuid] 
+									and not equippedSet[uuid] and not claimedByOther[uuid] then
+									if petMatches(v.PetType, pd, sub) then
+										local ok2, res = pcall(function() return CreateListing:InvokeServer("Pet", uuid, math.floor(sub.price)) end)
+										if ok2 and res then
+											listedSet[uuid] = true
+											claimedByOther[uuid] = true
+											added = added + 1
+											total = total + 1
+											local mut = mutDisplay(pd.MutationType)
+											local w = weightOf(v.PetType, pd)
+											log(("LIST %s [%s] %.2fkg @%d (P%d-L%d) [%d/%d]"):format(v.PetType, mut, w, sub.price, pi, li, boothCount + added, cap))
+											
+											sendWebhook({
+												username = "GAG Seller",
+												embeds = {{
+													title = "📦 Pet Terpajang!",
+													color = 10181046,
+													fields = {
+														{ name = "Pet", value = tostring(v.PetType), inline = true },
+														{ name = "Mutation", value = tostring(mut), inline = true },
+														{ name = "Weight", value = ("%.2f KG"):format(w), inline = true },
+														{ name = "Price", value = tostring(sub.price) .. " Tokens", inline = true },
+														{ name = "Profile", value = "P" .. pi .. "-L" .. li, inline = true },
+													},
+													footer = { text = "JobId: " .. tostring(game.JobId) }
+												}}
+											})
+											task.wait(5)
+										else
+											log(("FAIL list %s (%s)"):format(v.PetType, tostring(res)))
+											task.wait(3) -- tunggu rate limit hilang
+										end
+									end
+								end
+							end
+							-- Kalau stock habis, SKIP ke listing berikutnya (jangan stuck)
+							if boothCount + added < cap then
+								log(("P%d-L%d: stock habis, baru %d/%d. Skip ke listing berikutnya."):format(pi, li, boothCount + added, cap))
+							end
+						end
+						-- Kalau sudah penuh (needed <= 0), lanjut ke listing berikutnya ✓
 					end
 				end
 			end
@@ -456,8 +480,6 @@ local function mainLoop()
 	currentLoopId = currentLoopId + 1
 	local myLoopId = currentLoopId
 	elevate()
-	listedSet = {}
-	failedSet = {}
 	while running and alive() and currentLoopId == myLoopId do
 		if not anyProfileActive() then
 			setStatus("Pilih pet di profil listing dulu.")
@@ -467,8 +489,13 @@ local function mainLoop()
 			if CFG.autoClaim then ready = ensureBooth() end
 			if ready then
 				local n = listPass()
-				setStatus(("Listing pass: +%d | Token:%s"):format(n, tostring(getTokens())))
-				task.wait(4)
+				if n > 0 then
+					setStatus(("Refill +%d | Token:%s"):format(n, tostring(getTokens())))
+					task.wait(2) -- cepat cek lagi karena baru ada perubahan
+				else
+					setStatus(("Booth OK ✓ | Token:%s"):format(tostring(getTokens())))
+					task.wait(3) -- semua penuh, monitoring mode
+				end
 			else
 				setStatus("Menunggu booth ke-claim...")
 				task.wait(2.5)
@@ -476,6 +503,7 @@ local function mainLoop()
 		end
 	end
 end
+
 
 -- unlist & unequip util
 local function unlistAll()
