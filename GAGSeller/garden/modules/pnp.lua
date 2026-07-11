@@ -23,13 +23,22 @@ return function(ctx)
 	end
 
 	-- ready = tidak ada passive NON-mutation yang masih Time > 0
-	local function isReady(uuid)
+	local function isReady(uuid, petType)
 		local cd = cdMap[uuid]
 		if type(cd) ~= "table" then return true end   -- belum ada info -> anggap ready
+		
+		-- Deteksi tipe pet Mimic
+		local isMimic = tostring(petType):find("Mimic") ~= nil
+		
 		for _, entry in ipairs(cd) do
 			local pas = tostring(entry.Passive or "")
 			if not pas:find("Mutation") and (tonumber(entry.Time) or 0) > 0 then
-				return false
+				-- Jika pet Mimic, abaikan cooldown selain "Mimicry" (abaikan skill hasil copy)
+				if isMimic and pas ~= "Mimicry" then
+					-- Abaikan cooldown skill copasan
+				else
+					return false
+				end
 			end
 		end
 		return true
@@ -90,7 +99,7 @@ return function(ctx)
 
 	-- pick & place 1 pet, lalu tunggu sampai cooldown mulai lagi (biar nggak dobel pungut)
 	-- PENTING: EquipPet butuh objek CFrame (bukan string), rotasi identity, posisi dalam PetArea.
-	local function pnpOne(uuid)
+	local function pnpOne(uuid, petType)
 		if not PetsService then return false end
 		local pos = getPos(uuid)  -- ambil SEBELUM unequip
 		if not pos then return false end
@@ -103,7 +112,7 @@ return function(ctx)
 		
 		-- tunggu skill jalan lagi (cooldown muncul) supaya loop nggak langsung pick up lagi
 		local t0 = os.clock()
-		repeat task.wait(0.1) until (not isReady(uuid)) or (os.clock() - t0) > 2.0
+		repeat task.wait(0.1) until (not isReady(uuid, petType)) or (os.clock() - t0) > 2.0
 		return true
 	end
 
@@ -121,11 +130,11 @@ return function(ctx)
 				local didAny = false
 				for _, p in ipairs(pets) do
 					if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
-					if isReady(p.uuid) then
+					if isReady(p.uuid, p.petType) then
 						didAny = true
 						if CFG.pickupDelay > 0 then task.wait(CFG.pickupDelay) end  -- jeda saat skill ready
 						if not CFG.pnpEnabled then break end
-						pnpOne(p.uuid)
+						pnpOne(p.uuid, p.petType)
 					end
 				end
 				setStatus(("PNP jalan: %d pet%s"):format(#pets, didAny and "" or " (nunggu skill ready)"))
