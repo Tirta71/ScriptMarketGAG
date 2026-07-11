@@ -212,15 +212,13 @@ return function(ctx)
 
 					-- Pilih detektor:
 					--   long-CD (Ferret dll): READY (cooldown ~0) -> PNP SEKETIKA biar animasi ke-skip.
-					--   short-CD (Dilo/Peacock/Mimic): PNP TERUS tiap pass (force-fire). Nggak nunggu
-					--     HighlightRemote lagi karena buat Peacock sinyalnya nggak reliable (ke-highlight
-					--     aura) -> bikin nggak konsisten. PNP nge-force-fire skill mereka tiap taruh.
+					--   short-CD (Dilo/Peacock/Mimic): HighlightRemote force-fire (tak diubah).
 					local isLong = isLongCD(p.petType)
 					local fired
 					if isLong then
 						fired = hasLongReady(p.uuid)
 					else
-						fired = true
+						fired = hasSkillFired(p.uuid)
 					end
 
 					if fired then
