@@ -55,7 +55,7 @@ local ctx = {
 
 -- Fungsi util global kecil yang dibutuhkan banyak modul.
 function ctx.alive()
-	return ctx.state.gui ~= nil and ctx.state.gui.Parent ~= nil
+	return ctx.state.isAlive ~= false
 end
 function ctx.elevate()
 	pcall(function()

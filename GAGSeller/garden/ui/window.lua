@@ -22,6 +22,10 @@ return function(ctx)
 	gui.Name = "AllegiaanGarden"; gui.ResetOnSpawn = false; gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.Parent = LP:WaitForChild("PlayerGui")
 	ctx.state.gui = gui
+	ctx.state.isAlive = true
+	gui.Destroying:Connect(function()
+		ctx.state.isAlive = false
+	end)
 
 	-- floating maximize
 	local maxIcon = mk("TextButton", { Size = UDim2.fromOffset(46, 46), Position = UDim2.new(0, 15, 0.5, -23), BackgroundColor3 = C.panel, Text = "AH", Font = Enum.Font.GothamBold, TextSize = 15, TextColor3 = C.acc, Visible = false, Active = true }, gui)

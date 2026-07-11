@@ -39,7 +39,7 @@ local ctx = {
 }
 
 function ctx.alive()
-	return ctx.state.gui ~= nil and ctx.state.gui.Parent ~= nil
+	return ctx.state.isAlive ~= false
 end
 function ctx.elevate()
 	pcall(function()

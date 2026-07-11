@@ -24,6 +24,10 @@ return function(ctx)
 	gui.Name = "GAGSeller"; gui.ResetOnSpawn = false; gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.Parent = LP:WaitForChild("PlayerGui")
 	ctx.state.gui = gui
+	ctx.state.isAlive = true
+	gui.Destroying:Connect(function()
+		ctx.state.isAlive = false
+	end)
 
 	----------------------------------------------------------------- Floating Maximize Button
 	local maxIcon = mk("TextButton", {
