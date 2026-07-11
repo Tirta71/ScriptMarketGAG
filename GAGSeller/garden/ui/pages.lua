@@ -59,7 +59,7 @@ return function(ctx)
 	makeMultiDropdown(at, "Pet Types to Trade", "Filter pets by type (empty = all non-favorite)",
 		reg.PET_OPTIONS, CFG.petTypes, function() persist() end, 2)
 
-	makeInput(at, "Weight Filter (KG)", "0 = off | +60 = at least 60kg | -60 = at most 60kg",
+	makeInput(at, "Weight Filter (KG)", "pakai berat tampilan game | 0=off | +6 = min 6kg | -6 = max 6kg",
 		function() return CFG.weightFilter end,
 		function(txt) CFG.weightFilter = tonumber(txt) or 0; persist() end, 3)
 

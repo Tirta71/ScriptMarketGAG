@@ -43,8 +43,8 @@ return function(ctx)
 		if not (pt and pd) then return false end
 		-- filter type (kosong = semua)
 		if next(CFG.petTypes) and not CFG.petTypes[pt] then return false end
-		-- weight
-		local w = pd.BaseWeight or 0
+		-- weight: berat TAMPIL di game = BaseWeight + 0.5 (pakai angka tampilan di filter)
+		local w = (pd.BaseWeight or 0) + 0.5
 		local wf = CFG.weightFilter or 0
 		if wf > 0 and w < wf then return false end
 		if wf < 0 and w > -wf then return false end
