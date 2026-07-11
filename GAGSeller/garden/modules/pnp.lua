@@ -52,22 +52,34 @@ return function(ctx)
 		return out
 	end
 
-	-- posisi pet sekarang (buat naruh balik di tempat semula)
+	-- Posisi placement. Model pet BISA hilang (low performance mode) -> FindLocalPetModel nil.
+	-- Strategi: baca dari model kalau ada (sambil di-cache), else pakai cache terakhir,
+	-- else fallback ke posisi player (pasti di dalam PetArea saat main di farm sendiri).
+	local lastPos = {}
+	local LP = ctx.LP
+
+	local function playerPos()
+		local char = LP.Character
+		local hrp = char and char:FindFirstChild("HumanoidRootPart")
+		return hrp and hrp.Position or nil
+	end
+
 	local function getPos(uuid)
-		if not PU then return nil end
-		local ok, model = pcall(function() return PU:FindLocalPetModel(uuid) end)
-		if ok and model and typeof(model) == "Instance" then
-			local okc, cf = pcall(function() return model:GetPivot() end)
-			if okc then return cf.Position end
+		if PU then
+			local ok, model = pcall(function() return PU:FindLocalPetModel(uuid) end)
+			if ok and model and typeof(model) == "Instance" then
+				local okc, cf = pcall(function() return model:GetPivot() end)
+				if okc then lastPos[uuid] = cf.Position; return cf.Position end
+			end
 		end
-		return nil
+		return lastPos[uuid] or playerPos()
 	end
 
 	-- pick & place 1 pet, lalu tunggu sampai cooldown mulai lagi (biar nggak dobel pungut)
 	-- PENTING: EquipPet butuh objek CFrame (bukan string), rotasi identity, posisi dalam PetArea.
 	local function pnpOne(uuid)
 		if not PetsService then return false end
-		local pos = getPos(uuid)
+		local pos = getPos(uuid)  -- ambil SEBELUM unequip
 		if not pos then return false end
 		pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
 		task.wait(math.max(0, CFG.equipDelay))
