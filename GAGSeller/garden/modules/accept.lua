@@ -13,14 +13,52 @@ return function(ctx)
 
 	----------------------------------------------------------------- AUTO ACCEPT GIFT
 	-- GiftPet.OnClientEvent(giftId, petDescription, senderName)
+	-- UI notif dibuat game di PlayerGui.Gift_Notification.Frame (tiap gift = 1 clone,
+	-- tombolnya di notif.Holder.Frame.Accept). Kita picu klik tombol itu supaya
+	-- handler asli jalan (destroy UI + fire AcceptPetGift) -> UI ikut hilang.
+	local LP = ctx.LP
+
+	local function clickAcceptButtons()
+		local pg = LP:FindFirstChild("PlayerGui")
+		local gn = pg and pg:FindFirstChild("Gift_Notification")
+		local frame = gn and gn:FindFirstChild("Frame")
+		if not frame then return 0 end
+		local n = 0
+		for _, notif in ipairs(frame:GetChildren()) do
+			local holder = notif:FindFirstChild("Holder")
+			local inner  = holder and holder:FindFirstChild("Frame")
+			local accept = inner and inner:FindFirstChild("Accept")
+			if accept then
+				local fired = false
+				if type(getconnections) == "function" then
+					for _, c in ipairs(getconnections(accept.MouseButton1Click)) do
+						pcall(function() c:Fire() end); fired = true
+					end
+				end
+				if fired then n += 1 end
+			end
+		end
+		return n
+	end
+
 	if GiftPet and AcceptPetGift then
 		GiftPet.OnClientEvent:Connect(function(giftId, petDesc, sender)
 			if not CFG.acceptGifts then return end
 			if type(giftId) ~= "string" then return end
 			log(("Gift masuk dari %s: %s"):format(tostring(sender), tostring(petDesc)))
-			task.wait(0.4)
-			local ok = pcall(function() AcceptPetGift:FireServer(true, giftId) end)
-			log(ok and "Gift diterima ✓" or "Gift gagal diterima")
+			task.wait(0.5) -- kasih waktu game bikin UI notif-nya dulu
+			local clicked = clickAcceptButtons()
+			if clicked > 0 then
+				log("Gift diterima ✓ (via tombol, UI ditutup)")
+			else
+				-- fallback: fire remote langsung + coba hapus notif
+				pcall(function() AcceptPetGift:FireServer(true, giftId) end)
+				local pg = LP:FindFirstChild("PlayerGui")
+				local gn = pg and pg:FindFirstChild("Gift_Notification")
+				local frame = gn and gn:FindFirstChild("Frame")
+				if frame then for _, c in ipairs(frame:GetChildren()) do c:Destroy() end end
+				log("Gift diterima ✓ (fallback remote)")
+			end
 		end)
 	else
 		warn("[AllegiaanHub] GiftPet/AcceptPetGift remote tidak ketemu — auto accept gift nonaktif.")
