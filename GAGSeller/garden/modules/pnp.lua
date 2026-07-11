@@ -96,6 +96,14 @@ return function(ctx)
 		return center + Vector3.new(offX, 0, offZ)
 	end
 
+	local function getPetMaxCd(petType)
+		local name = tostring(petType)
+		if name:find("Ferret") then return 1200 end
+		if name:find("Peacock") then return 15 end
+		if name:find("Dilophosaurus") then return 60 end
+		return 60
+	end
+
 	----------------------------------------------------------------- loop utama
 	local function pnpLoop()
 		ctx.state.pnpId = (ctx.state.pnpId or 0) + 1
@@ -112,9 +120,9 @@ return function(ctx)
 				for _, p in ipairs(pets) do
 					if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
 
-					-- Pet dianggap ready jika sisa cooldown-nya di bawah READY_TH (10s)
+					-- Pet dianggap ready jika sisa cooldown-nya nil atau di bawah READY_TH (10s)
 					local cdVal = ownCd[p.uuid]
-					local isReady = cdVal ~= nil and cdVal <= READY_TH
+					local isReady = (cdVal == nil) or (cdVal <= READY_TH)
 
 					if isReady then
 						didAny = true
@@ -132,6 +140,8 @@ return function(ctx)
 						
 						if pos then
 							pcall(function() PetsService:FireServer("EquipPet", p.uuid, CFrame.new(pos)) end)
+							-- Set cooldown lokal secara instan untuk mencegah loop sebelum server mereplikasi
+							ownCd[p.uuid] = getPetMaxCd(p.petType)
 						end
 						
 						-- Jeda 0.5 detik setelah ditaruh agar server sempat sinkronisasi cooldown barunya
