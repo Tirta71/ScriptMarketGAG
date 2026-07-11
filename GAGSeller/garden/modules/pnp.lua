@@ -161,8 +161,10 @@ return function(ctx)
 		return out
 	end
 
-	-- Posisi placement. Cache posisi asli pet agar tidak drift.
-	local lastPos = {}
+	-- Posisi placement: tiap pet dikasih SLOT grid tetap yang rapat di sekitar center farm.
+	-- Kalau banyak pet ditaruh di titik sama, game nyebar mereka (anti-overlap) -> mencar.
+	-- Grid rapat (jarak ~SP stud) = nggak overlap TAPI tetap ngumpul dalam jangkauan aura Peacock.
+	-- Slot deterministik per pet -> posisi stabil, nggak drift/loncat.
 	local LP = ctx.LP
 
 	local function playerPos()
@@ -172,20 +174,25 @@ return function(ctx)
 	end
 
 	local GetFarm = require(RS.Modules.GetFarm)
-
-	local function getPos(uuid)
-		if lastPos[uuid] then return lastPos[uuid] end
-		if PU then
-			local ok, model = pcall(function() return PU:FindLocalPetModel(uuid) end)
-			if ok and model and typeof(model) == "Instance" then
-				local okc, cf = pcall(function() return model:GetPivot() end)
-				if okc then lastPos[uuid] = cf.Position; return cf.Position end
-			end
-		end
+	local function farmCenter()
 		local farm = GetFarm and GetFarm(LP)
-		local petArea = farm and farm:FindFirstChild("PetArea")
-		if petArea then return petArea.Position end
+		local pa = farm and farm:FindFirstChild("PetArea")
+		if pa then return pa.Position end
 		return playerPos()
+	end
+
+	local slotOf, nextSlot = {}, 0
+	local GRID_COLS, GRID_SP = 6, 3   -- 6 kolom, jarak 3 stud (rapat, dalam aura)
+	local function getPos(uuid)
+		if not slotOf[uuid] then slotOf[uuid] = nextSlot; nextSlot = nextSlot + 1 end
+		local center = farmCenter()
+		if not center then return nil end
+		local i = slotOf[uuid]
+		local col = i % GRID_COLS
+		local row = math.floor(i / GRID_COLS)
+		local offX = (col - (GRID_COLS - 1) / 2) * GRID_SP
+		local offZ = (row - 1) * GRID_SP
+		return center + Vector3.new(offX, 0, offZ)
 	end
 
 	----------------------------------------------------------------- loop
