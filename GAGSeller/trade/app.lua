@@ -12,7 +12,7 @@ return function(ctx)
 	tabBtns["Sell"].btn.TextColor3 = C.txt
 	tabBtns["Sell"].line.Visible = true
 
-	log("PandoruyHub GAG Seller v1.2.5 dimuat.")
+	log("AllegiaanHub GAG Seller v1.2.5 dimuat.")
 	ctx.renderInventory()
 
 	------------------------------------------------------------------ Auto Claim Supervisor Loop

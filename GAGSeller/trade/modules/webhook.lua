@@ -109,12 +109,12 @@ return function(ctx)
 					}
 				},
 				footer = {
-					text = ("Pandora GAG Trade • %s"):format(os.date("%d/%m/%y, %H.%M"))
+					text = ("Allegiaant GAG Trade • %s"):format(os.date("%d/%m/%y, %H.%M"))
 				}
 			}
 
 			sendWebhook({
-				username = "GAG Seller Notification",
+				username = "AllegiaanHub GAG Seller",
 				embeds = { embed }
 			})
 		end

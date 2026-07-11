@@ -117,7 +117,7 @@ return function(ctx)
 	makeButton(webhookCard, "Test Webhook Connection", C.acc, function()
 		if CFG.webhookUrl == "" then log("Webhook URL kosong."); return end
 		local prev = CFG.webhookEnabled; CFG.webhookEnabled = true
-		ctx.sendWebhook({ username = "GAG Seller Test", embeds = {{ title = "🔔 Test Sukses", description = "Seller Webhook berhasil terhubung!", color = 10181046, footer = { text = "Player: " .. LP.Name } }} })
+		ctx.sendWebhook({ username = "AllegiaanHub GAG Seller", embeds = {{ title = "🔔 Test Sukses", description = "Seller Webhook berhasil terhubung!", color = 10181046, footer = { text = "Player: " .. LP.Name } }} })
 		CFG.webhookEnabled = prev
 		log("Test webhook terkirim.")
 	end, 3)

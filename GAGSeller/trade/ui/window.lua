@@ -84,7 +84,7 @@ return function(ctx)
 	local logo = mk("Frame", { Size = UDim2.new(1, 0, 0, 30), BackgroundTransparency = 1 }, sidebar)
 	mk("TextLabel", {
 		Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1,
-		Text = "PandoruyHub | GAG Trade", Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = C.acc,
+		Text = "AllegiaanHub | GAG Trade", Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = C.acc,
 		TextXAlignment = Enum.TextXAlignment.Left,
 	}, logo)
 
