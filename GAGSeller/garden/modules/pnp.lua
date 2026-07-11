@@ -33,38 +33,30 @@ return function(ctx)
 		PetCD.OnClientEvent:Connect(function(uuid, cd)
 			if type(uuid) ~= "string" then return end
 			
-			local oldEntry = cdMap[uuid]
-			local changed = true
-			if oldEntry and type(oldEntry.data) == "table" and type(cd) == "table" and #oldEntry.data == #cd then
-				local match = true
-				for i, e in ipairs(cd) do
-					local oldE = oldEntry.data[i]
-					if not oldE or oldE.Passive ~= e.Passive or tonumber(oldE.Time) ~= tonumber(e.Time) then
-						match = false
-						break
-					end
-				end
-				if match then changed = false end
-			end
-
-			if changed or not oldEntry then
-				cdMap[uuid] = { data = cd, receivedAt = tick() }
-			else
-				cdMap[uuid].data = cd
-			end
-
-			local mainCD
+			local data = {}
+			local mainCD = nil
 			if type(cd) == "table" then
 				for _, e in ipairs(cd) do
+					local duration = tonumber(e.Time) or 0
+					table.insert(data, {
+						Passive = e.Passive,
+						Time = duration,
+						expireTime = tick() + duration
+					})
 					if not tostring(e.Passive or ""):find("Mutation") then
-						mainCD = tonumber(e.Time)
+						mainCD = duration
 					end
 				end
 			end
+			cdMap[uuid] = { data = data }
 
-			-- Sinyal kosong = cooldown 0 (ready).
+			-- Simpan waktu kedaluwarsa (timestamp)
 			if isPetEquipped(uuid) then
-				ownCd[uuid] = mainCD or 0
+				if mainCD then
+					ownCd[uuid] = tick() + mainCD
+				else
+					ownCd[uuid] = 0
+				end
 			else
 				ownCd[uuid] = nil
 			end
@@ -140,7 +132,8 @@ return function(ctx)
 					if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
 
 					-- Pet dianggap ready jika sisa cooldown-nya nil atau di bawah READY_TH (10s)
-					local cdVal = ownCd[p.uuid]
+					local expireTime = ownCd[p.uuid]
+					local cdVal = expireTime and (expireTime - tick())
 					local isReady = (cdVal == nil) or (cdVal <= READY_TH)
 
 					if isReady then
@@ -160,7 +153,7 @@ return function(ctx)
 						if pos then
 							pcall(function() PetsService:FireServer("EquipPet", p.uuid, CFrame.new(pos)) end)
 							-- Set cooldown lokal secara instan untuk mencegah loop sebelum server mereplikasi
-							ownCd[p.uuid] = getPetMaxCd(p.petType)
+							ownCd[p.uuid] = tick() + getPetMaxCd(p.petType)
 						end
 						
 						-- Jeda 0.5 detik setelah ditaruh agar server sempat sinkronisasi cooldown barunya

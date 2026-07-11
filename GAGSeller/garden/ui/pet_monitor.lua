@@ -244,10 +244,13 @@ return function(ctx)
 				local timeVal = 0
 				local cdEntry = ctx.state.cdMap and ctx.state.cdMap[p.uuid]
 				if type(cdEntry) == "table" and type(cdEntry.data) == "table" then
-					local elapsed = tick() - cdEntry.receivedAt
 					for _, entry in ipairs(cdEntry.data) do
 						if tostring(entry.Passive) == pasName then
-							timeVal = math.max(0, (tonumber(entry.Time) or 0) - elapsed)
+							if entry.expireTime then
+								timeVal = math.max(0, entry.expireTime - tick())
+							else
+								timeVal = 0
+							end
 							break
 						end
 					end
