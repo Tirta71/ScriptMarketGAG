@@ -54,29 +54,6 @@ return function(ctx)
 			end
 		end
 		
-		-- Masukkan juga pet yang dipilih di dropdown tapi belum terpasang (equipped = false)
-		for uuid, active in pairs(sel) do
-			if active then
-				local isAlreadyIn = false
-				for _, p in ipairs(out) do
-					if p.uuid == uuid then isAlreadyIn = true; break end
-				end
-				if not isAlreadyIn then
-					local petData = inv and inv[uuid]
-					if petData then
-						table.insert(out, {
-							uuid = uuid,
-							petType = petData.PetType or "Unknown",
-							equipped = false,
-							level = petData.PetData and petData.PetData.Level or 0,
-							weight = petData.PetData and ((petData.PetData.BaseWeight or 0) + 0.5) or 0.5,
-							mutation = petData.PetData and petData.PetData.MutationType or "Normal",
-						})
-					end
-				end
-			end
-		end
-		
 		table.sort(out, function(a, b) return a.petType < b.petType end)
 		return out
 	end
@@ -267,7 +244,7 @@ return function(ctx)
 				local timeVal = 0
 				local cdEntry = ctx.state.cdMap and ctx.state.cdMap[p.uuid]
 				if type(cdEntry) == "table" and type(cdEntry.data) == "table" then
-					local elapsed = os.clock() - cdEntry.receivedAt
+					local elapsed = tick() - cdEntry.receivedAt
 					for _, entry in ipairs(cdEntry.data) do
 						if tostring(entry.Passive) == pasName then
 							timeVal = math.max(0, (tonumber(entry.Time) or 0) - elapsed)
