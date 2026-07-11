@@ -8,7 +8,8 @@
 	  - selain itu   -> GAGSeller/garden/init.lua  (fitur garden)
 --]]
 
-local ROOT = "https://raw.githubusercontent.com/Tirta71/ScriptMarketGAG/main/GAGSeller"
+local branch = _G.GAG_BRANCH or "main"
+local ROOT = "https://raw.githubusercontent.com/Tirta71/ScriptMarketGAG/" .. branch .. "/GAGSeller"
 
 -- PlaceId server. Tambah di sini kalau nanti mau map lebih spesifik.
 local TRADE_WORLD_PLACE = 129954712878723

@@ -4,7 +4,8 @@
 	Pola sama seperti trade/: tiap modul `return function(ctx)`, berbagi tabel ctx.
 --]]
 
-local BASE = "https://raw.githubusercontent.com/Tirta71/ScriptMarketGAG/main/GAGSeller/garden"
+local branch = _G.GAG_BRANCH or "main"
+local BASE = "https://raw.githubusercontent.com/Tirta71/ScriptMarketGAG/" .. branch .. "/GAGSeller/garden"
 
 local function loadModule(relPath)
 	local full = BASE .. "/" .. relPath .. "?t=" .. os.time()
