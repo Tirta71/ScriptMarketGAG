@@ -1,10 +1,11 @@
---[[ pnp.lua — Pick & Place pet, cuma saat skill utama READY.
+--[[ pnp.lua — Pick & Place pet, SETELAH skill terkonfirmasi keluar.
      Remote (dari spy):
        pickup: PetsService:FireServer("UnequipPet", uuid)
-       place : PetsService:FireServer("EquipPet", uuid, cframeString)  (posisi semula)
+       place : PetsService:FireServer("EquipPet", uuid, CFrame)  (posisi semula)
      Cooldown: PetCooldownsUpdated(uuid, { {Time=<detik>, Passive=<nama>}, ... }).
        - Passive yang mengandung "Mutation" DIABAIKAN (itu passive mutation, bukan skill).
-       - Pet READY kalau tidak ada passive non-mutation dengan Time > 0. ]]
+     Flow baru:
+       Place → tunggu skill fired (cooldown muncul) → pickupDelay → Pickup → equipDelay → Place → repeat ]]
 return function(ctx)
 	local DataService = ctx.deps.DataService
 	local PetsService = ctx.deps.PetsService
@@ -22,26 +23,28 @@ return function(ctx)
 		end)
 	end
 
-	-- ready = tidak ada passive NON-mutation yang masih Time > 0
-	local function isReady(uuid, petType)
+	-- Deteksi apakah pet SUDAH menembakkan skill-nya (cooldown muncul dengan Time > 0).
+	-- Ini kebalikan dari isReady: kita cari KONFIRMASI bahwa skill beneran keluar.
+	local function hasSkillFired(uuid, petType)
 		local cd = cdMap[uuid]
-		if type(cd) ~= "table" then return true end   -- belum ada info -> anggap ready
-		
-		-- Deteksi tipe pet Mimic
+		if type(cd) ~= "table" then return false end
+
 		local isMimic = tostring(petType):find("Mimic") ~= nil
-		
+
 		for _, entry in ipairs(cd) do
 			local pas = tostring(entry.Passive or "")
-			if not pas:find("Mutation") and (tonumber(entry.Time) or 0) > 0 then
-				-- Jika pet Mimic, abaikan cooldown selain "Mimicry" (abaikan skill hasil copy)
-				if isMimic and pas ~= "Mimicry" then
-					-- Abaikan cooldown skill copasan
+			local t   = tonumber(entry.Time) or 0
+			if not pas:find("Mutation") and t > 0 then
+				-- Untuk pet Mimic, hanya deteksi cooldown bawaan "Mimicry"
+				-- (abaikan cooldown skill copasan seperti "Rainbow Frilled Reptile")
+				if isMimic then
+					if pas == "Mimicry" then return true end
 				else
-					return false
+					return true
 				end
 			end
 		end
-		return true
+		return false
 	end
 
 	----------------------------------------------------------------- helpers
@@ -63,7 +66,7 @@ return function(ctx)
 
 	-- Posisi placement. Model pet BISA hilang (low performance mode) -> FindLocalPetModel nil.
 	-- Strategi: baca dari model kalau ada (sambil di-cache), else pakai cache terakhir,
-	-- else fallback ke posisi player (pasti di dalam PetArea saat main di farm sendiri).
+	-- else fallback ke PetArea kebun sendiri, terakhir posisi player.
 	local lastPos = {}
 	local LP = ctx.LP
 
@@ -97,25 +100,6 @@ return function(ctx)
 		return playerPos()
 	end
 
-	-- pick & place 1 pet, lalu tunggu sampai cooldown mulai lagi (biar nggak dobel pungut)
-	-- PENTING: EquipPet butuh objek CFrame (bukan string), rotasi identity, posisi dalam PetArea.
-	local function pnpOne(uuid, petType)
-		if not PetsService then return false end
-		local pos = getPos(uuid)  -- ambil SEBELUM unequip
-		if not pos then return false end
-		pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
-		task.wait(math.max(0, CFG.equipDelay))
-		pcall(function() PetsService:FireServer("EquipPet", uuid, CFrame.new(pos)) end)
-		
-		-- JEDA REPLIKASI: Tunggu server memproses equip & memicu skill sebelum cek cooldown
-		task.wait(0.5)
-		
-		-- tunggu skill jalan lagi (cooldown muncul) supaya loop nggak langsung pick up lagi
-		local t0 = os.clock()
-		repeat task.wait(0.1) until (not isReady(uuid, petType)) or (os.clock() - t0) > 2.0
-		return true
-	end
-
 	----------------------------------------------------------------- loop
 	local function pnpLoop()
 		ctx.state.pnpId = (ctx.state.pnpId or 0) + 1
@@ -130,15 +114,30 @@ return function(ctx)
 				local didAny = false
 				for _, p in ipairs(pets) do
 					if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
-					if isReady(p.uuid, p.petType) then
+
+					-- CEK: Apakah pet ini sudah nge-skill? (cooldown muncul = skill terkonfirmasi keluar)
+					if hasSkillFired(p.uuid, p.petType) then
 						didAny = true
-						if CFG.pickupDelay > 0 then task.wait(CFG.pickupDelay) end  -- jeda saat skill ready
-						if not CFG.pnpEnabled then break end
-						pnpOne(p.uuid, p.petType)
+
+						-- 1) Tunggu pickupDelay (biar skill selesai animasinya dulu)
+						if CFG.pickupDelay > 0 then task.wait(CFG.pickupDelay) end
+						if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
+
+						-- 2) PICKUP (cabut pet dari tanah)
+						local pos = getPos(p.uuid) -- simpan posisi SEBELUM cabut
+						pcall(function() PetsService:FireServer("UnequipPet", p.uuid) end)
+
+						-- 3) Tunggu equipDelay
+						task.wait(math.max(0.01, CFG.equipDelay))
+
+						-- 4) PLACE (taruh pet kembali ke posisi semula)
+						if pos then
+							pcall(function() PetsService:FireServer("EquipPet", p.uuid, CFrame.new(pos)) end)
+						end
 					end
 				end
-				setStatus(("PNP jalan: %d pet%s"):format(#pets, didAny and "" or " (nunggu skill ready)"))
-				task.wait(0.15)  -- poll interval saat semua masih cooldown
+				setStatus(("PNP jalan: %d pet%s"):format(#pets, didAny and "" or " (nunggu skill keluar)"))
+				task.wait(0.15)  -- poll interval
 			end
 		end
 	end
@@ -146,3 +145,4 @@ return function(ctx)
 	function ctx.startPnp() task.spawn(pnpLoop) end
 	-- stop cukup set CFG.pnpEnabled=false
 end
+
