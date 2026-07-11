@@ -343,7 +343,7 @@ return function(ctx)
 		}, titleBar)
 
 		-- Pet Count Badge (yellow circular badge)
-		badge = mk("Frame", {
+		local badge = mk("Frame", {
 			Size = UDim2.fromOffset(22, 22),
 			Position = UDim2.new(1, -94, 0.5, -11),
 			BackgroundColor3 = C.acc,
