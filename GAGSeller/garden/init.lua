@@ -58,6 +58,7 @@ local MODULES = {
 	"modules/accept.lua",
 	"modules/pnp.lua",
 	"ui/components.lua",
+	"ui/pet_monitor.lua",
 	"ui/window.lua",
 	"ui/pages.lua",
 	"app.lua",

@@ -27,6 +27,7 @@ return function(ctx)
 		pickupDelay = 0.4,    -- jeda setelah place sebelum siklus berikutnya
 		equipDelay  = 0.3,   -- jeda antara unequip -> equip (aman dari race condition)
 		pnpEnabled  = false,
+		pnpMonitorEnabled = false,
 
 		-- webhook (opsional)
 		webhookUrl     = "",
@@ -67,6 +68,7 @@ return function(ctx)
 			CFG.pickupDelay = tonumber(st.pickupDelay) or 0.4
 			CFG.equipDelay  = tonumber(st.equipDelay) or 0.02
 			CFG.pnpEnabled  = st.pnpEnabled or false
+			CFG.pnpMonitorEnabled = st.pnpMonitorEnabled or false
 			CFG.webhookUrl     = st.webhookUrl or ""
 			CFG.webhookEnabled = st.webhookEnabled or false
 		end
