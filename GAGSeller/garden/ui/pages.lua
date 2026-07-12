@@ -57,6 +57,7 @@ return function(ctx)
 			TextSize = 13,
 			TextColor3 = C.txt,
 			TextXAlignment = Enum.TextXAlignment.Left,
+			TextWrapped = true,
 			LineHeight = 1.35,
 			RichText = true,
 			LayoutOrder = 1
