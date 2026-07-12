@@ -52,6 +52,7 @@ return function(ctx)
 		}, row)
 		corner(box, 6); stroke(box)
 		pad(box, 8, 8, 0, 0)
+		box:GetPropertyChangedSignal("Text"):Connect(function() setv(box.Text) end)
 		box.FocusLost:Connect(function() setv(box.Text); box.Text = tostring(getv()) end)
 		return box
 	end

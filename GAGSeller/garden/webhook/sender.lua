@@ -28,15 +28,11 @@ local function sendWebhook(url, payload, ctx)
 				method = "POST",
 				Headers = {
 					["Content-Type"] = "application/json",
-					["content-type"] = "application/json",
-					["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-					["user-agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+					["content-type"] = "application/json"
 				},
 				headers = {
 					["Content-Type"] = "application/json",
-					["content-type"] = "application/json",
-					["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-					["user-agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+					["content-type"] = "application/json"
 				},
 				Body = jsonPayload,
 				body = jsonPayload
