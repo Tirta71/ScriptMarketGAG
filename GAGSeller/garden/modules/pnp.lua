@@ -110,7 +110,7 @@ return function(ctx)
 	end
 
 	-- daftar pet dari INVENTORY (semua pet, bukan cuma yang di-garden) buat dropdown Select Pets.
-	function ctx.inventoryPetOptions()
+	function ctx.inventoryPetOptions(selectedSet)
 		local out = {}
 		local ok, d = pcall(function() return DataService:GetData() end)
 		if not ok or not d then return out end
@@ -131,8 +131,8 @@ return function(ctx)
 			}
 		end
 		table.sort(out, function(a, b)
-			local selA = CFG.pnpUuids and CFG.pnpUuids[a.value] and 1 or 0
-			local selB = CFG.pnpUuids and CFG.pnpUuids[b.value] and 1 or 0
+			local selA = selectedSet and selectedSet[a.value] and 1 or 0
+			local selB = selectedSet and selectedSet[b.value] and 1 or 0
 			if selA ~= selB then
 				return selA > selB
 			end

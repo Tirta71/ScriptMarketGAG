@@ -96,11 +96,11 @@ return function(ctx)
 
 		-- Leveling Pet Team (Multi-dropdown UUIDs)
 		makeMultiDropdownDyn(settingsAcc, "Leveling Pet Team", "Select pets to keep in garden while leveling",
-			function() return ctx.inventoryPetOptions() end, CFG.levelingTeamUuids, function() persist() end, 1)
+			function() return ctx.inventoryPetOptions(CFG.levelingTeamUuids) end, CFG.levelingTeamUuids, function() persist() end, 1)
 
 		-- Leveling Pet Types (Multi-dropdown Pet Types)
 		makeMultiDropdownDyn(settingsAcc, "Leveling Pet Types", "Select pet types to auto-level",
-			function() return ctx.getInventoryPetTypes() end, CFG.levelingPetTypes, function() persist() end, 2)
+			function() return ctx.getInventoryPetTypes(CFG.levelingPetTypes) end, CFG.levelingPetTypes, function() persist() end, 2)
 
 		-- Target Level (Input)
 		makeInput(settingsAcc, "Target Level", "Target level to reach before un-equipping",
@@ -128,7 +128,7 @@ return function(ctx)
 	-- Pilih pet PER-UUID dari INVENTORY/backpack (buka dropdown = auto-refresh daftarnya).
 	-- Cuma pet yang dicentang DAN sudah kamu taruh di garden yang bakal di-PNP.
 	makeMultiDropdownDyn(pnp, "Select Pets for Pickup", "Pilih pet dari backpack (kosong = semua yg di garden)",
-		function() return ctx.inventoryPetOptions() end, CFG.pnpUuids, function() persist() end, 1)
+		function() return ctx.inventoryPetOptions(CFG.pnpUuids) end, CFG.pnpUuids, function() persist() end, 1)
 
 	makeInput(pnp, "Pickup Delay (Seconds)", "Jeda tiap siklus (idealnya = saat skill ready)",
 		function() return CFG.pickupDelay end,

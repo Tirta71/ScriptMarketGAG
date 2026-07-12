@@ -74,7 +74,7 @@ return function(ctx)
 	end
 
 	-- Mendapatkan semua tipe unik pet yang dimiliki di inventory
-	function ctx.getInventoryPetTypes()
+	function ctx.getInventoryPetTypes(selectedSet)
 		local out = {}
 		local ok, d = pcall(function() return DataService:GetData() end)
 		if not ok or not d then return out end
@@ -89,7 +89,14 @@ return function(ctx)
 				table.insert(out, { value = pt, display = pt })
 			end
 		end
-		table.sort(out, function(a, b) return a.display < b.display end)
+		table.sort(out, function(a, b)
+			local selA = selectedSet and selectedSet[a.value] and 1 or 0
+			local selB = selectedSet and selectedSet[b.value] and 1 or 0
+			if selA ~= selB then
+				return selA > selB
+			end
+			return a.display < b.display
+		end)
 		return out
 	end
 
