@@ -38,8 +38,62 @@ return function(ctx)
 		corner(box, 8); stroke(box); pad(box, 14, 14, 12, 12)
 		mk("TextLabel", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = "Fitur untuk tab ini belum tersedia.", Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top }, box)
 	end
-	for _, name in ipairs({ "Elephant", "Growth", "Leveling", "Mutation", "Shop" }) do
+	for _, name in ipairs({ "Elephant", "Growth", "Mutation", "Shop" }) do
 		placeholder(pageRef[name])
+	end
+
+	------------------------------------------------------------------ LEVELING
+	local levelingPage = pageRef["Leveling"]
+	do
+		-- 1. Leveling Mode Status Accordion
+		local statusAcc = makeAccordion(levelingPage, "Leveling Mode Status", 1, true)
+		
+		local statusLbl = mk("TextLabel", {
+			Size = UDim2.new(1, 0, 0, 24),
+			BackgroundTransparency = 1,
+			Text = "Status: Idle",
+			Font = Enum.Font.GothamMedium,
+			TextSize = 13,
+			TextColor3 = C.sub,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			LayoutOrder = 1
+		}, statusAcc)
+		
+		task.spawn(function()
+			while ctx.alive() do
+				statusLbl.Text = "Status: " .. tostring(ctx.state.levelingStatus or "Idle")
+				task.wait(1)
+			end
+		end)
+
+		-- 2. Automation Leveling Settings Accordion
+		local settingsAcc = makeAccordion(levelingPage, "Automation Leveling Settings", 2, true)
+
+		-- Leveling Pet Team (Multi-dropdown UUIDs)
+		makeMultiDropdownDyn(settingsAcc, "Leveling Pet Team", "Select pets to keep in garden while leveling",
+			function() return ctx.inventoryPetOptions() end, CFG.levelingTeamUuids, function() persist() end, 1)
+
+		-- Leveling Pet Types (Multi-dropdown Pet Types)
+		makeMultiDropdownDyn(settingsAcc, "Leveling Pet Types", "Select pet types to auto-level",
+			function() return ctx.getInventoryPetTypes() end, CFG.levelingPetTypes, function() persist() end, 2)
+
+		-- Target Level (Input)
+		makeInput(settingsAcc, "Target Level", "Target level to reach before un-equipping",
+			function() return tostring(CFG.levelingTargetLevel) end,
+			function(txt) CFG.levelingTargetLevel = tonumber(txt) or 500; persist() end, 3)
+
+		-- Max Pets in Garden (Input)
+		makeInput(settingsAcc, "Max Pets in Garden", "Maximum active leveling pets allowed in garden",
+			function() return tostring(CFG.levelingMaxPets) end,
+			function(txt) CFG.levelingMaxPets = tonumber(txt) or 2; persist() end, 4)
+
+		-- Enable Automation Leveling (Toggle)
+		makeToggle(settingsAcc, "Enable Automation Leveling", "Equip and rotate pets automatically based on settings",
+			function() return CFG.levelingEnabled end,
+			function(v)
+				CFG.levelingEnabled = v; persist()
+				if v then ctx.startLeveling() end
+			end, 5)
 	end
 
 	------------------------------------------------------------------ PET (PNP)

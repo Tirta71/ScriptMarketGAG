@@ -47,4 +47,11 @@ return function(ctx)
 		ctx.refreshTradeStatus()
 		ctx.log("Auto-resume: automation trade ON.")
 	end
+
+	-- auto-resume Leveling kalau sebelumnya aktif
+	if CFG.levelingEnabled and ctx.startLeveling then
+		task.wait(2.0)
+		ctx.startLeveling()
+		ctx.log("Auto-resume: Leveling ON.")
+	end
 end

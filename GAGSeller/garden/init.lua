@@ -58,6 +58,7 @@ local MODULES = {
 	"modules/trade.lua",
 	"modules/accept.lua",
 	"modules/pnp.lua",
+	"modules/leveling.lua",
 	"ui/components.lua",
 	"ui/pet_monitor.lua",
 	"ui/window.lua",

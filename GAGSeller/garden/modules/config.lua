@@ -29,6 +29,13 @@ return function(ctx)
 		pnpEnabled  = false,
 		pnpMonitorEnabled = false,
 
+		-- Automation Leveling
+		levelingTeamUuids   = {},
+		levelingPetTypes    = {},
+		levelingTargetLevel = 500,
+		levelingMaxPets     = 2,
+		levelingEnabled     = false,
+
 		-- webhook (opsional)
 		webhookUrl     = "",
 		webhookEnabled = false,
@@ -69,6 +76,13 @@ return function(ctx)
 			CFG.equipDelay  = tonumber(st.equipDelay) or 0.02
 			CFG.pnpEnabled  = st.pnpEnabled or false
 			CFG.pnpMonitorEnabled = st.pnpMonitorEnabled or false
+			
+			CFG.levelingTeamUuids   = (type(st.levelingTeamUuids) == "table") and st.levelingTeamUuids or {}
+			CFG.levelingPetTypes    = (type(st.levelingPetTypes) == "table") and st.levelingPetTypes or {}
+			CFG.levelingTargetLevel = tonumber(st.levelingTargetLevel) or 500
+			CFG.levelingMaxPets     = tonumber(st.levelingMaxPets) or 2
+			CFG.levelingEnabled     = st.levelingEnabled or false
+
 			CFG.webhookUrl     = st.webhookUrl or ""
 			CFG.webhookEnabled = st.webhookEnabled or false
 		end
