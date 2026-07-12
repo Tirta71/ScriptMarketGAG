@@ -342,6 +342,46 @@ return function(ctx)
 		function() return CFG.webhookUrl end,
 		function(txt) CFG.webhookUrl = txt; persist() end, 1)
 
+	-- Test Webhook Connection (Button)
+	makeButton(whAcc, "Test Webhook Connection", "Send a test notification to your Discord channel",
+		function()
+			if not CFG.webhookUrl or CFG.webhookUrl == "" then
+				ctx.log("[Webhook Test] Gagal: Webhook URL kosong!")
+				return
+			end
+			ctx.log("[Webhook Test] Mengirim test payload...")
+			task.spawn(function()
+				local okS, sendWebhook = pcall(require, script.Parent.Parent.webhook.sender)
+				if okS and sendWebhook then
+					pcall(function()
+						sendWebhook(CFG.webhookUrl, {
+							embeds = {
+								{
+									title = "Webhook Connection Test",
+									description = "Koneksi Discord Webhook berhasil tersambung dengan Allegiaan Garden!",
+									color = 3066993, -- Green
+									fields = {
+										{
+											name = "Profile :",
+											value = string.format("> Username : ||%s||", ctx.LP.Name),
+											inline = false
+										}
+									},
+									footer = {
+										text = os.date("%B %d | %I:%M %p"),
+										icon_url = "https://i.imgur.com/H1Zh6V6.png"
+									}
+								}
+							}
+						})
+						ctx.log("[Webhook Test] Test payload berhasil dikirim!")
+					end)
+				else
+					ctx.log("[Webhook Test] Gagal meload modul sender.")
+				end
+			end)
+		end, 2)
+
 	local logCard = mk("Frame", { Size = UDim2.new(1, 0, 0, 220), BackgroundColor3 = C.row, LayoutOrder = 2 }, misc)
 	corner(logCard, 8); stroke(logCard); pad(logCard, 12, 12, 10, 10)
 	mk("TextLabel", { Size = UDim2.new(1, 0, 0, 20), BackgroundTransparency = 1, Text = "Console Log", Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = C.txt, TextXAlignment = Enum.TextXAlignment.Left }, logCard)

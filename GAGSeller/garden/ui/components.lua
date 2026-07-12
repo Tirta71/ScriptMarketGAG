@@ -261,6 +261,16 @@ return function(ctx)
 		return pg
 	end
 
+	----------------------------------------------------------------- button
+	local function makeButton(parent, title, desc, onClick, order)
+		local row = mk("Frame", { Size = UDim2.new(1, 0, 0, 52), BackgroundTransparency = 1, LayoutOrder = order }, parent)
+		labels(row, title, desc, 140)
+		local btn = mk("TextButton", { Size = UDim2.fromOffset(120, 30), Position = UDim2.new(1, -124, 0.5, -15), BackgroundColor3 = C.acc, Text = "Execute", Font = Enum.Font.GothamMedium, TextSize = 13, TextColor3 = Color3.new(1, 1, 1), AutoButtonColor = true }, row)
+		corner(btn, 6); stroke(btn)
+		btn.MouseButton1Click:Connect(onClick)
+		return btn
+	end
+
 	ctx.makeToggle = makeToggle
 	ctx.makeInput = makeInput
 	ctx.makeSingleDropdown = makeSingleDropdown
@@ -268,5 +278,6 @@ return function(ctx)
 	ctx.makeMultiDropdownDyn = makeMultiDropdownDyn
 	ctx.makeAccordion = makeAccordion
 	ctx.makePage = makePage
+	ctx.makeButton = makeButton
 	ctx.divider = divider
 end
