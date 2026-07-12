@@ -225,13 +225,32 @@ return function(ctx)
 	do
 		local summerAcc = makeAccordion(eventPage, "Automation Summer Event", 1, true)
 
+		-- Pilih tipe pet yang boleh di-feed ke Sam (kosong = pakai filter berat saja)
+		makeMultiDropdownDyn(summerAcc, "Pilih Pet (Feed ke Sam)", "Tipe pet yang boleh dikorbankan. Kosong = pakai filter berat.",
+			function() return ctx.getSummerPetTypes(CFG.summerPetTypes) end, CFG.summerPetTypes, function() persist() end, 1)
+
+		-- Berat minimum (KG)
+		makeInput(summerAcc, "Berat Min (KG)", "Hanya feed pet >= berat ini. 0 = off",
+			function() return tostring(CFG.summerMinWeight) end,
+			function(txt) CFG.summerMinWeight = tonumber(txt) or 0; persist() end, 2)
+
+		-- Berat maksimum (KG)
+		makeInput(summerAcc, "Berat Max (KG)", "Hanya feed pet <= berat ini. 0 = off",
+			function() return tostring(CFG.summerMaxWeight) end,
+			function(txt) CFG.summerMaxWeight = tonumber(txt) or 0; persist() end, 3)
+
+		-- Ikutkan pet favorite
+		makeToggle(summerAcc, "Ikut Feed Pet Favorite", "Kalau ON, pet favorite juga boleh dikorbankan",
+			function() return CFG.summerAllowFavorite end,
+			function(v) CFG.summerAllowFavorite = v; persist() end, 4)
+
 		-- Enable Automation Summer Event (Toggle)
-		makeToggle(summerAcc, "Enable Automation Summer Event", "Jalankan otomasi Summer Event secara otomatis",
+		makeToggle(summerAcc, "Enable Automation Summer Event", "Auto submit pet ke Sam The Clam + auto claim reward. Harus dekat Sam.",
 			function() return CFG.summerEventEnabled end,
 			function(v)
 				CFG.summerEventEnabled = v; persist()
 				if v and ctx.startSummerEvent then ctx.startSummerEvent() end
-			end, 1)
+			end, 5)
 	end
 
 	------------------------------------------------------------------ PET (PNP)

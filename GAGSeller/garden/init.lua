@@ -76,6 +76,7 @@ local MODULES = {
 	"modules/pnp.lua",
 	"modules/leveling.lua",
 	"modules/mutation.lua",
+	"modules/summer.lua",
 	"ui/components.lua",
 	"ui/pet_monitor.lua",
 	"ui/window.lua",

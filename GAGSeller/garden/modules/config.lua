@@ -47,8 +47,12 @@ return function(ctx)
 		mutationDelayAutoClaim = 0.5,
 		mutationEnabled       = false,
 
-		-- Automation Event
+		-- Automation Event (Sam The Clam)
 		summerEventEnabled = false,
+		summerPetTypes     = {},   -- set tipe pet yang boleh di-feed; kosong = pakai filter berat
+		summerMinWeight    = 0,    -- 0 = off
+		summerMaxWeight    = 0,    -- 0 = off
+		summerAllowFavorite = false,
 
 		-- webhook (opsional)
 		webhookUrl     = "",
@@ -109,6 +113,10 @@ return function(ctx)
 			CFG.mutationEnabled       = st.mutationEnabled or false
 
 			CFG.summerEventEnabled = st.summerEventEnabled or false
+			CFG.summerPetTypes     = (type(st.summerPetTypes) == "table") and st.summerPetTypes or {}
+			CFG.summerMinWeight    = tonumber(st.summerMinWeight) or 0
+			CFG.summerMaxWeight    = tonumber(st.summerMaxWeight) or 0
+			CFG.summerAllowFavorite = st.summerAllowFavorite or false
 
 			CFG.webhookUrl     = st.webhookUrl or ""
 			CFG.webhookEnabled = st.webhookEnabled or false
