@@ -106,6 +106,14 @@ return function(ctx)
 		local targetLvl = CFG.levelingTargetLevel or 500
 		local maxLvlPets = CFG.levelingMaxPets or 2
 
+		-- Lacak status equip secara lokal agar kebal dari delay replikasi server
+		local localEq = {}
+		local localEqCount = 0
+		for _, uuid in ipairs(eq) do
+			localEq[uuid] = true
+			localEqCount = localEqCount + 1
+		end
+
 		-- A. DETEKSI FIRST RUN: Cabut semua pet jika ada pet aktif
 		if ctx.state.levelingFirstRun then
 			ctx.state.levelingFirstRun = false
@@ -113,125 +121,108 @@ return function(ctx)
 				ctx.state.levelingStatus = "Resetting garden..."
 				for _, uuid in ipairs(eq) do
 					pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
+					localEq[uuid] = nil
+					localEqCount = localEqCount - 1
 					task.wait(0.25)
-				end
-				-- Refresh eq list setelah dicabut semua
-				local ok2, d2 = pcall(function() return DataService:GetData() end)
-				if ok2 and d2 and d2.PetsData then
-					eq = d2.PetsData.EquippedPets or {}
 				end
 			end
 		end
 
 		-- B. DETEKSI PERSISTENSI TEAM: Pasang kembali pet team yang dicabut oleh user/game
 		for uuid, _ in pairs(teamSet) do
-			local isEquipped = false
-			for _, eqUuid in ipairs(eq) do
-				if eqUuid == uuid then
-					isEquipped = true
-					break
-				end
-			end
-			if not isEquipped then
+			if not localEq[uuid] then
 				ctx.state.levelingStatus = "Re-equipping team..."
 				local pos = getPos(uuid)
 				if pos then
 					pcall(function() PetsService:FireServer("EquipPet", uuid, CFrame.new(pos)) end)
+					localEq[uuid] = true
+					localEqCount = localEqCount + 1
 					task.wait(0.3)
-				end
-				-- Refresh eq list lagi agar perhitungan slot leveling berikutnya akurat
-				local ok2, d2 = pcall(function() return DataService:GetData() end)
-				if ok2 and d2 and d2.PetsData then
-					eq = d2.PetsData.EquippedPets or {}
 				end
 			end
 		end
 
-		-- 1) Klasifikasikan pet yang sedang di-equip
-		local currentTeam = {}      -- uuid -> true
+		-- C. KLASIFIKASI PET YANG SEDANG DI-EQUIP (berdasarkan localEq terbaru)
 		local currentLeveling = {}  -- list of uuids
 		local otherEquipped = {}    -- list of uuids
 
-		for _, uuid in ipairs(eq) do
+		for uuid, _ in pairs(localEq) do
 			local pInfo = inv[uuid]
 			local pt = pInfo and pInfo.PetType
 			local pd = pInfo and pInfo.PetData or {}
 			local lvl = pd.Level or 0
 
-			if teamSet[uuid] then
-				currentTeam[uuid] = true
-			elseif targetTypes[pt] and lvl < targetLvl then
-				table.insert(currentLeveling, uuid)
-			else
-				table.insert(otherEquipped, uuid)
+			if not teamSet[uuid] then
+				if targetTypes[pt] and lvl < targetLvl then
+					table.insert(currentLeveling, uuid)
+				else
+					table.insert(otherEquipped, uuid)
+				end
 			end
 		end
 
-		ctx.state.levelingStatus = string.format("Leveling: %d/%d aktif", #currentLeveling, maxLvlPets)
-
-		-- 2) Lepas pet leveling yang sudah mencapai target level
+		-- D. LEPAS PET LEVELING YANG SUDAH SELESAI (mencapai target level)
 		for _, uuid in ipairs(currentLeveling) do
 			local pInfo = inv[uuid]
 			local pd = pInfo and pInfo.PetData or {}
 			local lvl = pd.Level or 0
 			if lvl >= targetLvl then
 				pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
+				localEq[uuid] = nil
+				localEqCount = localEqCount - 1
+				-- Hapus dari daftar leveling aktif kita agar hitungan di bawah langsung sinkron
+				for idx, u in ipairs(currentLeveling) do
+					if u == uuid then
+						table.remove(currentLeveling, idx)
+						break
+					end
+				end
 				task.wait(0.25)
 			end
 		end
 
-		-- 3) Tambahkan pet baru dari inventory jika kuota leveling kurang
-		local currentActiveCount = 0
-		-- Hitung ulang setelah unequip di atas
-		ok, d = pcall(function() return DataService:GetData() end)
-		if ok and d and d.PetsData then
-			local activeEq = d.PetsData.EquippedPets or {}
-			for _, uuid in ipairs(activeEq) do
-				local pInfo = inv[uuid]
-				local pt = pInfo and pInfo.PetType
-				local pd = pInfo and pInfo.PetData or {}
-				local lvl = pd.Level or 0
-				if not teamSet[uuid] and targetTypes[pt] and lvl < targetLvl then
-					currentActiveCount = currentActiveCount + 1
-				end
-			end
-		end
-
+		-- E. TAMBAHKAN PET BARU DARI INVENTORY
+		local currentActiveCount = #currentLeveling
 		local needed = maxLvlPets - currentActiveCount
+
 		if needed > 0 then
-			-- Bangun pool pet dari inventory yang belum di-equip dan butuh leveling
+			-- Cari pool pet di inventory yang tidak ter-equip di localEq
 			local pool = {}
 			for uuid, v in pairs(inv) do
 				local pt = v.PetType
 				local pd = v.PetData or {}
 				local lvl = pd.Level or 0
-				local isEquipped = false
-				for _, eqUuid in ipairs(eq) do
-					if eqUuid == uuid then isEquipped = true; break end
-				end
 
-				if not isEquipped and targetTypes[pt] and lvl < targetLvl then
+				if not localEq[uuid] and targetTypes[pt] and lvl < targetLvl then
 					table.insert(pool, { uuid = uuid, petType = pt, level = lvl })
 				end
 			end
-			table.sort(pool, function(a, b) return a.level < b.level end) -- prioritas level terendah
+			table.sort(pool, function(a, b) return a.level < b.level end) -- Prioritaskan level terendah
 
 			for i = 1, math.min(needed, #pool) do
 				local target = pool[i]
 				local pos = getPos(target.uuid)
 				if pos then
-					-- Jika slot equip penuh (misal >= 15), lepas pet non-team non-leveling dulu
-					if #eq >= 15 and #otherEquipped > 0 then
+					-- Jika total equipped secara lokal penuh (misal >= 15), copot non-team non-leveling
+					if localEqCount >= 15 and #otherEquipped > 0 then
 						local toRemove = table.remove(otherEquipped)
 						pcall(function() PetsService:FireServer("UnequipPet", toRemove) end)
+						localEq[toRemove] = nil
+						localEqCount = localEqCount - 1
 						task.wait(0.25)
 					end
 					
 					pcall(function() PetsService:FireServer("EquipPet", target.uuid, CFrame.new(pos)) end)
+					localEq[target.uuid] = true
+					localEqCount = localEqCount + 1
+					table.insert(currentLeveling, target.uuid)
 					task.wait(0.3)
 				end
 			end
 		end
+
+		-- Update status akhir setelah proses
+		ctx.state.levelingStatus = string.format("Leveling: %d/%d aktif", #currentLeveling, maxLvlPets)
 	end
 
 	local function levelingLoop()
