@@ -130,7 +130,14 @@ return function(ctx)
 				display = ("%s%s | Age %s | #%s%s"):format(pt, mutStr, tostring(age), uuid:sub(2, 5), tag),
 			}
 		end
-		table.sort(out, function(a, b) return a.display < b.display end)
+		table.sort(out, function(a, b)
+			local selA = CFG.pnpUuids and CFG.pnpUuids[a.value] and 1 or 0
+			local selB = CFG.pnpUuids and CFG.pnpUuids[b.value] and 1 or 0
+			if selA ~= selB then
+				return selA > selB
+			end
+			return a.display < b.display
+		end)
 		return out
 	end
 
