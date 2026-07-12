@@ -23,10 +23,11 @@ return function(ctx)
 		return tostring(u):lower():gsub("[{}]", "")
 	end
 
-	local function isNormalPet(pd)
-		if not pd then return true end
+	local function hasTargetMutation(pd, targetMutations)
+		if not pd then return false end
 		local mut = pd.MutationType
-		return mut == nil or mut == "" or mut == "m" or mut == "None" or mut == "Normal"
+		local display = ctx.reg.mutDisplay and ctx.reg.mutDisplay(mut) or tostring(mut or "None")
+		return targetMutations[display] == true
 	end
 
 	local slotOf, nextSlot = {}, 0
@@ -162,14 +163,12 @@ return function(ctx)
 				local mut = pd.MutationType or "Normal"
 				local isFav = pd.IsFavorite or false
 
-				-- ready: level >= targetAge, bukan favorite, dan belum termutasi target (atau Normal)
-				if lvl >= targetAge and not isFav and isNormalPet(v.PetData) then
-					readyCount = readyCount + 1
-				end
-
-				-- done: memiliki mutasi yang kita inginkan
-				if CFG.mutationTargetMutations[mut] then
-					doneCount = doneCount + 1
+				if not isFav then
+					if hasTargetMutation(pd, CFG.mutationTargetMutations) then
+						doneCount = doneCount + 1
+					elseif lvl >= targetAge then
+						readyCount = readyCount + 1
+					end
 				end
 			end
 		end
@@ -279,8 +278,8 @@ return function(ctx)
 				local mut = pd.MutationType or "Normal"
 				local isFav = pd.IsFavorite or false
 
-				-- Hanya pet tipe target, dengan level >= targetAge, bukan favorite, dan belum termutasi (isNormalPet)
-				if targetTypes[pt] and lvl >= targetAge and not isFav and isNormalPet(pd) then
+				-- Hanya pet tipe target, dengan level >= targetAge, bukan favorite, dan belum memiliki mutasi target
+				if targetTypes[pt] and lvl >= targetAge and not isFav and not hasTargetMutation(pd, targetMutations) then
 					candidateUuid = uuid
 					candidateType = pt
 					break
@@ -335,7 +334,7 @@ return function(ctx)
 				local mut = pd.MutationType or "Normal"
 				local isFav = pd.IsFavorite or false
 
-				if targetTypes[pt] and lvl < targetAge and not isFav and isNormalPet(pd) then
+				if targetTypes[pt] and lvl < targetAge and not isFav and not hasTargetMutation(pd, targetMutations) then
 					-- Prioritaskan level yang paling tinggi tapi masih di bawah targetAge agar cepat jadi!
 					if not levelLvl or lvl > levelLvl then
 						levelUuid = uuid
