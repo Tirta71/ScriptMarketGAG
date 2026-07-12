@@ -1,96 +1,45 @@
---[[ pnp.lua — Pick & Place pet, berbasis sisa Cooldown (Ready-only PNP).
-     Menerapkan pemantauan cooldown murni dari server (PetCooldownsUpdated) untuk semua pet.
-     Pet yang cooldown-nya <= 10 detik dianggap READY dan langsung di-PNP. ]]
+--[[ pnp.lua — Pick & Place pet.
+     Logic disamakan dengan script PNP stabil (hasil analisa remote spy):
+       1. Baca ready via RemoteFunction GetPetCooldown (tanya server real-time), BUKAN tebak event pasif.
+       2. Semua pet ditaruh NUMPUK di 1 titik = center PetArea (bukan grid nyebar).
+       3. Ready = passive non-"Mutation" Time <= 0 → Unequip lalu Equip di center. ]]
 return function(ctx)
 	local DataService = ctx.deps.DataService
 	local PetsService = ctx.deps.PetsService
-	local PU          = ctx.deps.PU
 	local CFG         = ctx.CFG
 	local function setStatus(s) ctx.setStatus(s) end
 
 	local RS = game:GetService("ReplicatedStorage")
 	local LP = ctx.LP
 
-	local ownCd = {}   -- uuid -> sisa cooldown skill utama
-	local cdMap = {}   -- uuid -> tabel cooldown mentah dari server (untuk UI Monitor)
+	local cdMap = {}   -- uuid -> { data = {...} } untuk UI Monitor
 	ctx.state.cdMap = cdMap
 
+	local READY_TH = 0 -- detik; cooldown skill utama <= ini dianggap ready
+
+	-- RemoteFunction untuk tanya cooldown asli ke server (kunci kestabilan)
+	local GetPetCooldown = RS:WaitForChild("GameEvents"):WaitForChild("GetPetCooldown")
+
 	----------------------------------------------------------------- helpers
-	local function isPetEquipped(uuid)
-		local ok, d = pcall(function() return DataService:GetData() end)
-		if not ok or not d then return false end
-		local eq = d.PetsData and d.PetsData.EquippedPets
-		if not eq then return false end
-		for _, u in ipairs(eq) do
-			if u == uuid then return true end
+	-- Baca cooldown skill utama sebuah pet langsung dari server.
+	-- Return: mainCd (angka, detik) atau nil kalau gagal.
+	local function readMainCd(uuid)
+		local ok, cd = pcall(function() return GetPetCooldown:InvokeServer(uuid) end)
+		if not ok or type(cd) ~= "table" then return nil end
+
+		local data = {}
+		local mainCd = 0
+		for _, e in ipairs(cd) do
+			local t = tonumber(e.Time) or 0
+			data[#data + 1] = { Passive = e.Passive, Time = t }
+			-- Abaikan passive mutasi; skill utama = passive non-"Mutation" dengan CD terbesar
+			if not tostring(e.Passive or ""):find("Mutation") then
+				if t > mainCd then mainCd = t end
+			end
 		end
-		return false
+		cdMap[uuid] = { data = data }
+		return mainCd
 	end
-
-	-- Monitor Cooldown dari Server
-	local PetCD = RS:WaitForChild("GameEvents"):FindFirstChild("PetCooldownsUpdated")
-	if PetCD then
-		PetCD.OnClientEvent:Connect(function(uuid, cd)
-			if type(uuid) ~= "string" then return end
-			
-			local oldEntry = cdMap[uuid]
-			local data = {}
-			local mainCD = nil
-			if type(cd) == "table" then
-				for _, e in ipairs(cd) do
-					local duration = tonumber(e.Time) or 0
-					
-					-- Cari passive yang sama di data lama
-					local oldPassive = nil
-					if oldEntry and type(oldEntry.data) == "table" then
-						for _, oldE in ipairs(oldEntry.data) do
-							if oldE.Passive == e.Passive then
-								oldPassive = oldE
-								break
-							end
-						end
-					end
-					
-					local expireTime
-					if oldPassive and oldPassive.expireTime then
-						local localVal = math.max(0, oldPassive.expireTime - tick())
-						-- Jika perbedaan kecil (<= 2.0 detik), pertahankan expireTime lama agar berdetik mulus
-						if math.abs(localVal - duration) <= 2.0 then
-							expireTime = oldPassive.expireTime
-						else
-							expireTime = tick() + duration
-						end
-					else
-						expireTime = tick() + duration
-					end
-					
-					table.insert(data, {
-						Passive = e.Passive,
-						Time = duration,
-						expireTime = expireTime
-					})
-					
-					if not tostring(e.Passive or ""):find("Mutation") then
-						mainCD = expireTime - tick()
-					end
-				end
-			end
-			cdMap[uuid] = { data = data }
-
-			-- Simpan waktu kedaluwarsa (timestamp)
-			if isPetEquipped(uuid) then
-				if mainCD then
-					ownCd[uuid] = tick() + mainCD
-				else
-					ownCd[uuid] = 0
-				end
-			else
-				ownCd[uuid] = nil
-			end
-		end)
-	end
-
-	local READY_TH = 0 -- detik; cooldown <= ini dianggap ready/siap tembak
 
 	local function targetPets()
 		local out = {}
@@ -109,7 +58,7 @@ return function(ctx)
 		return out
 	end
 
-	-- daftar pet dari INVENTORY (semua pet, bukan cuma yang di-garden) buat dropdown Select Pets.
+	-- daftar pet dari INVENTORY buat dropdown Select Pets.
 	function ctx.inventoryPetOptions(selectedSet)
 		local out = {}
 		local ok, d = pcall(function() return DataService:GetData() end)
@@ -133,17 +82,15 @@ return function(ctx)
 		table.sort(out, function(a, b)
 			local selA = selectedSet and selectedSet[a.value] and 1 or 0
 			local selB = selectedSet and selectedSet[b.value] and 1 or 0
-			if selA ~= selB then
-				return selA > selB
-			end
+			if selA ~= selB then return selA > selB end
 			return a.display < b.display
 		end)
 		return out
 	end
 
-	-- Posisi placement
+	-- Titik place: center PetArea (semua pet ditumpuk di sini, seperti script referensi)
 	local GetFarm = require(RS.Modules.GetFarm)
-	local function farmCenter()
+	local function placePos()
 		local farm = GetFarm and GetFarm(LP)
 		local pa = farm and farm:FindFirstChild("PetArea")
 		if pa then return pa.Position end
@@ -152,53 +99,12 @@ return function(ctx)
 		return hrp and hrp.Position or nil
 	end
 
-	local slotOf, nextSlot = {}, 0
-	local GRID_COLS, GRID_SP = 6, 3   -- 6 kolom, jarak 3 stud (rapat)
-	local function getPos(uuid)
-		if not slotOf[uuid] then slotOf[uuid] = nextSlot; nextSlot = nextSlot + 1 end
-		local center = farmCenter()
-		if not center then return nil end
-		local i = slotOf[uuid]
-		local col = i % GRID_COLS
-		local row = math.floor(i / GRID_COLS)
-		local offX = (col - (GRID_COLS - 1) / 2) * GRID_SP
-		local offZ = (row - 1) * GRID_SP
-		return center + Vector3.new(offX, 0, offZ)
-	end
-
-	local function getPetMaxCd(petType)
-		local name = tostring(petType)
-		
-		-- 1) Cari dari database internal game secara dinamis
-		local PetList, PassiveRegistry
-		pcall(function() PetList = require(RS.Data.PetRegistry.PetList) end)
-		pcall(function() PassiveRegistry = require(RS.Data.PetRegistry.PassiveRegistry) end)
-		
-		local p = PetList and PetList[name]
-		local pas = p and p.Passives
-		local passiveName = type(pas) == "table" and pas[1] or nil
-		local reg = passiveName and PassiveRegistry and PassiveRegistry[passiveName]
-		local cd = reg and reg.States and reg.States.Cooldown
-		if type(cd) == "table" then
-			local m = tonumber(cd.Min) or tonumber(cd.Base)
-			if m then return m end
-		end
-		
-		-- 2) Fallback jika database game gagal dibaca
-		if name:find("Ferret") then return 1200 end
-		if name:find("Peacock") then return 15 end
-		if name:find("Dilophosaurus") then return 60 end
-		return 60
-	end
-
-	local processing = {} -- Lacak pet yang sedang diproses PNP agar tidak dobel thread
-
 	----------------------------------------------------------------- loop utama
 	local function pnpLoop()
 		ctx.state.pnpId = (ctx.state.pnpId or 0) + 1
 		local myId = ctx.state.pnpId
 		ctx.elevate()
-		
+
 		while CFG.pnpEnabled and ctx.alive() and ctx.state.pnpId == myId do
 			local pets = targetPets()
 			if #pets == 0 then
@@ -206,49 +112,30 @@ return function(ctx)
 				task.wait(1)
 			else
 				local didAny = false
+				local pos = placePos()
+
 				for _, p in ipairs(pets) do
 					if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
 
-					-- Pet dianggap ready jika sisa cooldown-nya nil atau di bawah READY_TH (10s)
-					local expireTime = ownCd[p.uuid]
-					local cdVal = expireTime and (expireTime - tick())
-					local isReady = (cdVal == nil) or (cdVal <= READY_TH)
+					-- Tanya cooldown asli ke server (yield/round-trip alami)
+					local mainCd = readMainCd(p.uuid)
 
-					if isReady and not processing[p.uuid] then
+					if pos and mainCd ~= nil and mainCd <= READY_TH then
 						didAny = true
-						processing[p.uuid] = true
+						-- Jeda penjemputan sebelum dilepas
+						if CFG.pickupDelay > 0 then task.wait(CFG.pickupDelay) end
+						if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
 
-						task.spawn(function()
-							-- Jeda penjemputan dinamis sebelum dilepas
-							if CFG.pickupDelay > 0 then task.wait(CFG.pickupDelay) end
-							if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then
-								processing[p.uuid] = nil
-								return
-							end
-
-							-- PICKUP -> PLACE
-							local pos = getPos(p.uuid)
-							pcall(function() PetsService:FireServer("UnequipPet", p.uuid) end)
-							
-							task.wait(math.max(0.01, CFG.equipDelay))
-							if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then
-								processing[p.uuid] = nil
-								return
-							end
-							
-							if pos then
-								pcall(function() PetsService:FireServer("EquipPet", p.uuid, CFrame.new(pos)) end)
-								-- Set cooldown lokal secara instan untuk mencegah loop sebelum server mereplikasi
-								ownCd[p.uuid] = tick() + getPetMaxCd(p.petType)
-							end
-							
-							processing[p.uuid] = nil
-						end)
+						-- PICKUP -> PLACE (numpuk di center)
+						pcall(function() PetsService:FireServer("UnequipPet", p.uuid) end)
+						task.wait(math.max(0.01, CFG.equipDelay))
+						if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
+						pcall(function() PetsService:FireServer("EquipPet", p.uuid, CFrame.new(pos)) end)
 					end
 				end
-				
+
 				if not CFG.pnpMonitorEnabled then
-					setStatus(("PNP jalan: %d pet%s"):format(#pets, didAny and "" or " (nunggu skill keluar)"))
+					setStatus(("PNP jalan: %d pet%s"):format(#pets, didAny and "" or " (nunggu skill ready)"))
 				end
 				task.wait(math.max(0.01, tonumber(CFG.pnpScanInterval) or 0.05))
 			end
