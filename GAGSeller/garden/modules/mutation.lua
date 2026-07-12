@@ -18,6 +18,11 @@ return function(ctx)
 		return hrp and hrp.Position or nil
 	end
 
+	local function cleanUuid(u)
+		if not u then return "" end
+		return tostring(u):lower():gsub("[{}]", "")
+	end
+
 	local slotOf, nextSlot = {}, 0
 	local GRID_COLS, GRID_SP = 6, 3
 	local function getPos(uuid)
@@ -86,9 +91,10 @@ return function(ctx)
 				local pd = v.PetData or {}
 				local lvl = pd.Level or 0
 				local mut = pd.MutationType or "Normal"
+				local isFav = pd.IsFavorite or false
 
-				-- ready: level >= targetAge, dan belum termutasi target (atau Normal)
-				if lvl >= targetAge and (mut == "Normal" or mut == "None" or mut == "") then
+				-- ready: level >= targetAge, bukan favorite, dan belum termutasi target (atau Normal)
+				if lvl >= targetAge and not isFav and (mut == "Normal" or mut == "None" or mut == "") then
 					readyCount = readyCount + 1
 				end
 
@@ -131,11 +137,21 @@ return function(ctx)
 		local targetAge = CFG.mutationTargetAge or 50
 		local delayClaim = CFG.mutationDelayAutoClaim or 0.5
 
+		-- Bersihkan set tim untuk pencocokan UUID yang kebal kurung kurawal
+		local expTeamSet = {}
+		for u, _ in pairs(expTeam) do expTeamSet[cleanUuid(u)] = true end
+
+		local boostTeamSet = {}
+		for u, _ in pairs(boostTeam) do boostTeamSet[cleanUuid(u)] = true end
+
+		local phoenixTeamSet = {}
+		for u, _ in pairs(phoenixTeam) do phoenixTeamSet[cleanUuid(u)] = true end
+
 		-- Lacak status equip secara lokal agar kebal dari delay replikasi server
 		local localEq = {}
 		local localEqCount = 0
 		for _, uuid in ipairs(eq) do
-			localEq[uuid] = true
+			localEq[cleanUuid(uuid)] = true
 			localEqCount = localEqCount + 1
 		end
 
@@ -145,9 +161,10 @@ return function(ctx)
 			
 			-- 1. Cabut semua pet non-phoenix team
 			for _, uuid in ipairs(eq) do
-				if not phoenixTeam[uuid] then
+				local cu = cleanUuid(uuid)
+				if not phoenixTeamSet[cu] then
 					pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
-					localEq[uuid] = nil
+					localEq[cu] = nil
 					localEqCount = localEqCount - 1
 					task.wait(0.2)
 				end
@@ -155,11 +172,12 @@ return function(ctx)
 			
 			-- 2. Pasang phoenix team
 			for uuid, _ in pairs(phoenixTeam) do
-				if not localEq[uuid] then
+				local cu = cleanUuid(uuid)
+				if not localEq[cu] then
 					local pos = getPos(uuid)
 					if pos then
 						pcall(function() PetsService:FireServer("EquipPet", uuid, CFrame.new(pos)) end)
-						localEq[uuid] = true
+						localEq[cu] = true
 						localEqCount = localEqCount + 1
 						task.wait(0.25)
 					end
@@ -201,9 +219,10 @@ return function(ctx)
 			
 			-- 1. Cabut semua pet non-boost team
 			for _, uuid in ipairs(eq) do
-				if not boostTeam[uuid] then
+				local cu = cleanUuid(uuid)
+				if not boostTeamSet[cu] then
 					pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
-					localEq[uuid] = nil
+					localEq[cu] = nil
 					localEqCount = localEqCount - 1
 					task.wait(0.2)
 				end
@@ -211,11 +230,12 @@ return function(ctx)
 			
 			-- 2. Pasang boost team
 			for uuid, _ in pairs(boostTeam) do
-				if not localEq[uuid] then
+				local cu = cleanUuid(uuid)
+				if not localEq[cu] then
 					local pos = getPos(uuid)
 					if pos then
 						pcall(function() PetsService:FireServer("EquipPet", uuid, CFrame.new(pos)) end)
-						localEq[uuid] = true
+						localEq[cu] = true
 						localEqCount = localEqCount + 1
 						task.wait(0.25)
 					end
@@ -241,9 +261,10 @@ return function(ctx)
 				local pd = v.PetData or {}
 				local lvl = pd.Level or 0
 				local mut = pd.MutationType or "Normal"
+				local isFav = pd.IsFavorite or false
 
-				-- Hanya pet tipe target, dengan level >= targetAge, dan belum memiliki salah satu targetMutations (atau Normal saja)
-				if targetTypes[pt] and lvl >= targetAge and (mut == "Normal" or mut == "None" or mut == "") then
+				-- Hanya pet tipe target, dengan level >= targetAge, bukan favorite, dan belum memiliki salah satu targetMutations (atau Normal saja)
+				if targetTypes[pt] and lvl >= targetAge and not isFav and (mut == "Normal" or mut == "None" or mut == "") then
 					candidateUuid = uuid
 					candidateType = pt
 					break
@@ -254,29 +275,38 @@ return function(ctx)
 			if candidateUuid then
 				ctx.state.mutationPhase = "Submitting Target"
 				
-				-- 1. Cari tool pet tersebut di Backpack atau Character
+				-- 1. Pastikan dicopot dari garden dulu sebelum di-submit
+				pcall(function() PetsService:FireServer("UnequipPet", candidateUuid) end)
+				task.wait(0.25)
+				localEq[cleanUuid(candidateUuid)] = nil
+
+				-- 2. Cari tool pet tersebut di Backpack atau Character
 				local targetTool
 				for _, item in ipairs(LP.Backpack:GetChildren()) do
-					if item:IsA("Tool") and item:GetAttribute("PET_UUID") == candidateUuid then
+					if item:IsA("Tool") and cleanUuid(item:GetAttribute("PET_UUID")) == cleanUuid(candidateUuid) then
 						targetTool = item
 						break
 					end
 				end
 				if not targetTool and LP.Character then
 					for _, item in ipairs(LP.Character:GetChildren()) do
-						if item:IsA("Tool") and item:GetAttribute("PET_UUID") == candidateUuid then
+						if item:IsA("Tool") and cleanUuid(item:GetAttribute("PET_UUID")) == cleanUuid(candidateUuid) then
 							targetTool = item
 							break
 						end
 					end
 				end
 
-				-- 2. Equip tool pet tersebut ke tangan
+				-- 3. Equip tool pet tersebut ke tangan
 				if targetTool then
 					targetTool.Parent = LP.Character
 					task.wait(0.5)
 					pcall(function() PetMutationMachineService_RE:FireServer("SubmitHeldPet") end)
 					task.wait(0.5)
+					
+					-- Jalankan mesin langsung di detik yang sama
+					pcall(function() PetMutationMachineService_RE:FireServer("StartMachine") end)
+					task.wait(0.3)
 				end
 				return
 			end
@@ -288,8 +318,9 @@ return function(ctx)
 				local pd = v.PetData or {}
 				local lvl = pd.Level or 0
 				local mut = pd.MutationType or "Normal"
+				local isFav = pd.IsFavorite or false
 
-				if targetTypes[pt] and lvl < targetAge and (mut == "Normal" or mut == "None" or mut == "") then
+				if targetTypes[pt] and lvl < targetAge and not isFav and (mut == "Normal" or mut == "None" or mut == "") then
 					-- Prioritaskan level yang paling tinggi tapi masih di bawah targetAge agar cepat jadi!
 					if not levelLvl or lvl > levelLvl then
 						levelUuid = uuid
@@ -307,16 +338,17 @@ return function(ctx)
 				-- 1) Target pet tersebut
 				-- 2) Seluruh expTeam
 				local targetActive = {}
-				targetActive[levelUuid] = true
+				targetActive[cleanUuid(levelUuid)] = true
 				for uuid, _ in pairs(expTeam) do
-					targetActive[uuid] = true
+					targetActive[cleanUuid(uuid)] = true
 				end
 
 				-- Lepas pet yang tidak ada di targetActive
 				for _, uuid in ipairs(eq) do
-					if not targetActive[uuid] then
+					local cu = cleanUuid(uuid)
+					if not targetActive[cu] then
 						pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
-						localEq[uuid] = nil
+						localEq[cu] = nil
 						localEqCount = localEqCount - 1
 						task.wait(0.2)
 					end
@@ -324,11 +356,11 @@ return function(ctx)
 
 				-- Pasang target pet + expTeam
 				-- Pasang target pet dulu
-				if not localEq[levelUuid] then
+				if not localEq[cleanUuid(levelUuid)] then
 					local pos = getPos(levelUuid)
 					if pos then
 						pcall(function() PetsService:FireServer("EquipPet", levelUuid, CFrame.new(pos)) end)
-						localEq[levelUuid] = true
+						localEq[cleanUuid(levelUuid)] = true
 						localEqCount = localEqCount + 1
 						task.wait(0.25)
 					end
@@ -336,11 +368,12 @@ return function(ctx)
 
 				-- Pasang expTeam
 				for uuid, _ in pairs(expTeam) do
-					if not localEq[uuid] then
+					local cu = cleanUuid(uuid)
+					if not localEq[cu] then
 						local pos = getPos(uuid)
 						if pos then
 							pcall(function() PetsService:FireServer("EquipPet", uuid, CFrame.new(pos)) end)
-							localEq[uuid] = true
+							localEq[cu] = true
 							localEqCount = localEqCount + 1
 							task.wait(0.25)
 						end
