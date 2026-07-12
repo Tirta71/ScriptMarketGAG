@@ -346,9 +346,9 @@ return function(ctx)
 			Size = UDim2.fromOffset(26, 26),
 			Position = UDim2.new(1, -62, 0, 9),
 			BackgroundColor3 = C.row,
-			Text = "—",
+			Text = "-",
 			Font = Enum.Font.GothamBold,
-			TextSize = 12,
+			TextSize = 14,
 			TextColor3 = C.txt,
 			AutoButtonColor = true,
 		}, titleBar)
@@ -357,14 +357,20 @@ return function(ctx)
 		local closeBtn = mk("TextButton", {
 			Size = UDim2.fromOffset(26, 26),
 			Position = UDim2.new(1, -30, 0, 9),
-			BackgroundColor3 = C.red,
-			Text = "✕",
+			BackgroundColor3 = C.row,
+			Text = "X",
 			Font = Enum.Font.GothamBold,
 			TextSize = 11,
-			TextColor3 = Color3.new(1, 1, 1),
+			TextColor3 = C.txt,
 			AutoButtonColor = true,
 		}, titleBar)
 		corner(closeBtn, 6)
+
+		-- Premium Hover Animations
+		minBtn.MouseEnter:Connect(function() minBtn.BackgroundColor3 = Color3.fromRGB(45, 50, 65) end)
+		minBtn.MouseLeave:Connect(function() minBtn.BackgroundColor3 = C.row end)
+		closeBtn.MouseEnter:Connect(function() closeBtn.BackgroundColor3 = C.red; closeBtn.TextColor3 = Color3.new(1, 1, 1) end)
+		closeBtn.MouseLeave:Connect(function() closeBtn.BackgroundColor3 = C.row; closeBtn.TextColor3 = C.txt end)
 
 		-- Dragging
 		do

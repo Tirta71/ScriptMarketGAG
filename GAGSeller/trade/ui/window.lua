@@ -65,14 +65,20 @@ return function(ctx)
 
 	local minBtn = mk("TextButton", {
 		Size = UDim2.fromOffset(26, 26), Position = UDim2.new(1, -64, 0, 7), BackgroundColor3 = C.row,
-		Text = "—", Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = C.txt, ZIndex = 3,
+		Text = "-", Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = C.txt, ZIndex = 3,
 	}, titleBar)
 	corner(minBtn, 6)
 	local closeBtn = mk("TextButton", {
 		Size = UDim2.fromOffset(26, 26), Position = UDim2.new(1, -32, 0, 7), BackgroundColor3 = C.row,
-		Text = "✕", Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = C.txt, ZIndex = 3,
+		Text = "X", Font = Enum.Font.GothamBold, TextSize = 11, TextColor3 = C.txt, ZIndex = 3,
 	}, titleBar)
 	corner(closeBtn, 6)
+
+	-- Premium Hover Animations
+	minBtn.MouseEnter:Connect(function() minBtn.BackgroundColor3 = Color3.fromRGB(45, 50, 65) end)
+	minBtn.MouseLeave:Connect(function() minBtn.BackgroundColor3 = C.row end)
+	closeBtn.MouseEnter:Connect(function() closeBtn.BackgroundColor3 = C.red; closeBtn.TextColor3 = Color3.new(1, 1, 1) end)
+	closeBtn.MouseLeave:Connect(function() closeBtn.BackgroundColor3 = C.row; closeBtn.TextColor3 = C.txt end)
 
 	minBtn.MouseButton1Click:Connect(function() main.Visible = false; maxIcon.Visible = true end)
 	maxIcon.MouseButton1Click:Connect(function() maxIcon.Visible = false; main.Visible = true end)
