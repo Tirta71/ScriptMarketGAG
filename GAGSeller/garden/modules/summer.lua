@@ -17,6 +17,8 @@ return function(ctx)
 
 	local RS = game:GetService("ReplicatedStorage")
 	local SamRE = RS:WaitForChild("GameEvents"):WaitForChild("SamTheClamService_RE")
+	local Favorite_Item    = RS.GameEvents:FindFirstChild("Favorite_Item")
+	local Favorite_Item_BE = RS.GameEvents:FindFirstChild("Favorite_Item_BE")
 
 	-- Pet summer yang ditolak Sam (ambil dinamis, fallback statis)
 	local rejectPool = { Pelican = true, ["Manta Ray"] = true }
@@ -159,6 +161,13 @@ return function(ctx)
 						-- Pastikan pet yang mau di-feed benar-benar dipegang
 						local held = LP.Character and LP.Character:FindFirstChildWhichIsA("Tool")
 						if held and held:GetAttribute("PET_UUID") == pick.tool:GetAttribute("PET_UUID") then
+							-- Kalau pet favorite, unfav dulu (server nolak korbanin pet favorite)
+							if held:GetAttribute("d") == true and Favorite_Item then
+								setStatus(("Summer: unfav %s dulu..."):format(pick.petType or "?"))
+								pcall(function() Favorite_Item:FireServer(held) end)
+								if Favorite_Item_BE then pcall(function() Favorite_Item_BE:Fire(held) end) end
+								task.wait(0.4)
+							end
 							setStatus(("Summer: submit %s (%.2f KG)"):format(pick.petType or "?", pick.w))
 							pcall(function() SamRE:FireServer("SubmitHeldPet") end)
 							task.wait(3)
