@@ -143,18 +143,23 @@ return function(ctx)
 		end
 
 		-- C. KLASIFIKASI PET YANG SEDANG DI-EQUIP (berdasarkan localEq terbaru)
-		local currentLeveling = {}  -- list of uuids
-		local otherEquipped = {}    -- list of uuids
+		local currentLeveling = {}   -- list of active leveling uuids (lvl < targetLvl)
+		local finishedLeveling = {}  -- list of finished leveling uuids (lvl >= targetLvl)
+		local otherEquipped = {}     -- list of other uuids (not team, not target type)
 
 		for uuid, _ in pairs(localEq) do
-			local pInfo = inv[uuid]
-			local pt = pInfo and pInfo.PetType
-			local pd = pInfo and pInfo.PetData or {}
-			local lvl = pd.Level or 0
-
 			if not teamSet[uuid] then
-				if targetTypes[pt] and lvl < targetLvl then
-					table.insert(currentLeveling, uuid)
+				local pInfo = inv[uuid]
+				local pt = pInfo and pInfo.PetType
+				local pd = pInfo and pInfo.PetData or {}
+				local lvl = pd.Level or 0
+
+				if targetTypes[pt] then
+					if lvl < targetLvl then
+						table.insert(currentLeveling, uuid)
+					else
+						table.insert(finishedLeveling, uuid)
+					end
 				else
 					table.insert(otherEquipped, uuid)
 				end
@@ -162,23 +167,11 @@ return function(ctx)
 		end
 
 		-- D. LEPAS PET LEVELING YANG SUDAH SELESAI (mencapai target level)
-		for _, uuid in ipairs(currentLeveling) do
-			local pInfo = inv[uuid]
-			local pd = pInfo and pInfo.PetData or {}
-			local lvl = pd.Level or 0
-			if lvl >= targetLvl then
-				pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
-				localEq[uuid] = nil
-				localEqCount = localEqCount - 1
-				-- Hapus dari daftar leveling aktif kita agar hitungan di bawah langsung sinkron
-				for idx, u in ipairs(currentLeveling) do
-					if u == uuid then
-						table.remove(currentLeveling, idx)
-						break
-					end
-				end
-				task.wait(0.25)
-			end
+		for _, uuid in ipairs(finishedLeveling) do
+			pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
+			localEq[uuid] = nil
+			localEqCount = localEqCount - 1
+			task.wait(0.25)
 		end
 
 		-- E. TAMBAHKAN PET BARU DARI INVENTORY
