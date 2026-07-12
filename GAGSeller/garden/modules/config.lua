@@ -53,7 +53,6 @@ return function(ctx)
 		summerMinWeight    = 0,    -- 0 = off
 		summerMaxWeight    = 0,    -- 0 = off
 		summerAllowFavorite = false,
-		summerAutoTP        = true,   -- auto teleport ke Sam sebelum submit/claim
 
 		-- webhook (opsional)
 		webhookUrl     = "",
@@ -118,7 +117,6 @@ return function(ctx)
 			CFG.summerMinWeight    = tonumber(st.summerMinWeight) or 0
 			CFG.summerMaxWeight    = tonumber(st.summerMaxWeight) or 0
 			CFG.summerAllowFavorite = st.summerAllowFavorite or false
-			CFG.summerAutoTP        = (st.summerAutoTP == nil) and true or st.summerAutoTP
 
 			CFG.webhookUrl     = st.webhookUrl or ""
 			CFG.webhookEnabled = st.webhookEnabled or false

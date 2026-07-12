@@ -51,6 +51,28 @@ return function(ctx)
 		return d.SamTheClam
 	end
 
+	-- Ringkasan status Sam untuk GUI (timer live).
+	function ctx.getSamSummary()
+		local sam = getSamState()
+		if not sam then return { state = "Unknown", timer = "-", reward = "-" } end
+		local state, timer
+		if sam.RewardReady then
+			state, timer = "READY", "Siap diklaim!"
+		elseif sam.IsRunning or sam.SubmittedPet ~= nil then
+			local left = math.max(0, math.floor(tonumber(sam.TimeLeft) or 0))
+			timer = ("%02d:%02d"):format(math.floor(left / 60), left % 60)
+			state = "WORKING"
+		else
+			state, timer = "IDLE", "Bisa submit pet"
+		end
+		local reward = "-"
+		if type(sam.Reward) == "table" then
+			reward = ("%s x%s"):format(tostring(sam.Reward.Value or "?"), tostring(sam.Reward.Quantity or "?"))
+		end
+		local submitted = sam.SubmittedPet and sam.SubmittedPet.PetType or "-"
+		return { state = state, timer = timer, reward = reward, submitted = submitted }
+	end
+
 	-- daftar tipe pet unik dari INVENTORY buat dropdown (reuse kalau ada, atau bikin di sini)
 	function ctx.getSummerPetTypes(selectedSet)
 		if ctx.getInventoryPetTypes then return ctx.getInventoryPetTypes(selectedSet) end
@@ -109,8 +131,8 @@ return function(ctx)
 			local sam = getSamState()
 
 			if sam and sam.RewardReady then
-				-- Reward siap -> claim
-				if CFG.summerAutoTP then teleportToSam(); task.wait(0.3) end
+				-- Reward siap -> TP ke Sam lalu claim
+				teleportToSam(); task.wait(0.3)
 				setStatus("Summer: claim reward...")
 				pcall(function() SamRE:FireServer("ClaimReward") end)
 				task.wait(3)
@@ -131,7 +153,7 @@ return function(ctx)
 				else
 					local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
 					if hum then
-						if CFG.summerAutoTP then teleportToSam(); task.wait(0.3) end
+						teleportToSam(); task.wait(0.3)
 						pcall(function() hum:EquipTool(pick.tool) end)
 						task.wait(0.5)
 						-- Pastikan pet yang mau di-feed benar-benar dipegang

@@ -225,6 +225,30 @@ return function(ctx)
 	do
 		local summerAcc = makeAccordion(eventPage, "Automation Summer Event", 1, true)
 
+		-- Status timer Sam (live)
+		local samLbl = mk("TextLabel", {
+			Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
+			BackgroundTransparency = 1, Text = "Sam: loading...",
+			Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = C.txt,
+			TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true,
+			LineHeight = 1.35, RichText = true, LayoutOrder = 0
+		}, summerAcc)
+		task.spawn(function()
+			while ctx.alive() do
+				local ok, s = pcall(function() return ctx.getSamSummary() end)
+				if ok and s then
+					local col = s.state == "READY" and "#5acc78" or (s.state == "WORKING" and "#f5c82d" or "#8c929e")
+					samLbl.Text = string.format(
+						"Sam The Clam: <font color=\"%s\"><b>%s</b></font>\n" ..
+						"Timer: <font color=\"%s\"><b>%s</b></font>\n" ..
+						"Sedang dicerna: <font color=\"#8c929e\">%s</font>\n" ..
+						"Reward: <font color=\"#8c929e\">%s</font>",
+						col, s.state, col, s.timer, tostring(s.submitted or "-"), tostring(s.reward or "-"))
+				end
+				task.wait(1)
+			end
+		end)
+
 		-- Pilih tipe pet yang boleh di-feed ke Sam (kosong = pakai filter berat saja)
 		makeMultiDropdownDyn(summerAcc, "Pilih Pet (Feed ke Sam)", "Tipe pet yang boleh dikorbankan. Kosong = pakai filter berat.",
 			function() return ctx.getSummerPetTypes(CFG.summerPetTypes) end, CFG.summerPetTypes, function() persist() end, 1)
@@ -244,13 +268,8 @@ return function(ctx)
 			function() return CFG.summerAllowFavorite end,
 			function(v) CFG.summerAllowFavorite = v; persist() end, 4)
 
-		-- Auto TP ke Sam
-		makeToggle(summerAcc, "Auto TP ke Sam", "Otomatis teleport ke Sam sebelum submit/claim",
-			function() return CFG.summerAutoTP end,
-			function(v) CFG.summerAutoTP = v; persist() end, 5)
-
-		-- Enable Automation Summer Event (Toggle)
-		makeToggle(summerAcc, "Enable Automation Summer Event", "Auto submit pet ke Sam The Clam + auto claim reward. Harus dekat Sam.",
+		-- Enable Automation Summer Event (Toggle) — auto TP ke Sam sudah otomatis di dalam logic
+		makeToggle(summerAcc, "Enable Automation Summer Event", "Auto TP ke Sam + submit pet + claim reward saat timer habis.",
 			function() return CFG.summerEventEnabled end,
 			function(v)
 				CFG.summerEventEnabled = v; persist()
