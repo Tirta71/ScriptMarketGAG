@@ -5,9 +5,9 @@ local sendWebhook = require(script.Parent.sender)
 local mutationWebhook = {}
 
 -- Webhook saat mutasi di-enable
-function mutationWebhook.sendEnabled(ctx, targetTypes, targetMuts, targetAge)
+function mutationWebhook.sendEnabled(ctx, targetTypes, targetMuts, targetAge, expTeamList, boostTeamList, phoenixTeamList)
 	local CFG = ctx.CFG
-	if not CFG.webhookMutationEnabled or not CFG.webhookMutationUrl or CFG.webhookMutationUrl == "" then return end
+	if not CFG.webhookMutationEnabled or not CFG.webhookUrl or CFG.webhookUrl == "" then return end
 
 	local typesList = {}
 	for k in pairs(targetTypes) do table.insert(typesList, "`" .. k .. "`") end
@@ -16,6 +16,10 @@ function mutationWebhook.sendEnabled(ctx, targetTypes, targetMuts, targetAge)
 	local mutsList = {}
 	for k in pairs(targetMuts) do table.insert(mutsList, "`" .. k .. "`") end
 	local mutsText = #mutsList > 0 and table.concat(mutsList, ", ") or "None"
+
+	local expText = #expTeamList > 0 and table.concat(expTeamList, ", ") or "None"
+	local boostText = #boostTeamList > 0 and table.concat(boostTeamList, ", ") or "None"
+	local phText = #phoenixTeamList > 0 and table.concat(phoenixTeamList, ", ") or "None"
 
 	local payload = {
 		embeds = {
@@ -29,7 +33,7 @@ function mutationWebhook.sendEnabled(ctx, targetTypes, targetMuts, targetAge)
 						inline = false
 					},
 					{
-						name = "Mutation Settings",
+						name = "Mutation Configuration",
 						value = string.format(
 							"> Target Types: %s\n" ..
 							"> Keep Mutations: %s\n" ..
@@ -37,6 +41,18 @@ function mutationWebhook.sendEnabled(ctx, targetTypes, targetMuts, targetAge)
 							typesText,
 							mutsText,
 							tostring(targetAge)
+						),
+						inline = false
+					},
+					{
+						name = "Mutation Support Teams",
+						value = string.format(
+							"> EXP Team: %s\n" ..
+							"> Boost Team: %s\n" ..
+							"> Phoenix Team: %s",
+							expText,
+							boostText,
+							phText
 						),
 						inline = false
 					}
@@ -48,13 +64,13 @@ function mutationWebhook.sendEnabled(ctx, targetTypes, targetMuts, targetAge)
 			}
 		}
 	}
-	sendWebhook(CFG.webhookMutationUrl, payload)
+	sendWebhook(CFG.webhookUrl, payload)
 end
 
 -- Webhook saat pet disubmit ke mesin
 function mutationWebhook.sendSubmitted(ctx, petType, level)
 	local CFG = ctx.CFG
-	if not CFG.webhookMutationEnabled or not CFG.webhookMutationUrl or CFG.webhookMutationUrl == "" then return end
+	if not CFG.webhookMutationEnabled or not CFG.webhookUrl or CFG.webhookUrl == "" then return end
 
 	local payload = {
 		embeds = {
@@ -86,13 +102,13 @@ function mutationWebhook.sendSubmitted(ctx, petType, level)
 			}
 		}
 	}
-	sendWebhook(CFG.webhookMutationUrl, payload)
+	sendWebhook(CFG.webhookUrl, payload)
 end
 
 -- Webhook saat pet diklaim (hasil mutasi)
 function mutationWebhook.sendClaimed(ctx, petType, outcomeMutation, isMatched)
 	local CFG = ctx.CFG
-	if not CFG.webhookMutationEnabled or not CFG.webhookMutationUrl or CFG.webhookMutationUrl == "" then return end
+	if not CFG.webhookMutationEnabled or not CFG.webhookUrl or CFG.webhookUrl == "" then return end
 
 	local mutDisplay = ctx.reg.mutDisplay and ctx.reg.mutDisplay(outcomeMutation) or outcomeMutation
 	local statusText = isMatched and "✅ TARGET MUTATION FOUND (Bot Stopped)" or "❌ Non-target Mutation (Continuing)"
@@ -128,7 +144,7 @@ function mutationWebhook.sendClaimed(ctx, petType, outcomeMutation, isMatched)
 			}
 		}
 	}
-	sendWebhook(CFG.webhookMutationUrl, payload)
+	sendWebhook(CFG.webhookUrl, payload)
 end
 
 return mutationWebhook

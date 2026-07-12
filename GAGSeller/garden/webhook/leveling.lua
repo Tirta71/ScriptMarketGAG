@@ -17,17 +17,21 @@ local function formatDuration(sec)
 end
 
 -- Webhook saat leveling di-enable
-function levelingWebhook.sendEnabled(ctx, queueList)
+function levelingWebhook.sendEnabled(ctx, queueList, teamList)
 	local CFG = ctx.CFG
-	if not CFG.webhookLevelingEnabled or not CFG.webhookLevelingUrl or CFG.webhookLevelingUrl == "" then return end
+	if not CFG.webhookLevelingEnabled or not CFG.webhookUrl or CFG.webhookUrl == "" then return end
 
 	local petLines = {}
-	local count = 0
 	for _, p in ipairs(queueList) do
-		count = count + 1
 		table.insert(petLines, string.format("> - `%s` (Level %d)", p.type, p.level))
 	end
 	local petsText = #petLines > 0 and table.concat(petLines, "\n") or "> - Tidak ada pet di antrean"
+
+	local teamLines = {}
+	for _, pName in ipairs(teamList) do
+		table.insert(teamLines, "`" .. pName .. "`")
+	end
+	local teamText = #teamLines > 0 and table.concat(teamLines, ", ") or "None"
 
 	local payload = {
 		embeds = {
@@ -41,7 +45,19 @@ function levelingWebhook.sendEnabled(ctx, queueList)
 						inline = false
 					},
 					{
-						name = string.format("Leveling Queue Status (%d Pets)", count),
+						name = "Leveling Configuration",
+						value = string.format(
+							"> EXP Pet Team: %s\n" ..
+							"> Target Age: `%s`\n" ..
+							"> Queue Count: `%d`",
+							teamText,
+							tostring(CFG.levelingTargetLevel or 500),
+							#queueList
+						),
+						inline = false
+					},
+					{
+						name = "Leveling Queue Status",
 						value = petsText,
 						inline = false
 					}
@@ -53,13 +69,13 @@ function levelingWebhook.sendEnabled(ctx, queueList)
 			}
 		}
 	}
-	sendWebhook(CFG.webhookLevelingUrl, payload)
+	sendWebhook(CFG.webhookUrl, payload)
 end
 
 -- Webhook saat pet selesai leveling
 function levelingWebhook.sendFinished(ctx, petType, mutation, age, durationSec, remainsQueue)
 	local CFG = ctx.CFG
-	if not CFG.webhookLevelingEnabled or not CFG.webhookLevelingUrl or CFG.webhookLevelingUrl == "" then return end
+	if not CFG.webhookLevelingEnabled or not CFG.webhookUrl or CFG.webhookUrl == "" then return end
 
 	local mutDisplay = ctx.reg.mutDisplay and ctx.reg.mutDisplay(mutation) or mutation
 	local durationStr = formatDuration(durationSec)
@@ -99,7 +115,7 @@ function levelingWebhook.sendFinished(ctx, petType, mutation, age, durationSec, 
 			}
 		}
 	}
-	sendWebhook(CFG.webhookLevelingUrl, payload)
+	sendWebhook(CFG.webhookUrl, payload)
 end
 
 return levelingWebhook

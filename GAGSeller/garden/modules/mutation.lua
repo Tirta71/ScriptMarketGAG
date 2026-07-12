@@ -399,8 +399,35 @@ return function(ctx)
 		task.spawn(function()
 			local okW, WebhookMut = pcall(require, script.Parent.webhook.mutation)
 			if okW and WebhookMut then
+				local expTeamList = {}
+				local boostTeamList = {}
+				local phoenixTeamList = {}
+
+				local okData, d = pcall(function() return DataService:GetData() end)
+				if okData and d and d.PetsData then
+					local inv = d.PetsData.PetInventory and d.PetsData.PetInventory.Data or {}
+
+					-- 1. EXP Team
+					for uuid, _ in pairs(CFG.mutationExpTeam or {}) do
+						local pInfo = inv[uuid]
+						if pInfo then table.insert(expTeamList, pInfo.PetType) end
+					end
+
+					-- 2. Boost Team
+					for uuid, _ in pairs(CFG.mutationBoostTeam or {}) do
+						local pInfo = inv[uuid]
+						if pInfo then table.insert(boostTeamList, pInfo.PetType) end
+					end
+
+					-- 3. Phoenix Team
+					for uuid, _ in pairs(CFG.mutationPhoenixTeam or {}) do
+						local pInfo = inv[uuid]
+						if pInfo then table.insert(phoenixTeamList, pInfo.PetType) end
+					end
+				end
+
 				pcall(function() 
-					WebhookMut.sendEnabled(ctx, CFG.mutationTargetTypes, CFG.mutationTargetMutations, CFG.mutationTargetAge)
+					WebhookMut.sendEnabled(ctx, CFG.mutationTargetTypes, CFG.mutationTargetMutations, CFG.mutationTargetAge, expTeamList, boostTeamList, phoenixTeamList)
 				end)
 			end
 		end)

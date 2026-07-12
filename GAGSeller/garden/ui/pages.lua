@@ -112,13 +112,18 @@ return function(ctx)
 			function() return tostring(CFG.levelingMaxPets) end,
 			function(txt) CFG.levelingMaxPets = tonumber(txt) or 2; persist() end, 4)
 
+		-- Enable Discord Webhook (Toggle)
+		makeToggle(settingsAcc, "Enable Discord Webhook", "Send logs and initial status to Discord Webhook",
+			function() return CFG.webhookLevelingEnabled end,
+			function(v) CFG.webhookLevelingEnabled = v; persist() end, 5)
+
 		-- Enable Automation Leveling (Toggle)
 		makeToggle(settingsAcc, "Enable Automation Leveling", "Equip and rotate pets automatically based on settings",
 			function() return CFG.levelingEnabled end,
 			function(v)
 				CFG.levelingEnabled = v; persist()
 				if v then ctx.startLeveling() end
-			end, 5)
+			end, 6)
 	end
 
 	------------------------------------------------------------------ MUTATION
@@ -209,13 +214,18 @@ return function(ctx)
 			function() return tostring(CFG.mutationDelayAutoClaim) end,
 			function(txt) CFG.mutationDelayAutoClaim = tonumber(txt) or 0.5; persist() end, 7)
 
+		-- Enable Discord Webhook (Toggle)
+		makeToggle(settingsAcc, "Enable Discord Webhook", "Send logs and initial status to Discord Webhook",
+			function() return CFG.webhookMutationEnabled end,
+			function(v) CFG.webhookMutationEnabled = v; persist() end, 8)
+
 		-- Enable Auto Mutation Machine (Toggle)
 		ctx.state.mutationToggleRender = makeToggle(settingsAcc, "Enable Auto Mutation Machine", "Submit, start, and claim mutated pets automatically",
 			function() return CFG.mutationEnabled end,
 			function(v)
 				CFG.mutationEnabled = v; persist()
 				if v then ctx.startMutation() end
-			end, 8)
+			end, 9)
 	end
 
 	------------------------------------------------------------------ PET (PNP)
@@ -337,25 +347,10 @@ return function(ctx)
 	-- Webhook Settings Accordion
 	local whAcc = makeAccordion(misc, "Discord Webhook Settings", 1, true)
 
-	-- Leveling Webhook Toggle
-	makeToggle(whAcc, "Enable Leveling Webhook", "Send status update when leveling finishes or starts",
-		function() return CFG.webhookLevelingEnabled end,
-		function(v) CFG.webhookLevelingEnabled = v; persist() end, 1)
-
-	-- Leveling Webhook URL Input
-	makeInput(whAcc, "Leveling Webhook URL", "Discord Webhook URL for Leveling logs",
-		function() return CFG.webhookLevelingUrl end,
-		function(txt) CFG.webhookLevelingUrl = txt; persist() end, 2)
-
-	-- Mutation Webhook Toggle
-	makeToggle(whAcc, "Enable Mutation Webhook", "Send status update when pet claims, starts, or matches target",
-		function() return CFG.webhookMutationEnabled end,
-		function(v) CFG.webhookMutationEnabled = v; persist() end, 3)
-
-	-- Mutation Webhook URL Input
-	makeInput(whAcc, "Mutation Webhook URL", "Discord Webhook URL for Mutation logs",
-		function() return CFG.webhookMutationUrl end,
-		function(txt) CFG.webhookMutationUrl = txt; persist() end, 4)
+	-- Discord Webhook URL Input
+	makeInput(whAcc, "Discord Webhook URL", "Webhook URL for automation updates (Leveling & Mutation)",
+		function() return CFG.webhookUrl end,
+		function(txt) CFG.webhookUrl = txt; persist() end, 1)
 
 	local logCard = mk("Frame", { Size = UDim2.new(1, 0, 0, 220), BackgroundColor3 = C.row, LayoutOrder = 2 }, misc)
 	corner(logCard, 8); stroke(logCard); pad(logCard, 12, 12, 10, 10)

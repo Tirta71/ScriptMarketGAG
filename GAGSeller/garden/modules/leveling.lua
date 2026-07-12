@@ -278,9 +278,12 @@ return function(ctx)
 			local okW, WebhookLev = pcall(require, script.Parent.webhook.leveling)
 			if okW and WebhookLev then
 				local queueList = {}
+				local teamList = {}
 				local okData, d = pcall(function() return DataService:GetData() end)
 				if okData and d and d.PetsData then
 					local inv = d.PetsData.PetInventory and d.PetsData.PetInventory.Data or {}
+					
+					-- 1. Antrean pet target
 					local targetTypes = CFG.levelingPetTypes or {}
 					local targetLvl = CFG.levelingTargetLevel or 500
 					for _, v in pairs(inv) do
@@ -293,8 +296,17 @@ return function(ctx)
 							end
 						end
 					end
+
+					-- 2. Nama pet dalam EXP team
+					local teamUuids = CFG.levelingTeamUuids or {}
+					for uuid, _ in pairs(teamUuids) do
+						local pInfo = inv[uuid]
+						if pInfo then
+							table.insert(teamList, pInfo.PetType)
+						end
+					end
 				end
-				pcall(function() WebhookLev.sendEnabled(ctx, queueList) end)
+				pcall(function() WebhookLev.sendEnabled(ctx, queueList, teamList) end)
 			end
 		end)
 		
