@@ -32,6 +32,47 @@ return function(ctx)
 
 	ctx.state.levelingStatus = "Idle"
 
+	-- Mendapatkan ringkasan statistik leveling untuk UI
+	function ctx.getLevelingSummary()
+		local ok, d = pcall(function() return DataService:GetData() end)
+		local inv = ok and d and d.PetsData and d.PetsData.PetInventory and d.PetsData.PetInventory.Data or {}
+		
+		local teamCount = 0
+		for _ in pairs(CFG.levelingTeamUuids) do teamCount = teamCount + 1 end
+		
+		local typesList = {}
+		for k in pairs(CFG.levelingPetTypes) do table.insert(typesList, k) end
+		table.sort(typesList)
+		local typesStr = #typesList > 0 and table.concat(typesList, ", ") or "None"
+		
+		local readyCount = 0
+		local maxLvlCount = 0
+		local targetLvl = CFG.levelingTargetLevel or 500
+		
+		for _, v in pairs(inv) do
+			local pt = v.PetType
+			if CFG.levelingPetTypes[pt] then
+				local pd = v.PetData or {}
+				local lvl = pd.Level or 0
+				if lvl < targetLvl then
+					readyCount = readyCount + 1
+				else
+					maxLvlCount = maxLvlCount + 1
+				end
+			end
+		end
+		
+		return {
+			status = CFG.levelingEnabled and "ACTIVE" or "STOPPED",
+			team = string.format("%d pets selected", teamCount),
+			types = typesStr,
+			ready = string.format("%d pets", readyCount),
+			maxLvl = string.format("%d pets", maxLvlCount),
+			maxInGarden = string.format("%d pets", CFG.levelingMaxPets or 2),
+			targetLevel = tostring(targetLvl),
+		}
+	end
+
 	-- Mendapatkan semua tipe unik pet yang dimiliki di inventory
 	function ctx.getInventoryPetTypes()
 		local out = {}

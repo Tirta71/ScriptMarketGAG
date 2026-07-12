@@ -49,20 +49,44 @@ return function(ctx)
 		local statusAcc = makeAccordion(levelingPage, "Leveling Mode Status", 1, true)
 		
 		local statusLbl = mk("TextLabel", {
-			Size = UDim2.new(1, 0, 0, 24),
+			Size = UDim2.new(1, 0, 0, 0),
+			AutomaticSize = Enum.AutomaticSize.Y,
 			BackgroundTransparency = 1,
-			Text = "Status: Idle",
-			Font = Enum.Font.GothamMedium,
+			Text = "Loading stats...",
+			Font = Enum.Font.Gotham,
 			TextSize = 13,
-			TextColor3 = C.sub,
+			TextColor3 = C.txt,
 			TextXAlignment = Enum.TextXAlignment.Left,
+			LineHeight = 1.35,
+			RichText = true,
 			LayoutOrder = 1
 		}, statusAcc)
 		
 		task.spawn(function()
 			while ctx.alive() do
-				statusLbl.Text = "Status: " .. tostring(ctx.state.levelingStatus or "Idle")
-				task.wait(1)
+				local ok, s = pcall(function() return ctx.getLevelingSummary() end)
+				if ok and s then
+					local statusColor = s.status == "ACTIVE" and "#5acc78" or "#dc5050"
+					statusLbl.Text = string.format(
+						"Automation Status: <font color=\"%s\"><b>%s</b></font>\n\n" ..
+						"<b>Current Settings:</b>\n" ..
+						"Pet Team: <font color=\"#8c929e\">%s</font>\n" ..
+						"Target Types: <font color=\"#f5c82d\">%s</font>\n" ..
+						"Pets Ready to Level: <font color=\"#8c929e\">%s</font>\n" ..
+						"Pets at Max Level: <font color=\"#8c929e\">%s</font>\n" ..
+						"Max in Garden: <font color=\"#8c929e\">%s</font>\n\n" ..
+						"Target Level: <font color=\"#f5c82d\"><b>%s</b></font>\n\n" ..
+						"Ready: Settings configured",
+						statusColor, s.status,
+						s.team,
+						s.types,
+						s.ready,
+						s.maxLvl,
+						s.maxInGarden,
+						s.targetLevel
+					)
+				end
+				task.wait(1.5)
 			end
 		end)
 
