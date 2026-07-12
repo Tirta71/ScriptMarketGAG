@@ -26,6 +26,7 @@ return function(ctx)
 		pnpUuids    = {},     -- filter per-UUID pet equipped; kosong = semua equipped
 		pickupDelay = 0.4,    -- jeda setelah place sebelum siklus berikutnya
 		equipDelay  = 0.3,   -- jeda antara unequip -> equip (aman dari race condition)
+		pnpScanInterval = 0.05, -- jeda antar-scan loop PNP (makin kecil = makin sering cek)
 		pnpEnabled  = false,
 		pnpMonitorEnabled = false,
 
@@ -84,6 +85,7 @@ return function(ctx)
 			CFG.pnpUuids    = (type(st.pnpUuids) == "table") and st.pnpUuids or {}
 			CFG.pickupDelay = tonumber(st.pickupDelay) or 0.4
 			CFG.equipDelay  = tonumber(st.equipDelay) or 0.02
+			CFG.pnpScanInterval = tonumber(st.pnpScanInterval) or 0.05
 			CFG.pnpEnabled  = st.pnpEnabled or false
 			CFG.pnpMonitorEnabled = st.pnpMonitorEnabled or false
 			

@@ -250,7 +250,7 @@ return function(ctx)
 				if not CFG.pnpMonitorEnabled then
 					setStatus(("PNP jalan: %d pet%s"):format(#pets, didAny and "" or " (nunggu skill keluar)"))
 				end
-				task.wait(0.15)
+				task.wait(math.max(0.01, tonumber(CFG.pnpScanInterval) or 0.05))
 			end
 		end
 	end

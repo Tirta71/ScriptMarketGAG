@@ -236,12 +236,19 @@ return function(ctx)
 		function() return CFG.equipDelay end,
 		function(txt) CFG.equipDelay = tonumber(txt) or 0.02; persist() end, 3)
 
+	makeInput(pnp, "Scan Interval (Seconds)", "Frekuensi cek cooldown (kecil = makin ketat, min 0.01)",
+		function() return CFG.pnpScanInterval end,
+		function(txt)
+			local n = tonumber(txt) or 0.05
+			CFG.pnpScanInterval = math.max(0.01, n); persist()
+		end, 4)
+
 	makeToggle(pnp, "Enable Automation Pickup", "Pungut & taruh lagi pet buat reset/trigger skill",
 		function() return CFG.pnpEnabled end,
 		function(v)
 			CFG.pnpEnabled = v; persist()
 			if v then ctx.startPnp() end
-		end, 4)
+		end, 5)
 
 	local pnpMonitorBtnRender = makeToggle(pnp, "Enable Pet Monitor CD", "Buka jendela mengambang untuk memantau cooldown pet secara live",
 		function() return CFG.pnpMonitorEnabled end,
