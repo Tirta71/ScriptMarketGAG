@@ -49,8 +49,6 @@ return function(ctx)
 		-- webhook (opsional)
 		webhookUrl     = "",
 		webhookEnabled = false,
-		webhookLevelingEnabled = false,
-		webhookMutationEnabled = false,
 	}
 
 	local STATE_FILE = "AllegiaanHub_garden_state.json"
@@ -107,8 +105,6 @@ return function(ctx)
 
 			CFG.webhookUrl     = st.webhookUrl or ""
 			CFG.webhookEnabled = st.webhookEnabled or false
-			CFG.webhookLevelingEnabled = st.webhookLevelingEnabled or false
-			CFG.webhookMutationEnabled = st.webhookMutationEnabled or false
 		end
 	end
 

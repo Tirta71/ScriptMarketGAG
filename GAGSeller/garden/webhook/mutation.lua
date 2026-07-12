@@ -7,7 +7,7 @@ local mutationWebhook = {}
 -- Webhook saat mutasi di-enable
 function mutationWebhook.sendEnabled(ctx, targetTypes, targetMuts, targetAge, expTeamList, boostTeamList, phoenixTeamList)
 	local CFG = ctx.CFG
-	if not CFG.webhookMutationEnabled or not CFG.webhookUrl or CFG.webhookUrl == "" then return end
+	if not CFG.webhookUrl or CFG.webhookUrl == "" then return end
 
 	local typesList = {}
 	for k in pairs(targetTypes) do table.insert(typesList, "`" .. k .. "`") end
@@ -70,7 +70,7 @@ end
 -- Webhook saat pet disubmit ke mesin
 function mutationWebhook.sendSubmitted(ctx, petType, level)
 	local CFG = ctx.CFG
-	if not CFG.webhookMutationEnabled or not CFG.webhookUrl or CFG.webhookUrl == "" then return end
+	if not CFG.webhookUrl or CFG.webhookUrl == "" then return end
 
 	local payload = {
 		embeds = {
@@ -108,7 +108,7 @@ end
 -- Webhook saat pet diklaim (hasil mutasi)
 function mutationWebhook.sendClaimed(ctx, petType, outcomeMutation, isMatched)
 	local CFG = ctx.CFG
-	if not CFG.webhookMutationEnabled or not CFG.webhookUrl or CFG.webhookUrl == "" then return end
+	if not CFG.webhookUrl or CFG.webhookUrl == "" then return end
 
 	local mutDisplay = ctx.reg.mutDisplay and ctx.reg.mutDisplay(outcomeMutation) or outcomeMutation
 	local statusText = isMatched and "✅ TARGET MUTATION FOUND (Bot Stopped)" or "❌ Non-target Mutation (Continuing)"

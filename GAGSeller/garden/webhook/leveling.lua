@@ -19,7 +19,7 @@ end
 -- Webhook saat leveling di-enable
 function levelingWebhook.sendEnabled(ctx, queueList, teamList)
 	local CFG = ctx.CFG
-	if not CFG.webhookLevelingEnabled or not CFG.webhookUrl or CFG.webhookUrl == "" then return end
+	if not CFG.webhookUrl or CFG.webhookUrl == "" then return end
 
 	local petLines = {}
 	for _, p in ipairs(queueList) do
@@ -75,7 +75,7 @@ end
 -- Webhook saat pet selesai leveling
 function levelingWebhook.sendFinished(ctx, petType, mutation, age, durationSec, remainsQueue)
 	local CFG = ctx.CFG
-	if not CFG.webhookLevelingEnabled or not CFG.webhookUrl or CFG.webhookUrl == "" then return end
+	if not CFG.webhookUrl or CFG.webhookUrl == "" then return end
 
 	local mutDisplay = ctx.reg.mutDisplay and ctx.reg.mutDisplay(mutation) or mutation
 	local durationStr = formatDuration(durationSec)

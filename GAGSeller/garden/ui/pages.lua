@@ -112,18 +112,13 @@ return function(ctx)
 			function() return tostring(CFG.levelingMaxPets) end,
 			function(txt) CFG.levelingMaxPets = tonumber(txt) or 2; persist() end, 4)
 
-		-- Enable Discord Webhook (Toggle)
-		makeToggle(settingsAcc, "Enable Discord Webhook", "Send logs and initial status to Discord Webhook",
-			function() return CFG.webhookLevelingEnabled end,
-			function(v) CFG.webhookLevelingEnabled = v; persist() end, 5)
-
 		-- Enable Automation Leveling (Toggle)
 		makeToggle(settingsAcc, "Enable Automation Leveling", "Equip and rotate pets automatically based on settings",
 			function() return CFG.levelingEnabled end,
 			function(v)
 				CFG.levelingEnabled = v; persist()
 				if v then ctx.startLeveling() end
-			end, 6)
+			end, 5)
 	end
 
 	------------------------------------------------------------------ MUTATION
@@ -214,18 +209,13 @@ return function(ctx)
 			function() return tostring(CFG.mutationDelayAutoClaim) end,
 			function(txt) CFG.mutationDelayAutoClaim = tonumber(txt) or 0.5; persist() end, 7)
 
-		-- Enable Discord Webhook (Toggle)
-		makeToggle(settingsAcc, "Enable Discord Webhook", "Send logs and initial status to Discord Webhook",
-			function() return CFG.webhookMutationEnabled end,
-			function(v) CFG.webhookMutationEnabled = v; persist() end, 8)
-
 		-- Enable Auto Mutation Machine (Toggle)
 		ctx.state.mutationToggleRender = makeToggle(settingsAcc, "Enable Auto Mutation Machine", "Submit, start, and claim mutated pets automatically",
 			function() return CFG.mutationEnabled end,
 			function(v)
 				CFG.mutationEnabled = v; persist()
 				if v then ctx.startMutation() end
-			end, 9)
+			end, 8)
 	end
 
 	------------------------------------------------------------------ PET (PNP)
