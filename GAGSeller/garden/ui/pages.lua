@@ -15,6 +15,7 @@ return function(ctx)
 	local makeSingleDropdown = ctx.makeSingleDropdown
 	local makeMultiDropdown = ctx.makeMultiDropdown
 	local makeMultiDropdownDyn = ctx.makeMultiDropdownDyn
+	local makeButton = ctx.makeButton
 
 	-- sidebar tabs (urut sesuai referensi)
 	local TABS = {
