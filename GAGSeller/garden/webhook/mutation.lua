@@ -64,7 +64,7 @@ function mutationWebhook.sendEnabled(ctx, targetTypes, targetMuts, targetAge, ex
 			}
 		}
 	}
-	sendWebhook(CFG.webhookUrl, payload)
+	sendWebhook(CFG.webhookUrl, payload, ctx)
 end
 
 -- Webhook saat pet disubmit ke mesin
@@ -102,7 +102,7 @@ function mutationWebhook.sendSubmitted(ctx, petType, level)
 			}
 		}
 	}
-	sendWebhook(CFG.webhookUrl, payload)
+	sendWebhook(CFG.webhookUrl, payload, ctx)
 end
 
 -- Webhook saat pet diklaim (hasil mutasi)
@@ -144,7 +144,7 @@ function mutationWebhook.sendClaimed(ctx, petType, outcomeMutation, isMatched)
 			}
 		}
 	}
-	sendWebhook(CFG.webhookUrl, payload)
+	sendWebhook(CFG.webhookUrl, payload, ctx)
 end
 
 return mutationWebhook

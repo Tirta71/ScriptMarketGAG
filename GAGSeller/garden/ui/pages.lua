@@ -374,8 +374,7 @@ return function(ctx)
 									}
 								}
 							}
-						})
-						ctx.log("[Webhook Test] Test payload berhasil dikirim!")
+						}, ctx)
 					end)
 				else
 					ctx.log("[Webhook Test] Gagal meload modul sender.")

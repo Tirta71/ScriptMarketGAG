@@ -1,7 +1,7 @@
 --[[ sender.lua — Helper kirim webhook Discord dengan bypass proxy. ]]
 local HttpService = game:GetService("HttpService")
 
-local function sendWebhook(url, payload)
+local function sendWebhook(url, payload, ctx)
 	if not url or url == "" then return end
 	
 	-- Trim leading and trailing whitespace
@@ -17,28 +17,42 @@ local function sendWebhook(url, payload)
 	local reqErr = ""
 
 	-- 1. Coba gunakan executor HTTP request (client-side, bypass blocks)
+	-- Mendukung baik key uppercase maupun lowercase untuk menjamin kompatibilitas 100% executor
 	local reqFn = (syn and syn.request) or (http and http.request) or http_request or request
 	if reqFn then
 		local success, res = pcall(function()
 			return reqFn({
 				Url = cleanUrl,
+				url = cleanUrl,
 				Method = "POST",
+				method = "POST",
 				Headers = {
 					["Content-Type"] = "application/json",
-					["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+					["content-type"] = "application/json",
+					["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+					["user-agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
 				},
-				Body = jsonPayload
+				headers = {
+					["Content-Type"] = "application/json",
+					["content-type"] = "application/json",
+					["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+					["user-agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+				},
+				Body = jsonPayload,
+				body = jsonPayload
 			})
 		end)
 		if success and res then
 			if res.StatusCode == 200 or res.StatusCode == 204 then
 				sent = true
 			else
-				reqErr = "StatusCode: " .. tostring(res.StatusCode) .. " - " .. tostring(res.Body)
+				reqErr = "StatusCode: " .. tostring(res.StatusCode) .. " - " .. tostring(res.Body or "No response body")
 			end
 		else
-			reqErr = tostring(res)
+			reqErr = tostring(res or "Unknown executor request error")
 		end
+	else
+		reqErr = "Executor tidak memiliki fungsi request/http_request"
 	end
 
 	-- 2. Fallback ke HttpService:PostAsync (menggunakan proxy) jika executor request gagal atau tidak tersedia
@@ -49,7 +63,11 @@ local function sendWebhook(url, payload)
 		if success then
 			sent = true
 		else
-			warn("[AllegiaanGarden Webhook] Fallback failed: " .. tostring(err) .. " | Exec request error: " .. reqErr)
+			local errMsg = "Fallback failed: " .. tostring(err) .. " | Exec error: " .. reqErr
+			warn("[AllegiaanGarden Webhook] " .. errMsg)
+			if ctx and ctx.log then
+				ctx.log("[Webhook Error] " .. errMsg)
+			end
 		end
 	end
 end

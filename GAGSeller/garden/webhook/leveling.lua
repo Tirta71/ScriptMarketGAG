@@ -69,7 +69,7 @@ function levelingWebhook.sendEnabled(ctx, queueList, teamList)
 			}
 		}
 	}
-	sendWebhook(CFG.webhookUrl, payload)
+	sendWebhook(CFG.webhookUrl, payload, ctx)
 end
 
 -- Webhook saat pet selesai leveling
@@ -115,7 +115,7 @@ function levelingWebhook.sendFinished(ctx, petType, mutation, age, durationSec, 
 			}
 		}
 	}
-	sendWebhook(CFG.webhookUrl, payload)
+	sendWebhook(CFG.webhookUrl, payload, ctx)
 end
 
 return levelingWebhook
