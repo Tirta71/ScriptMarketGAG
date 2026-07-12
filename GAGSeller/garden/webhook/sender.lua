@@ -4,17 +4,24 @@ local HttpService = game:GetService("HttpService")
 local function sendWebhook(url, payload)
 	if not url or url == "" then return end
 	
-	-- Gunakan proxy lewis.es jika menggunakan HttpService standard karena Discord memblokir Roblox UA
-	local proxiedUrl = url:gsub("discord.com/api/webhooks/", "webhook.lewis.es/api/webhooks/")
+	-- Trim leading and trailing whitespace
+	local cleanUrl = url:match("^%s*(.-)%s*$")
+	if not cleanUrl or cleanUrl == "" then return end
 	
-	local success, err = pcall(function()
-		local jsonPayload = HttpService:JSONEncode(payload)
-		
-		-- Cari executor request function
-		local reqFn = (syn and syn.request) or (http and http.request) or http_request or request
-		if reqFn then
-			reqFn({
-				Url = url,
+	-- Gunakan proxy jika menggunakan HttpService standard karena Discord memblokir Roblox UA
+	local proxiedUrl = cleanUrl:gsub("discord.com/api/webhooks/", "webhook.lewis.es/api/webhooks/")
+	proxiedUrl = proxiedUrl:gsub("discordapp.com/api/webhooks/", "webhook.lewis.es/api/webhooks/")
+	
+	local jsonPayload = HttpService:JSONEncode(payload)
+	local sent = false
+	local reqErr = ""
+
+	-- 1. Coba gunakan executor HTTP request (client-side, bypass blocks)
+	local reqFn = (syn and syn.request) or (http and http.request) or http_request or request
+	if reqFn then
+		local success, res = pcall(function()
+			return reqFn({
+				Url = cleanUrl,
 				Method = "POST",
 				Headers = {
 					["Content-Type"] = "application/json",
@@ -22,12 +29,28 @@ local function sendWebhook(url, payload)
 				},
 				Body = jsonPayload
 			})
+		end)
+		if success and res then
+			if res.StatusCode == 200 or res.StatusCode == 204 then
+				sent = true
+			else
+				reqErr = "StatusCode: " .. tostring(res.StatusCode) .. " - " .. tostring(res.Body)
+			end
 		else
-			HttpService:PostAsync(proxiedUrl, jsonPayload, Enum.HttpContentType.ApplicationJson)
+			reqErr = tostring(res)
 		end
-	end)
-	if not success then
-		warn("[AllegiaanGarden Webhook] Gagal mengirim: " .. tostring(err))
+	end
+
+	-- 2. Fallback ke HttpService:PostAsync (menggunakan proxy) jika executor request gagal atau tidak tersedia
+	if not sent then
+		local success, err = pcall(function()
+			HttpService:PostAsync(proxiedUrl, jsonPayload, Enum.HttpContentType.ApplicationJson)
+		end)
+		if success then
+			sent = true
+		else
+			warn("[AllegiaanGarden Webhook] Fallback failed: " .. tostring(err) .. " | Exec request error: " .. reqErr)
+		end
 	end
 end
 
