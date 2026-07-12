@@ -99,46 +99,61 @@ return function(ctx)
 		return hrp and hrp.Position or nil
 	end
 
-	----------------------------------------------------------------- loop utama
+	----------------------------------------------------------------- loop utama (paralel per-pet)
+	-- Tiap pet target punya thread sendiri: cek GetPetCooldown -> PNP -> ulang.
+	-- Round-trip InvokeServer jadi overlap (paralel), bukan antri -> secepat script referensi.
+	local petThreads = {} -- uuid -> true (thread sedang jalan)
+
+	local function runPetThread(uuid, myId)
+		petThreads[uuid] = true
+		while CFG.pnpEnabled and ctx.alive() and ctx.state.pnpId == myId do
+			-- Pastikan pet masih target (equipped + lolos filter pnpUuids)
+			local stillTarget = false
+			for _, p in ipairs(targetPets()) do
+				if p.uuid == uuid then stillTarget = true; break end
+			end
+			if not stillTarget then break end
+
+			-- Tanya cooldown asli ke server
+			local mainCd = readMainCd(uuid)
+			local pos = placePos()
+
+			if pos and mainCd ~= nil and mainCd <= READY_TH then
+				if CFG.pickupDelay > 0 then task.wait(CFG.pickupDelay) end
+				if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
+				-- PICKUP -> PLACE (numpuk di center)
+				pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
+				task.wait(math.max(0.01, CFG.equipDelay))
+				if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
+				pcall(function() PetsService:FireServer("EquipPet", uuid, CFrame.new(pos)) end)
+			end
+
+			task.wait(math.max(0.01, tonumber(CFG.pnpScanInterval) or 0.05))
+		end
+		petThreads[uuid] = nil
+	end
+
 	local function pnpLoop()
 		ctx.state.pnpId = (ctx.state.pnpId or 0) + 1
 		local myId = ctx.state.pnpId
 		ctx.elevate()
 
+		-- Supervisor: spawn thread untuk tiap pet target yang belum punya thread
 		while CFG.pnpEnabled and ctx.alive() and ctx.state.pnpId == myId do
 			local pets = targetPets()
 			if #pets == 0 then
 				setStatus("PNP: tidak ada pet target (equip pet dulu)")
-				task.wait(1)
 			else
-				local didAny = false
-				local pos = placePos()
-
 				for _, p in ipairs(pets) do
-					if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
-
-					-- Tanya cooldown asli ke server (yield/round-trip alami)
-					local mainCd = readMainCd(p.uuid)
-
-					if pos and mainCd ~= nil and mainCd <= READY_TH then
-						didAny = true
-						-- Jeda penjemputan sebelum dilepas
-						if CFG.pickupDelay > 0 then task.wait(CFG.pickupDelay) end
-						if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
-
-						-- PICKUP -> PLACE (numpuk di center)
-						pcall(function() PetsService:FireServer("UnequipPet", p.uuid) end)
-						task.wait(math.max(0.01, CFG.equipDelay))
-						if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
-						pcall(function() PetsService:FireServer("EquipPet", p.uuid, CFrame.new(pos)) end)
+					if not petThreads[p.uuid] then
+						task.spawn(runPetThread, p.uuid, myId)
 					end
 				end
-
 				if not CFG.pnpMonitorEnabled then
-					setStatus(("PNP jalan: %d pet%s"):format(#pets, didAny and "" or " (nunggu skill ready)"))
+					setStatus(("PNP jalan: %d pet (paralel)"):format(#pets))
 				end
-				task.wait(math.max(0.01, tonumber(CFG.pnpScanInterval) or 0.05))
 			end
+			task.wait(1) -- supervisor cukup ngecek pet baru tiap 1 detik
 		end
 	end
 
