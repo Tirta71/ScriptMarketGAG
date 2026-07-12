@@ -3,10 +3,16 @@ local HttpService = game:GetService("HttpService")
 
 local function sendWebhook(url, payload, ctx)
 	if not url or url == "" then return end
-	
+
 	-- Trim leading and trailing whitespace
 	local cleanUrl = url:match("^%s*(.-)%s*$")
 	if not cleanUrl or cleanUrl == "" then return end
+
+	-- Nama & avatar pengirim webhook (override default). Semua notif tampil "AllegiaanHub".
+	if type(payload) == "table" then
+		if not payload.username then payload.username = "AllegiaanHub" end
+		if not payload.avatar_url then payload.avatar_url = "https://i.imgur.com/H1Zh6V6.png" end
+	end
 	
 	-- Gunakan proxy jika menggunakan HttpService standard karena Discord memblokir Roblox UA
 	local proxiedUrl = cleanUrl:gsub("discord.com/api/webhooks/", "webhook.lewis.es/api/webhooks/")
