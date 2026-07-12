@@ -109,6 +109,31 @@ return function(ctx)
 		return out
 	end
 
+	-- daftar pet dari INVENTORY (semua pet, bukan cuma yang di-garden) buat dropdown Select Pets.
+	function ctx.inventoryPetOptions()
+		local out = {}
+		local ok, d = pcall(function() return DataService:GetData() end)
+		if not ok or not d then return out end
+		local inv = d.PetsData and d.PetsData.PetInventory and d.PetsData.PetInventory.Data
+		if not inv then return out end
+		local eq = d.PetsData.EquippedPets or {}
+		local eqSet = {}; for _, u in ipairs(eq) do eqSet[u] = true end
+		for uuid, v in pairs(inv) do
+			local pt = v.PetType or "?"
+			local pd = v.PetData or {}
+			local age = pd.Level or 0
+			local mut = pd.MutationType
+			local mutStr = (mut and mut ~= "" and mut ~= "Normal") and (" " .. tostring(mut)) or ""
+			local tag = eqSet[uuid] and " [aktif]" or ""
+			out[#out + 1] = {
+				value = uuid,
+				display = ("%s%s | Age %s | #%s%s"):format(pt, mutStr, tostring(age), uuid:sub(2, 5), tag),
+			}
+		end
+		table.sort(out, function(a, b) return a.display < b.display end)
+		return out
+	end
+
 	-- Posisi placement
 	local GetFarm = require(RS.Modules.GetFarm)
 	local function farmCenter()
@@ -136,6 +161,23 @@ return function(ctx)
 
 	local function getPetMaxCd(petType)
 		local name = tostring(petType)
+		
+		-- 1) Cari dari database internal game secara dinamis
+		local PetList, PassiveRegistry
+		pcall(function() PetList = require(RS.Data.PetRegistry.PetList) end)
+		pcall(function() PassiveRegistry = require(RS.Data.PetRegistry.PassiveRegistry) end)
+		
+		local p = PetList and PetList[name]
+		local pas = p and p.Passives
+		local passiveName = type(pas) == "table" and pas[1] or nil
+		local reg = passiveName and PassiveRegistry and PassiveRegistry[passiveName]
+		local cd = reg and reg.States and reg.States.Cooldown
+		if type(cd) == "table" then
+			local m = tonumber(cd.Min) or tonumber(cd.Base)
+			if m then return m end
+		end
+		
+		-- 2) Fallback jika database game gagal dibaca
 		if name:find("Ferret") then return 1200 end
 		if name:find("Peacock") then return 15 end
 		if name:find("Dilophosaurus") then return 60 end
