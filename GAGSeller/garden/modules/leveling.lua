@@ -106,6 +106,47 @@ return function(ctx)
 		local targetLvl = CFG.levelingTargetLevel or 500
 		local maxLvlPets = CFG.levelingMaxPets or 2
 
+		-- A. DETEKSI FIRST RUN: Cabut semua pet jika ada pet aktif
+		if ctx.state.levelingFirstRun then
+			ctx.state.levelingFirstRun = false
+			if #eq > 0 then
+				ctx.state.levelingStatus = "Resetting garden..."
+				for _, uuid in ipairs(eq) do
+					pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
+					task.wait(0.25)
+				end
+				-- Refresh eq list setelah dicabut semua
+				local ok2, d2 = pcall(function() return DataService:GetData() end)
+				if ok2 and d2 and d2.PetsData then
+					eq = d2.PetsData.EquippedPets or {}
+				end
+			end
+		end
+
+		-- B. DETEKSI PERSISTENSI TEAM: Pasang kembali pet team yang dicabut oleh user/game
+		for uuid, _ in pairs(teamSet) do
+			local isEquipped = false
+			for _, eqUuid in ipairs(eq) do
+				if eqUuid == uuid then
+					isEquipped = true
+					break
+				end
+			end
+			if not isEquipped then
+				ctx.state.levelingStatus = "Re-equipping team..."
+				local pos = getPos(uuid)
+				if pos then
+					pcall(function() PetsService:FireServer("EquipPet", uuid, CFrame.new(pos)) end)
+					task.wait(0.3)
+				end
+				-- Refresh eq list lagi agar perhitungan slot leveling berikutnya akurat
+				local ok2, d2 = pcall(function() return DataService:GetData() end)
+				if ok2 and d2 and d2.PetsData then
+					eq = d2.PetsData.EquippedPets or {}
+				end
+			end
+		end
+
 		-- 1) Klasifikasikan pet yang sedang di-equip
 		local currentTeam = {}      -- uuid -> true
 		local currentLeveling = {}  -- list of uuids
@@ -198,9 +239,11 @@ return function(ctx)
 		local myId = ctx.state.levelingId
 		ctx.elevate()
 		
+		ctx.state.levelingFirstRun = true
+		
 		while CFG.levelingEnabled and ctx.alive() and ctx.state.levelingId == myId do
 			pcall(checkLeveling)
-			task.wait(5.0)
+			task.wait(3.0)
 		end
 		ctx.state.levelingStatus = "Idle"
 	end
