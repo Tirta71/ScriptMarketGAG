@@ -38,8 +38,20 @@ return function(ctx)
 	local function makeInput(parent, title, desc, getv, setv, order)
 		local row = mk("Frame", { Size = UDim2.new(1, 0, 0, 52), BackgroundTransparency = 1, LayoutOrder = order }, parent)
 		labels(row, title, desc, 140)
-		local box = mk("TextBox", { Size = UDim2.fromOffset(120, 30), Position = UDim2.new(1, -124, 0.5, -15), BackgroundColor3 = C.panel, Text = tostring(getv()), Font = Enum.Font.GothamMedium, TextSize = 13, TextColor3 = C.acc, ClearTextOnFocus = false }, row)
+		local box = mk("TextBox", { 
+			Size = UDim2.fromOffset(120, 30), 
+			Position = UDim2.new(1, -124, 0.5, -15), 
+			BackgroundColor3 = C.panel, 
+			Text = tostring(getv()), 
+			Font = Enum.Font.GothamMedium, 
+			TextSize = 11, 
+			TextColor3 = C.txt, 
+			ClearTextOnFocus = false,
+			ClipsDescendants = true,
+			TextXAlignment = Enum.TextXAlignment.Left
+		}, row)
 		corner(box, 6); stroke(box)
+		pad(box, 8, 8, 0, 0)
 		box.FocusLost:Connect(function() setv(box.Text); box.Text = tostring(getv()) end)
 		return box
 	end
@@ -265,8 +277,8 @@ return function(ctx)
 	local function makeButton(parent, title, desc, onClick, order)
 		local row = mk("Frame", { Size = UDim2.new(1, 0, 0, 52), BackgroundTransparency = 1, LayoutOrder = order }, parent)
 		labels(row, title, desc, 140)
-		local btn = mk("TextButton", { Size = UDim2.fromOffset(120, 30), Position = UDim2.new(1, -124, 0.5, -15), BackgroundColor3 = C.acc, Text = "Execute", Font = Enum.Font.GothamMedium, TextSize = 13, TextColor3 = Color3.new(1, 1, 1), AutoButtonColor = true }, row)
-		corner(btn, 6); stroke(btn)
+		local btn = mk("TextButton", { Size = UDim2.fromOffset(120, 30), Position = UDim2.new(1, -124, 0.5, -15), BackgroundColor3 = C.panel, Text = "Execute", Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = C.acc, AutoButtonColor = true }, row)
+		corner(btn, 6); stroke(btn, C.acc)
 		btn.MouseButton1Click:Connect(onClick)
 		return btn
 	end
