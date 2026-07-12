@@ -165,10 +165,29 @@ return function(ctx)
 			return false
 		end
 
-		-- auto unfavorite dulu kalau perlu
+		-- auto unfavorite dulu kalau perlu.
+		-- PENTING: Favorite_Item butuh TOOL object (bukan uuid). Cari tool di Backpack/Character.
 		if CFG.autoUnfavorite and FavoriteItem then
+			local Favorite_Item_BE = game:GetService("ReplicatedStorage").GameEvents:FindFirstChild("Favorite_Item_BE")
+			local function findToolByUuid(uuid)
+				local bp = LP:FindFirstChildOfClass("Backpack")
+				if bp then for _, t in ipairs(bp:GetChildren()) do
+					if t:IsA("Tool") and t:GetAttribute("PET_UUID") == uuid then return t end
+				end end
+				if LP.Character then for _, t in ipairs(LP.Character:GetChildren()) do
+					if t:IsA("Tool") and t:GetAttribute("PET_UUID") == uuid then return t end
+				end end
+				return nil
+			end
 			for _, p in ipairs(pets) do
-				if p.fav then pcall(function() FavoriteItem:FireServer(p.uuid) end); task.wait(0.15) end
+				if p.fav then
+					local tool = findToolByUuid(p.uuid)
+					if tool then
+						pcall(function() FavoriteItem:FireServer(tool) end)
+						if Favorite_Item_BE then pcall(function() Favorite_Item_BE:Fire(tool) end) end
+						task.wait(0.15)
+					end
+				end
 			end
 			task.wait(0.3)
 		end

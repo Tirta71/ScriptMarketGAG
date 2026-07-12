@@ -244,13 +244,18 @@ return function(ctx)
 			function() return CFG.summerAllowFavorite end,
 			function(v) CFG.summerAllowFavorite = v; persist() end, 4)
 
+		-- Auto TP ke Sam
+		makeToggle(summerAcc, "Auto TP ke Sam", "Otomatis teleport ke Sam sebelum submit/claim",
+			function() return CFG.summerAutoTP end,
+			function(v) CFG.summerAutoTP = v; persist() end, 5)
+
 		-- Enable Automation Summer Event (Toggle)
 		makeToggle(summerAcc, "Enable Automation Summer Event", "Auto submit pet ke Sam The Clam + auto claim reward. Harus dekat Sam.",
 			function() return CFG.summerEventEnabled end,
 			function(v)
 				CFG.summerEventEnabled = v; persist()
 				if v and ctx.startSummerEvent then ctx.startSummerEvent() end
-			end, 5)
+			end, 6)
 	end
 
 	------------------------------------------------------------------ PET (PNP)

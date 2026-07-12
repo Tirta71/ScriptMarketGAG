@@ -29,6 +29,22 @@ return function(ctx)
 	end)
 
 	----------------------------------------------------------------- helpers
+	-- Cari RootPart Sam The Clam & TP karakter ke dekatnya (biar remote lolos cek jarak server).
+	local function teleportToSam()
+		local sam = workspace:FindFirstChild("Interaction")
+		sam = sam and sam:FindFirstChild("UpdateItems")
+		sam = sam and sam:FindFirstChild("Sam The Clam")
+		local mdl = sam and sam:FindFirstChild("Sam the Clam")
+		local root = mdl and (mdl:FindFirstChild("RootPart") or mdl.PrimaryPart or mdl:FindFirstChildWhichIsA("BasePart"))
+		local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+		if root and hrp then
+			-- berdiri ~8 stud di depan Sam
+			pcall(function() hrp.CFrame = CFrame.new(root.Position + Vector3.new(0, 3, -8)) end)
+			return true
+		end
+		return false
+	end
+
 	local function getSamState()
 		local ok, d = pcall(function() return DataService:GetData() end)
 		if not ok or not d then return nil end
@@ -94,6 +110,7 @@ return function(ctx)
 
 			if sam and sam.RewardReady then
 				-- Reward siap -> claim
+				if CFG.summerAutoTP then teleportToSam(); task.wait(0.3) end
 				setStatus("Summer: claim reward...")
 				pcall(function() SamRE:FireServer("ClaimReward") end)
 				task.wait(3)
@@ -114,6 +131,7 @@ return function(ctx)
 				else
 					local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
 					if hum then
+						if CFG.summerAutoTP then teleportToSam(); task.wait(0.3) end
 						pcall(function() hum:EquipTool(pick.tool) end)
 						task.wait(0.5)
 						-- Pastikan pet yang mau di-feed benar-benar dipegang
