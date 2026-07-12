@@ -200,20 +200,35 @@ return function(ctx)
 
 	----------------------------------------------------------------- accordion
 	local function makeAccordion(parent, title, order, openByDefault)
+		local TS = game:GetService("TweenService")
 		local container = mk("Frame", { Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundColor3 = C.row, BorderSizePixel = 0, LayoutOrder = order }, parent)
 		corner(container, 8); stroke(container)
 		mk("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 0) }, container)
-		local head = mk("TextButton", { Size = UDim2.new(1, 0, 0, 46), BackgroundTransparency = 1, Text = "", AutoButtonColor = false, LayoutOrder = 1 }, container)
+		
+		local head = mk("TextButton", { Size = UDim2.new(1, 0, 0, 46), BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 1, Text = "", AutoButtonColor = false, LayoutOrder = 1 }, container)
+		corner(head, 8)
 		pad(head, 14, 14, 0, 0)
+		
 		mk("TextLabel", { Size = UDim2.new(1, -30, 1, 0), BackgroundTransparency = 1, Text = title, Font = Enum.Font.GothamBold, TextSize = 15, TextColor3 = C.txt, TextXAlignment = Enum.TextXAlignment.Left }, head)
-		local arrow = mk("TextLabel", { Size = UDim2.fromOffset(14, 14), Position = UDim2.new(1, -14, 0.5, -7), BackgroundTransparency = 1, Text = openByDefault and "^" or "v", Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = C.acc }, head)
-		mk("Frame", { Size = UDim2.new(1, 0, 0, 2), BackgroundColor3 = C.acc, BorderSizePixel = 0, LayoutOrder = 2 }, container)
+		local arrow = mk("TextLabel", { Size = UDim2.fromOffset(14, 14), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(1, -7, 0.5, 0), BackgroundTransparency = 1, Text = "v", Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = C.acc, Rotation = openByDefault and 180 or 0 }, head)
+		
+		local line = mk("Frame", { Size = UDim2.new(1, 0, 0, 1), BackgroundColor3 = C.stroke, BorderSizePixel = 0, LayoutOrder = 2, Visible = openByDefault or false }, container)
 		local body = mk("Frame", { Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, Visible = openByDefault or false, LayoutOrder = 3 }, container)
-		pad(body, 14, 14, 4, 12)
+		pad(body, 14, 14, 8, 12)
 		mk("UIListLayout", { Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder }, body)
+		
+		head.MouseEnter:Connect(function()
+			TS:Create(head, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 0.96 }):Play()
+		end)
+		head.MouseLeave:Connect(function()
+			TS:Create(head, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 1 }):Play()
+		end)
+		
 		head.MouseButton1Click:Connect(function()
 			body.Visible = not body.Visible
-			arrow.Text = body.Visible and "^" or "v"
+			line.Visible = body.Visible
+			local targetRotation = body.Visible and 180 or 0
+			TS:Create(arrow, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Rotation = targetRotation }):Play()
 		end)
 		return body
 	end
