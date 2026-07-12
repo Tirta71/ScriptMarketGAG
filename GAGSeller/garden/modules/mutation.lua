@@ -257,8 +257,8 @@ return function(ctx)
 
 				-- Kirim Webhook Claimed
 				task.spawn(function()
-					local okW, WebhookMut = pcall(require, script.Parent.webhook.mutation)
-					if okW and WebhookMut then
+					local WebhookMut = ctx.webhookMutation
+					if WebhookMut then
 						pcall(function() WebhookMut.sendClaimed(ctx, claimedPetType, outcomeMutation, isMatched) end)
 					end
 				end)
@@ -344,8 +344,8 @@ return function(ctx)
 					
 					-- Kirim Webhook Submitted
 					task.spawn(function()
-						local okW, WebhookMut = pcall(require, script.Parent.webhook.mutation)
-						if okW and WebhookMut then
+						local WebhookMut = ctx.webhookMutation
+						if WebhookMut then
 							local petLevel = inv[candidateUuid] and inv[candidateUuid].PetData and inv[candidateUuid].PetData.Level or 50
 							pcall(function() WebhookMut.sendSubmitted(ctx, candidateType, petLevel) end)
 						end
@@ -397,8 +397,8 @@ return function(ctx)
 
 		-- Kirim Webhook Enabled
 		task.spawn(function()
-			local okW, WebhookMut = pcall(require, script.Parent.webhook.mutation)
-			if okW and WebhookMut then
+			local WebhookMut = ctx.webhookMutation
+			if WebhookMut then
 				local expTeamList = {}
 				local boostTeamList = {}
 				local phoenixTeamList = {}

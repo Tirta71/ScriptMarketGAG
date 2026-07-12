@@ -1,6 +1,6 @@
---[[ webhook/leveling.lua — Discord webhook untuk leveling. ]]
+--[[ webhook/leveling.lua — Discord webhook untuk leveling.
+     Di-load via HttpGet loader; sender diambil dari ctx.sendWebhook (bukan require script). ]]
 local HttpService = game:GetService("HttpService")
-local sendWebhook = require(script.Parent.sender)
 
 local levelingWebhook = {}
 
@@ -69,7 +69,7 @@ function levelingWebhook.sendEnabled(ctx, queueList, teamList)
 			}
 		}
 	}
-	sendWebhook(CFG.webhookUrl, payload, ctx)
+	if ctx.sendWebhook then ctx.sendWebhook(CFG.webhookUrl, payload, ctx) end
 end
 
 -- Webhook saat pet selesai leveling
@@ -115,7 +115,7 @@ function levelingWebhook.sendFinished(ctx, petType, mutation, age, durationSec, 
 			}
 		}
 	}
-	sendWebhook(CFG.webhookUrl, payload, ctx)
+	if ctx.sendWebhook then ctx.sendWebhook(CFG.webhookUrl, payload, ctx) end
 end
 
 return levelingWebhook

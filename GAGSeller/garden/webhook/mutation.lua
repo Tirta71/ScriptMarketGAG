@@ -1,6 +1,6 @@
---[[ webhook/mutation.lua — Discord webhook untuk mutation. ]]
+--[[ webhook/mutation.lua — Discord webhook untuk mutation.
+     Di-load via HttpGet loader; sender diambil dari ctx.sendWebhook (bukan require script). ]]
 local HttpService = game:GetService("HttpService")
-local sendWebhook = require(script.Parent.sender)
 
 local mutationWebhook = {}
 
@@ -64,7 +64,7 @@ function mutationWebhook.sendEnabled(ctx, targetTypes, targetMuts, targetAge, ex
 			}
 		}
 	}
-	sendWebhook(CFG.webhookUrl, payload, ctx)
+	if ctx.sendWebhook then ctx.sendWebhook(CFG.webhookUrl, payload, ctx) end
 end
 
 -- Webhook saat pet disubmit ke mesin
@@ -102,7 +102,7 @@ function mutationWebhook.sendSubmitted(ctx, petType, level)
 			}
 		}
 	}
-	sendWebhook(CFG.webhookUrl, payload, ctx)
+	if ctx.sendWebhook then ctx.sendWebhook(CFG.webhookUrl, payload, ctx) end
 end
 
 -- Webhook saat pet diklaim (hasil mutasi)
@@ -144,7 +144,7 @@ function mutationWebhook.sendClaimed(ctx, petType, outcomeMutation, isMatched)
 			}
 		}
 	}
-	sendWebhook(CFG.webhookUrl, payload, ctx)
+	if ctx.sendWebhook then ctx.sendWebhook(CFG.webhookUrl, payload, ctx) end
 end
 
 return mutationWebhook

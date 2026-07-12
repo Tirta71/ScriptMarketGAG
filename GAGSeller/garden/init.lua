@@ -50,6 +50,22 @@ function ctx.elevate()
 	end)
 end
 
+-- Loader untuk file yang BUKAN pola return function(ctx) (mis. webhook helper/formatter).
+-- Karena app di-load via HttpGet (bukan ModuleScript), require(script...) nggak jalan —
+-- jadi file webhook di-fetch di sini dan hasilnya ditaruh di ctx.
+local function loadRaw(relPath)
+	local full = BASE .. "/" .. relPath .. "?t=" .. os.time()
+	local ok, src = pcall(function() return game:HttpGet(full) end)
+	if not ok or type(src) ~= "string" then return nil end
+	local chunk = loadstring(src, "@" .. relPath)
+	if not chunk then return nil end
+	local okr, val = pcall(chunk)
+	return okr and val or nil
+end
+ctx.sendWebhook     = loadRaw("webhook/sender.lua")      -- function(url, payload, ctx)
+ctx.webhookMutation = loadRaw("webhook/mutation.lua")    -- table {sendEnabled, sendSubmitted, sendClaimed}
+ctx.webhookLeveling = loadRaw("webhook/leveling.lua")    -- table leveling webhook
+
 local MODULES = {
 	"modules/services.lua",
 	"modules/registry.lua",

@@ -212,8 +212,8 @@ return function(ctx)
 
 			-- Kirim Webhook Finished
 			task.spawn(function()
-				local okW, WebhookLev = pcall(require, script.Parent.webhook.leveling)
-				if okW and WebhookLev then
+				local WebhookLev = ctx.webhookLeveling
+				if WebhookLev then
 					pcall(function() WebhookLev.sendFinished(ctx, petType, mutation, finalAge, duration, remainsQueue) end)
 				end
 			end)
@@ -275,8 +275,8 @@ return function(ctx)
 
 		-- Kirim webhook Enabled
 		task.spawn(function()
-			local okW, WebhookLev = pcall(require, script.Parent.webhook.leveling)
-			if okW and WebhookLev then
+			local WebhookLev = ctx.webhookLeveling
+			if WebhookLev then
 				local queueList = {}
 				local teamList = {}
 				local okData, d = pcall(function() return DataService:GetData() end)

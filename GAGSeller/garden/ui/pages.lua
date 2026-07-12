@@ -352,8 +352,8 @@ return function(ctx)
 			end
 			ctx.log("[Webhook Test] Mengirim test payload...")
 			task.spawn(function()
-				local okS, sendWebhook = pcall(require, script.Parent.Parent.webhook.sender)
-				if okS and sendWebhook then
+				local sendWebhook = ctx.sendWebhook
+				if sendWebhook then
 					pcall(function()
 						sendWebhook(CFG.webhookUrl, {
 							embeds = {
