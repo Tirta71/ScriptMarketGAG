@@ -205,22 +205,15 @@ return function(ctx)
 		local targetAge = CFG.mutationTargetAge or 50
 		local delayClaim = CFG.mutationDelayAutoClaim or 0.5
 
-		-- Bersihkan set tim untuk pencocokan UUID yang kebal kurung kurawal
-		local expTeamSet = {}
-		for u, _ in pairs(expTeam) do expTeamSet[cleanUuid(u)] = true end
-
-		local boostTeamSet = {}
-		for u, _ in pairs(boostTeam) do boostTeamSet[cleanUuid(u)] = true end
-
-		local phoenixTeamSet = {}
-		for u, _ in pairs(phoenixTeam) do phoenixTeamSet[cleanUuid(u)] = true end
+		-- CATATAN: passing team ASLI (uuid ber-kurawal) ke ensureEquippedTeam. cleanUuid dipakai
+		-- HANYA buat matching di dalam fungsi; EquipPet butuh uuid format asli (dengan {}).
 
 		-- A. DETEKSI APAKAH PET READY UNTUK DICLAIM
 		if machine.PetReady then
 			ctx.state.mutationPhase = "Claiming Pet"
 			
 			-- Pastikan phoenix team terpasang 100% tanpa kelewat
-			ensureEquippedTeam(phoenixTeamSet)
+			ensureEquippedTeam(phoenixTeam)
 			
 			-- Tunggu delay klaim
 			task.wait(delayClaim)
@@ -256,7 +249,7 @@ return function(ctx)
 		if machine.IsRunning or (machine.TimeLeft and machine.TimeLeft > 0) then
 			ctx.state.mutationPhase = "Boosting Machine"
 			-- Pastikan boost team terpasang 100% tanpa kelewat
-			ensureEquippedTeam(boostTeamSet)
+			ensureEquippedTeam(boostTeam)
 			return
 		end
 
@@ -349,7 +342,7 @@ return function(ctx)
 			if levelUuid then
 				ctx.state.mutationPhase = "Leveling Target"
 				-- Pastikan target pet + expTeam terpasang 100% tanpa kelewat
-				ensureEquippedTeam(expTeamSet, levelUuid)
+				ensureEquippedTeam(expTeam, levelUuid)
 				return
 			end
 
