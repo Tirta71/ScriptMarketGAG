@@ -38,7 +38,7 @@ return function(ctx)
 		corner(box, 8); stroke(box); pad(box, 14, 14, 12, 12)
 		mk("TextLabel", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = "Fitur untuk tab ini belum tersedia.", Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top }, box)
 	end
-	for _, name in ipairs({ "Elephant", "Growth", "Mutation", "Shop" }) do
+	for _, name in ipairs({ "Elephant", "Growth", "Shop" }) do
 		placeholder(pageRef[name])
 	end
 
@@ -119,6 +119,103 @@ return function(ctx)
 				CFG.levelingEnabled = v; persist()
 				if v then ctx.startLeveling() end
 			end, 5)
+	end
+
+	------------------------------------------------------------------ MUTATION
+	local mutationPage = pageRef["Mutation"]
+	do
+		-- 1. Status Accordion
+		local statusAcc = makeAccordion(mutationPage, "Automation Mutation Machine", 1, true)
+		
+		local statusLbl = mk("TextLabel", {
+			Size = UDim2.new(1, 0, 0, 0),
+			AutomaticSize = Enum.AutomaticSize.Y,
+			BackgroundTransparency = 1,
+			Text = "Loading stats...",
+			Font = Enum.Font.Gotham,
+			TextSize = 13,
+			TextColor3 = C.txt,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextWrapped = true,
+			LineHeight = 1.35,
+			RichText = true,
+			LayoutOrder = 1
+		}, statusAcc)
+		
+		task.spawn(function()
+			while ctx.alive() do
+				local ok, s = pcall(function() return ctx.getMutationSummary() end)
+				if ok and s then
+					local statusColor = s.status == "ACTIVE" and "#5acc78" or "#dc5050"
+					statusLbl.Text = string.format(
+						"Status: <font color=\"%s\"><b>%s</b></font>\n" ..
+						"Phase: <b>%s</b>\n\n" ..
+						"EXP Team: <font color=\"#8c929e\">%d pets</font>\n" ..
+						"Boost Team: <font color=\"#8c929e\">%d pets</font>\n" ..
+						"Phoenix Team: <font color=\"#8c929e\">%d pets</font>\n\n" ..
+						"Target Types: <font color=\"#f5c82d\">%s</font>\n" ..
+						"Keep Mutations: <font color=\"#f5c82d\">%s</font>\n" ..
+						"Target Age: <font color=\"#f5c82d\"><b>%s</b></font>\n\n" ..
+						"Machine: <font color=\"#85d0ff\"><b>%s</b></font>\n\n" ..
+						"Target Pets Ready: <font color=\"#8c929e\">%d pets</font>\n" ..
+						"Target Pets Done: <font color=\"#5acc78\"><b>%d pets</b></font>",
+						statusColor, s.status,
+						s.phase,
+						s.expCount,
+						s.boostCount,
+						s.phoenixCount,
+						s.types,
+						s.mutations,
+						tostring(s.targetAge),
+						s.machine,
+						s.readyCount,
+						s.doneCount
+					)
+				end
+				task.wait(1.5)
+			end
+		end)
+
+		-- 2. Settings Accordion
+		local settingsAcc = makeAccordion(mutationPage, "Mutation Settings", 2, true)
+
+		-- EXP Team (Multi-dropdown UUIDs)
+		makeMultiDropdownDyn(settingsAcc, "EXP Team (Leveling)", "Pets for leveling target to age 50/500",
+			function() return ctx.inventoryPetOptions(CFG.mutationExpTeam) end, CFG.mutationExpTeam, function() persist() end, 1)
+
+		-- Boost Team (Machine) (Multi-dropdown UUIDs)
+		makeMultiDropdownDyn(settingsAcc, "Boost Team (Machine)", "Pets for boosting mutation machine speed",
+			function() return ctx.inventoryPetOptions(CFG.mutationBoostTeam) end, CFG.mutationBoostTeam, function() persist() end, 2)
+
+		-- Phoenix Team (Claim) (Multi-dropdown UUIDs)
+		makeMultiDropdownDyn(settingsAcc, "Phoenix Team (Claim)", "Pets for claiming mutated pet",
+			function() return ctx.inventoryPetOptions(CFG.mutationPhoenixTeam) end, CFG.mutationPhoenixTeam, function() persist() end, 3)
+
+		-- Target Pet Types (Multi-dropdown Pet Types)
+		makeMultiDropdownDyn(settingsAcc, "Target Pet Types", "Pet types to mutate",
+			function() return ctx.getInventoryPetTypes(CFG.mutationTargetTypes) end, CFG.mutationTargetTypes, function() persist() end, 4)
+
+		-- Target Mutations (Multi-dropdown Mutations)
+		makeMultiDropdown(settingsAcc, "Target Mutations (Machine)", "Stop when pet gets these mutations",
+			ctx.reg.MUT_OPTIONS or {"None"}, CFG.mutationTargetMutations, function() persist() end, 5)
+
+		-- Target Age (Input)
+		makeInput(settingsAcc, "Target Age", "Level to reach before submitting (e.g. 50 or 500)",
+			function() return tostring(CFG.mutationTargetAge) end,
+			function(txt) CFG.mutationTargetAge = tonumber(txt) or 50; persist() end, 6)
+
+		-- Delay Auto Claim (Input)
+		makeInput(settingsAcc, "Delay Auto Claim (sec)", "Wait before claiming mutated pet from machine",
+			function() return tostring(CFG.mutationDelayAutoClaim) end,
+			function(txt) CFG.mutationDelayAutoClaim = tonumber(txt) or 0.5; persist() end, 7)
+
+		-- Enable Auto Mutation Machine (Toggle)
+		ctx.state.mutationToggleRender = makeToggle(settingsAcc, "Enable Auto Mutation Machine", "Submit, start, and claim mutated pets automatically",
+			function() return CFG.mutationEnabled end,
+			function(v)
+				CFG.mutationEnabled = v; persist()
+				if v then ctx.startMutation() end
+			end, 8)
 	end
 
 	------------------------------------------------------------------ PET (PNP)

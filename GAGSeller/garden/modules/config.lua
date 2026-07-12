@@ -36,6 +36,16 @@ return function(ctx)
 		levelingMaxPets     = 2,
 		levelingEnabled     = false,
 
+		-- Automation Mutation
+		mutationExpTeam       = {},
+		mutationBoostTeam     = {},
+		mutationPhoenixTeam   = {},
+		mutationTargetTypes   = {},
+		mutationTargetMutations = {},
+		mutationTargetAge     = 50,
+		mutationDelayAutoClaim = 0.5,
+		mutationEnabled       = false,
+
 		-- webhook (opsional)
 		webhookUrl     = "",
 		webhookEnabled = false,
@@ -82,6 +92,16 @@ return function(ctx)
 			CFG.levelingTargetLevel = tonumber(st.levelingTargetLevel) or 500
 			CFG.levelingMaxPets     = tonumber(st.levelingMaxPets) or 2
 			CFG.levelingEnabled     = st.levelingEnabled or false
+
+			-- Automation Mutation
+			CFG.mutationExpTeam       = (type(st.mutationExpTeam) == "table") and st.mutationExpTeam or {}
+			CFG.mutationBoostTeam     = (type(st.mutationBoostTeam) == "table") and st.mutationBoostTeam or {}
+			CFG.mutationPhoenixTeam   = (type(st.mutationPhoenixTeam) == "table") and st.mutationPhoenixTeam or {}
+			CFG.mutationTargetTypes   = (type(st.mutationTargetTypes) == "table") and st.mutationTargetTypes or {}
+			CFG.mutationTargetMutations = (type(st.mutationTargetMutations) == "table") and st.mutationTargetMutations or {}
+			CFG.mutationTargetAge     = tonumber(st.mutationTargetAge) or 50
+			CFG.mutationDelayAutoClaim = tonumber(st.mutationDelayAutoClaim) or 0.5
+			CFG.mutationEnabled       = st.mutationEnabled or false
 
 			CFG.webhookUrl     = st.webhookUrl or ""
 			CFG.webhookEnabled = st.webhookEnabled or false
