@@ -164,6 +164,11 @@ return function(ctx)
 				if targetTypes[pt] then
 					if lvl < targetLvl then
 						table.insert(currentLeveling, uuid)
+						-- Catat waktu mulai jika belum ada
+						ctx.state.levelingStartTime = ctx.state.levelingStartTime or {}
+						if not ctx.state.levelingStartTime[uuid] then
+							ctx.state.levelingStartTime[uuid] = os.time()
+						end
 					else
 						table.insert(finishedLeveling, uuid)
 					end
@@ -175,10 +180,43 @@ return function(ctx)
 
 		-- D. LEPAS PET LEVELING YANG SUDAH SELESAI (mencapai target level)
 		for _, uuid in ipairs(finishedLeveling) do
+			local duration = 0
+			if ctx.state.levelingStartTime and ctx.state.levelingStartTime[uuid] then
+				duration = os.time() - ctx.state.levelingStartTime[uuid]
+				ctx.state.levelingStartTime[uuid] = nil
+			end
+
+			local pInfo = inv[uuid]
+			local petType = pInfo and pInfo.PetType or "Unknown"
+			local pd = pInfo and pInfo.PetData or {}
+			local mutation = pd.MutationType or "Normal"
+			local finalAge = pd.Level or targetLvl
+
 			pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
 			localEq[uuid] = nil
 			localEqCount = localEqCount - 1
 			task.wait(0.25)
+
+			-- Hitung sisa antrean
+			local remainsQueue = 0
+			for otherUuid, v in pairs(inv) do
+				local pt = v.PetType
+				if targetTypes[pt] and not localEq[otherUuid] then
+					local otherPd = v.PetData or {}
+					local otherLvl = otherPd.Level or 0
+					if otherLvl < targetLvl then
+						remainsQueue = remainsQueue + 1
+					end
+				end
+			end
+
+			-- Kirim Webhook Finished
+			task.spawn(function()
+				local okW, WebhookLev = pcall(require, script.Parent.webhook.leveling)
+				if okW and WebhookLev then
+					pcall(function() WebhookLev.sendFinished(ctx, petType, mutation, finalAge, duration, remainsQueue) end)
+				end
+			end)
 		end
 
 		-- E. TAMBAHKAN PET BARU DARI INVENTORY
@@ -216,6 +254,9 @@ return function(ctx)
 					localEq[target.uuid] = true
 					localEqCount = localEqCount + 1
 					table.insert(currentLeveling, target.uuid)
+					-- Catat waktu mulai
+					ctx.state.levelingStartTime = ctx.state.levelingStartTime or {}
+					ctx.state.levelingStartTime[target.uuid] = os.time()
 					task.wait(0.3)
 				end
 			end
@@ -231,6 +272,31 @@ return function(ctx)
 		ctx.elevate()
 		
 		ctx.state.levelingFirstRun = true
+
+		-- Kirim webhook Enabled
+		task.spawn(function()
+			local okW, WebhookLev = pcall(require, script.Parent.webhook.leveling)
+			if okW and WebhookLev then
+				local queueList = {}
+				local okData, d = pcall(function() return DataService:GetData() end)
+				if okData and d and d.PetsData then
+					local inv = d.PetsData.PetInventory and d.PetsData.PetInventory.Data or {}
+					local targetTypes = CFG.levelingPetTypes or {}
+					local targetLvl = CFG.levelingTargetLevel or 500
+					for _, v in pairs(inv) do
+						local pt = v.PetType
+						if targetTypes[pt] then
+							local pd = v.PetData or {}
+							local lvl = pd.Level or 0
+							if lvl < targetLvl then
+								table.insert(queueList, { type = pt, level = lvl })
+							end
+						end
+					end
+				end
+				pcall(function() WebhookLev.sendEnabled(ctx, queueList) end)
+			end
+		end)
 		
 		while CFG.levelingEnabled and ctx.alive() and ctx.state.levelingId == myId do
 			pcall(checkLeveling)

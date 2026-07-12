@@ -331,9 +331,33 @@ return function(ctx)
 	makeMultiDropdown(fav, "Favourite Pet Types", "Pet types to keep favorited",
 		reg.PET_OPTIONS, CFG.favoritePetTypes, function() persist() end, 2)
 
-	------------------------------------------------------------------ MISC (log)
+	------------------------------------------------------------------ MISC (log & webhooks)
 	local misc = pageRef["Misc"]
-	local logCard = mk("Frame", { Size = UDim2.new(1, 0, 0, 220), BackgroundColor3 = C.row, LayoutOrder = 1 }, misc)
+
+	-- Webhook Settings Accordion
+	local whAcc = makeAccordion(misc, "Discord Webhook Settings", 1, true)
+
+	-- Leveling Webhook Toggle
+	makeToggle(whAcc, "Enable Leveling Webhook", "Send status update when leveling finishes or starts",
+		function() return CFG.webhookLevelingEnabled end,
+		function(v) CFG.webhookLevelingEnabled = v; persist() end, 1)
+
+	-- Leveling Webhook URL Input
+	makeInput(whAcc, "Leveling Webhook URL", "Discord Webhook URL for Leveling logs",
+		function() return CFG.webhookLevelingUrl end,
+		function(txt) CFG.webhookLevelingUrl = txt; persist() end, 2)
+
+	-- Mutation Webhook Toggle
+	makeToggle(whAcc, "Enable Mutation Webhook", "Send status update when pet claims, starts, or matches target",
+		function() return CFG.webhookMutationEnabled end,
+		function(v) CFG.webhookMutationEnabled = v; persist() end, 3)
+
+	-- Mutation Webhook URL Input
+	makeInput(whAcc, "Mutation Webhook URL", "Discord Webhook URL for Mutation logs",
+		function() return CFG.webhookMutationUrl end,
+		function(txt) CFG.webhookMutationUrl = txt; persist() end, 4)
+
+	local logCard = mk("Frame", { Size = UDim2.new(1, 0, 0, 220), BackgroundColor3 = C.row, LayoutOrder = 2 }, misc)
 	corner(logCard, 8); stroke(logCard); pad(logCard, 12, 12, 10, 10)
 	mk("TextLabel", { Size = UDim2.new(1, 0, 0, 20), BackgroundTransparency = 1, Text = "Console Log", Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = C.txt, TextXAlignment = Enum.TextXAlignment.Left }, logCard)
 	local logBox = mk("TextLabel", { Size = UDim2.new(1, 0, 1, -26), Position = UDim2.fromOffset(0, 24), BackgroundColor3 = C.panel, Text = "", Font = Enum.Font.Code, TextSize = 11, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true }, logCard)

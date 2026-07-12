@@ -218,27 +218,57 @@ return function(ctx)
 			-- Tunggu delay klaim
 			task.wait(delayClaim)
 			
+			-- 1. Ambil snapshot mutasi pet di inventory sebelum klaim
+			local preSnapshot = {}
+			local okSnap, snapD = pcall(function() return DataService:GetData() end)
+			if okSnap and snapD and snapD.PetsData then
+				local invD = snapD.PetsData.PetInventory and snapD.PetsData.PetInventory.Data or {}
+				for u, v in pairs(invD) do
+					if targetTypes[v.PetType] then
+						preSnapshot[u] = v.PetData and v.PetData.MutationType or "Normal"
+					end
+				end
+			end
+
 			-- Kirim remote klaim
 			pcall(function() PetMutationMachineService_RE:FireServer("ClaimMutatedPet") end)
-			task.wait(0.8)
+			task.wait(1.0)
 
-			-- Cek apakah pet hasil klaim memiliki mutasi target
+			-- 2. Ambil data setelah klaim, cari pet hasil mutasi
+			local claimedPetType = "Unknown"
+			local outcomeMutation = "Normal"
+			local isMatched = false
+
 			local ok3, d3 = pcall(function() return DataService:GetData() end)
 			if ok3 and d3 and d3.PetsData then
 				local newInv = d3.PetsData.PetInventory and d3.PetsData.PetInventory.Data or {}
-				for uuid, v in pairs(newInv) do
-					local pt = v.PetType
-					local pd = v.PetData or {}
-					-- FIX: pd.MutationType itu kode mentah ("EV"), sedangkan targetMutations di-key
-					-- pakai nama tampilan ("Everchanted"). Pakai hasTargetMutation biar konsisten.
-					if targetTypes[pt] and hasTargetMutation(pd, targetMutations) then
-						ctx.state.mutationPhase = "Finished"
-						CFG.mutationEnabled = false
-						ctx.persistState()
-						if ctx.state.mutationToggleRender then
-							pcall(ctx.state.mutationToggleRender)
+				for u, v in pairs(newInv) do
+					if targetTypes[v.PetType] then
+						local pd = v.PetData or {}
+						local mut = pd.MutationType or "Normal"
+						if not preSnapshot[u] or preSnapshot[u] ~= mut then
+							claimedPetType = v.PetType
+							outcomeMutation = mut
+							isMatched = hasTargetMutation(pd, targetMutations)
+							break
 						end
-						break
+					end
+				end
+
+				-- Kirim Webhook Claimed
+				task.spawn(function()
+					local okW, WebhookMut = pcall(require, script.Parent.webhook.mutation)
+					if okW and WebhookMut then
+						pcall(function() WebhookMut.sendClaimed(ctx, claimedPetType, outcomeMutation, isMatched) end)
+					end
+				end)
+
+				if isMatched then
+					ctx.state.mutationPhase = "Finished"
+					CFG.mutationEnabled = false
+					ctx.persistState()
+					if ctx.state.mutationToggleRender then
+						pcall(ctx.state.mutationToggleRender)
 					end
 				end
 			end
@@ -312,6 +342,15 @@ return function(ctx)
 					pcall(function() PetMutationMachineService_RE:FireServer("SubmitHeldPet") end)
 					task.wait(0.5)
 					
+					-- Kirim Webhook Submitted
+					task.spawn(function()
+						local okW, WebhookMut = pcall(require, script.Parent.webhook.mutation)
+						if okW and WebhookMut then
+							local petLevel = inv[candidateUuid] and inv[candidateUuid].PetData and inv[candidateUuid].PetData.Level or 50
+							pcall(function() WebhookMut.sendSubmitted(ctx, candidateType, petLevel) end)
+						end
+					end)
+
 					-- Jalankan mesin langsung di detik yang sama
 					pcall(function() PetMutationMachineService_RE:FireServer("StartMachine") end)
 					task.wait(0.3)
@@ -355,6 +394,16 @@ return function(ctx)
 		ctx.state.mutationId = (ctx.state.mutationId or 0) + 1
 		local myId = ctx.state.mutationId
 		ctx.elevate()
+
+		-- Kirim Webhook Enabled
+		task.spawn(function()
+			local okW, WebhookMut = pcall(require, script.Parent.webhook.mutation)
+			if okW and WebhookMut then
+				pcall(function() 
+					WebhookMut.sendEnabled(ctx, CFG.mutationTargetTypes, CFG.mutationTargetMutations, CFG.mutationTargetAge)
+				end)
+			end
+		end)
 
 		while CFG.mutationEnabled and ctx.alive() and ctx.state.mutationId == myId do
 			pcall(checkMutation)
