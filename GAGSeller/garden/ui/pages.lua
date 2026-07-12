@@ -1,4 +1,4 @@
---[[ pages.lua — halaman garden. Tab: Pet, Elephant, Growth, Leveling, Mutation, Inventory, Shop, Misc.
+--[[ pages.lua — halaman garden. Tab: Pet, Elephant, Growth, Leveling, Mutation, Event, Inventory, Shop, Misc.
      Isi utama ada di tab Inventory (Automation Trade + Automation Accept + Automation Favourite). ]]
 return function(ctx)
 	local C = ctx.C
@@ -24,6 +24,7 @@ return function(ctx)
 		{ "Growth", "Growth", "🌱" },
 		{ "Leveling", "Leveling", "⚡" },
 		{ "Mutation", "Mutation", "🧪" },
+		{ "Event", "Event", "☀️" },
 		{ "Inventory", "Inventory", "🎒" },
 		{ "Shop", "Shop", "🛒" },
 		{ "Misc", "Misc", "⚙️" },
@@ -217,6 +218,20 @@ return function(ctx)
 				CFG.mutationEnabled = v; persist()
 				if v then ctx.startMutation() end
 			end, 8)
+	end
+
+	------------------------------------------------------------------ EVENT
+	local eventPage = pageRef["Event"]
+	do
+		local summerAcc = makeAccordion(eventPage, "Automation Summer Event", 1, true)
+
+		-- Enable Automation Summer Event (Toggle)
+		makeToggle(summerAcc, "Enable Automation Summer Event", "Jalankan otomasi Summer Event secara otomatis",
+			function() return CFG.summerEventEnabled end,
+			function(v)
+				CFG.summerEventEnabled = v; persist()
+				if v and ctx.startSummerEvent then ctx.startSummerEvent() end
+			end, 1)
 	end
 
 	------------------------------------------------------------------ PET (PNP)

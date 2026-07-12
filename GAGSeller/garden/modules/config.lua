@@ -47,6 +47,9 @@ return function(ctx)
 		mutationDelayAutoClaim = 0.5,
 		mutationEnabled       = false,
 
+		-- Automation Event
+		summerEventEnabled = false,
+
 		-- webhook (opsional)
 		webhookUrl     = "",
 		webhookEnabled = false,
@@ -104,6 +107,8 @@ return function(ctx)
 			CFG.mutationTargetAge     = tonumber(st.mutationTargetAge) or 50
 			CFG.mutationDelayAutoClaim = tonumber(st.mutationDelayAutoClaim) or 0.5
 			CFG.mutationEnabled       = st.mutationEnabled or false
+
+			CFG.summerEventEnabled = st.summerEventEnabled or false
 
 			CFG.webhookUrl     = st.webhookUrl or ""
 			CFG.webhookEnabled = st.webhookEnabled or false
