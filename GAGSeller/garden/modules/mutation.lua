@@ -236,8 +236,9 @@ return function(ctx)
 				for uuid, v in pairs(newInv) do
 					local pt = v.PetType
 					local pd = v.PetData or {}
-					local mut = pd.MutationType or "Normal"
-					if targetTypes[pt] and targetMutations[mut] then
+					-- FIX: pd.MutationType itu kode mentah ("EV"), sedangkan targetMutations di-key
+					-- pakai nama tampilan ("Everchanted"). Pakai hasTargetMutation biar konsisten.
+					if targetTypes[pt] and hasTargetMutation(pd, targetMutations) then
 						ctx.state.mutationPhase = "Finished"
 						CFG.mutationEnabled = false
 						ctx.persistState()
