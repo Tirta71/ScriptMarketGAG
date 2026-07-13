@@ -275,6 +275,17 @@ return function(ctx)
 				CFG.summerEventEnabled = v; persist()
 				if v and ctx.startSummerEvent then ctx.startSummerEvent() end
 			end, 6)
+
+		-- Full Loop (auto hop Trade World). Bisa dimulai dari garden juga.
+		makeToggle(summerAcc, "Enable Full Loop (Auto Hop Trade World)", "Claim+submit di garden lalu TP ke Trade World hop turunin timer, otomatis muter. Set filter pet di atas dulu!",
+			function() return ctx.samLoopActive and ctx.samLoopActive() end,
+			function(v)
+				if v then
+					if ctx.startSamLoopGarden then ctx.startSamLoopGarden() end
+				else
+					if ctx.stopSamLoopGarden then ctx.stopSamLoopGarden() end
+				end
+			end, 7)
 	end
 
 	------------------------------------------------------------------ PET (PNP)

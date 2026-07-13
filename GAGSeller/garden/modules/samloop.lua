@@ -21,6 +21,7 @@ return function(ctx)
 		return { active = false }
 	end
 	local function writeLoop(t) pcall(function() writefile(LOOP_FILE, HttpService:JSONEncode(t)) end) end
+	ctx.readSamLoop = ctx.readSamLoop or readLoop
 
 	local function getSam()
 		local ok, d = pcall(function() return DataService:GetData() end)
@@ -74,6 +75,17 @@ return function(ctx)
 		task.wait(1)
 		if readLoop().active then backToTradeWorld() end
 	end
+
+	-- Start dari garden: aktifkan loop lalu jalankan gardenStep (claim/submit -> TP Trade World)
+	function ctx.startSamLoopGarden()
+		local st = readLoop(); st.active = true; writeLoop(st)
+		task.spawn(gardenStep)
+	end
+	function ctx.stopSamLoopGarden()
+		local st = readLoop(); st.active = false; writeLoop(st)
+		setStatus("SamLoop: dimatikan")
+	end
+	function ctx.samLoopActive() return readLoop().active end
 
 	-- Auto-run kalau loop aktif (dipanggil saat hub load di garden)
 	if readLoop().active then task.spawn(gardenStep) end
