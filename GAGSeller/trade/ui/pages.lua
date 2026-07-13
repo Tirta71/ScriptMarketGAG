@@ -171,7 +171,7 @@ return function(ctx)
 			function(txt) ctx.setSamLoopTarget(tonumber(txt) or 0) end, 2)
 
 		-- Enable full loop
-		makeToggle(acc, "Enable Full Loop (Auto Hop + TP)", "Hop Trade World turunin timer -> ke Garden claim+submit -> balik. Set filter pet di tab Event garden dulu!",
+		makeToggle(acc, "Enable Full Loop (Auto Hop)", "Hop + TP garden claim/submit. Set filter di Event garden.",
 			function() return ctx.samLoopActive() end,
 			function(v)
 				if v then ctx.startSamLoop() else ctx.stopSamLoop() end

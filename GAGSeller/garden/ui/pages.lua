@@ -277,7 +277,7 @@ return function(ctx)
 			end, 6)
 
 		-- Full Loop (auto hop Trade World). Bisa dimulai dari garden juga.
-		makeToggle(summerAcc, "Enable Full Loop (Auto Hop Trade World)", "Claim+submit di garden lalu TP ke Trade World hop turunin timer, otomatis muter. Set filter pet di atas dulu!",
+		makeToggle(summerAcc, "Enable Full Loop (Auto Hop)", "Auto hop + claim/submit. Set filter pet dulu.",
 			function() return ctx.samLoopActive and ctx.samLoopActive() end,
 			function(v)
 				if v then
