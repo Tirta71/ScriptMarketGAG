@@ -40,10 +40,13 @@ return function(ctx)
 	end
 
 	local function gardenStep()
+		-- Guard single-instance lintas re-load (auto-exec + queue_on_teleport bisa load 2x).
+		_G.__AH_samloopGen = (_G.__AH_samloopGen or 0) + 1
+		local myGen = _G.__AH_samloopGen
 		ctx.elevate()
 		task.wait(3) -- tunggu summer.lua & data siap
 
-		if not readLoop().active then return end
+		if not readLoop().active or _G.__AH_samloopGen ~= myGen then return end
 
 		-- Kerjakan claim + submit dengan retry sampai Sam kembali "Working" (pet ke-submit).
 		-- Error permanen (filter belum diset / tidak ada pet cocok) -> stop loop.
@@ -52,7 +55,7 @@ return function(ctx)
 		local submitTries = 0
 		local done = false
 
-		while readLoop().active and os.clock() < deadline and not done do
+		while readLoop().active and os.clock() < deadline and not done and _G.__AH_samloopGen == myGen do
 			local sam = getSam()
 			if not sam then
 				setStatus("SamLoop: data Sam belum siap...")

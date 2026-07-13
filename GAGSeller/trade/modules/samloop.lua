@@ -62,12 +62,16 @@ return function(ctx)
 	end
 
 	local function coordinator()
+		-- Guard single-instance lintas re-load (auto-exec + queue_on_teleport bisa load 2x).
+		-- Coordinator terbaru menang; duplikat lama berhenti.
+		_G.__AH_samloopGen = (_G.__AH_samloopGen or 0) + 1
+		local myGen = _G.__AH_samloopGen
 		ctx.state.samLoopId = (ctx.state.samLoopId or 0) + 1
 		local myId = ctx.state.samLoopId
 		ctx.elevate()
 		task.wait(2) -- tunggu data kebaca
 
-		while ctx.alive() and ctx.state.samLoopId == myId do
+		while ctx.alive() and ctx.state.samLoopId == myId and _G.__AH_samloopGen == myGen do
 			local st = readLoop()
 			if not st.active then break end
 
@@ -84,11 +88,11 @@ return function(ctx)
 				local reason = ready and "timer siap -> ke Garden"
 					or (("hop #%d (sisa %ds)"):format((st.hops or 0) + 1, math.floor(tl)))
 				for i = 10, 1, -1 do
-					if not readLoop().active or ctx.state.samLoopId ~= myId then return end
+					if not readLoop().active or ctx.state.samLoopId ~= myId or _G.__AH_samloopGen ~= myGen then return end
 					setStatus(("SamLoop: %s | pindah %ds (matikan toggle buat stop)"):format(reason, i))
 					task.wait(1)
 				end
-				if not readLoop().active or ctx.state.samLoopId ~= myId then return end
+				if not readLoop().active or ctx.state.samLoopId ~= myId or _G.__AH_samloopGen ~= myGen then return end
 
 				if (st.hops or 0) >= MAX_HOPS and not goGarden then
 					setStatus("SamLoop: batas hop tercapai, stop.")
