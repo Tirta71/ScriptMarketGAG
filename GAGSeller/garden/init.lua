@@ -77,6 +77,7 @@ local MODULES = {
 	"modules/leveling.lua",
 	"modules/mutation.lua",
 	"modules/summer.lua",
+	"modules/samloop.lua",
 	"ui/components.lua",
 	"ui/pet_monitor.lua",
 	"ui/window.lua",

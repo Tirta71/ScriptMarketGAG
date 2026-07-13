@@ -123,6 +123,42 @@ return function(ctx)
 		return best
 	end
 
+	----------------------------------------------------------------- aksi tunggal (reusable)
+	-- Claim reward (TP ke Sam dulu). return true kalau di-fire.
+	function ctx.samClaimOnce()
+		teleportToSam(); task.wait(0.3)
+		setStatus("Summer: claim reward...")
+		pcall(function() SamRE:FireServer("ClaimReward") end)
+		task.wait(3)
+		return true
+	end
+
+	-- Pilih pet -> TP -> pegang -> unfav (bila perlu) -> SubmitHeldPet.
+	-- return true kalau berhasil submit, false + alasan kalau tidak.
+	function ctx.samSubmitOnce()
+		local pick, why = pickPetTool()
+		if not pick then return false, why or "no pet" end
+		local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+		if not hum then return false, "no humanoid" end
+		teleportToSam(); task.wait(0.3)
+		pcall(function() hum:EquipTool(pick.tool) end)
+		task.wait(0.5)
+		local held = LP.Character and LP.Character:FindFirstChildWhichIsA("Tool")
+		if not (held and held:GetAttribute("PET_UUID") == pick.tool:GetAttribute("PET_UUID")) then
+			return false, "gagal pegang pet"
+		end
+		if held:GetAttribute("d") == true and Favorite_Item then
+			setStatus(("Summer: unfav %s dulu..."):format(pick.petType or "?"))
+			pcall(function() Favorite_Item:FireServer(held) end)
+			if Favorite_Item_BE then pcall(function() Favorite_Item_BE:Fire(held) end) end
+			task.wait(0.4)
+		end
+		setStatus(("Summer: submit %s (%.2f KG)"):format(pick.petType or "?", pick.w))
+		pcall(function() SamRE:FireServer("SubmitHeldPet") end)
+		task.wait(3)
+		return true
+	end
+
 	----------------------------------------------------------------- loop utama
 	local function summerLoop()
 		ctx.state.summerId = (ctx.state.summerId or 0) + 1
@@ -133,53 +169,14 @@ return function(ctx)
 			local sam = getSamState()
 
 			if sam and sam.RewardReady then
-				-- Reward siap -> TP ke Sam lalu claim
-				teleportToSam(); task.wait(0.3)
-				setStatus("Summer: claim reward...")
-				pcall(function() SamRE:FireServer("ClaimReward") end)
-				task.wait(3)
-
+				ctx.samClaimOnce()
 			elseif sam and (sam.IsRunning or sam.SubmittedPet ~= nil) then
-				-- Lagi dicerna -> tunggu
 				local left = tonumber(sam.TimeLeft) or 0
-				local mins = math.floor(left / 60)
-				setStatus(("Summer: Sam sibuk (%d menit lagi)"):format(mins))
+				setStatus(("Summer: Sam sibuk (%d menit lagi)"):format(math.floor(left / 60)))
 				task.wait(math.clamp(left, 5, 30))
-
 			else
-				-- Waiting -> pilih & submit pet
-				local pick, why = pickPetTool()
-				if not pick then
-					setStatus("Summer: " .. tostring(why or "nunggu"))
-					task.wait(5)
-				else
-					local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
-					if hum then
-						teleportToSam(); task.wait(0.3)
-						pcall(function() hum:EquipTool(pick.tool) end)
-						task.wait(0.5)
-						-- Pastikan pet yang mau di-feed benar-benar dipegang
-						local held = LP.Character and LP.Character:FindFirstChildWhichIsA("Tool")
-						if held and held:GetAttribute("PET_UUID") == pick.tool:GetAttribute("PET_UUID") then
-							-- Kalau pet favorite, unfav dulu (server nolak korbanin pet favorite)
-							if held:GetAttribute("d") == true and Favorite_Item then
-								setStatus(("Summer: unfav %s dulu..."):format(pick.petType or "?"))
-								pcall(function() Favorite_Item:FireServer(held) end)
-								if Favorite_Item_BE then pcall(function() Favorite_Item_BE:Fire(held) end) end
-								task.wait(0.4)
-							end
-							setStatus(("Summer: submit %s (%.2f KG)"):format(pick.petType or "?", pick.w))
-							pcall(function() SamRE:FireServer("SubmitHeldPet") end)
-							task.wait(3)
-						else
-							setStatus("Summer: gagal pegang pet, coba lagi")
-							task.wait(2)
-						end
-					else
-						setStatus("Summer: humanoid tidak ada")
-						task.wait(2)
-					end
-				end
+				local ok, why = ctx.samSubmitOnce()
+				if not ok then setStatus("Summer: " .. tostring(why)); task.wait(5) end
 			end
 		end
 	end
