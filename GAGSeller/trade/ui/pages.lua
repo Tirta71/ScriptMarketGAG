@@ -170,11 +170,16 @@ return function(ctx)
 			function() return tostring(math.floor((ctx.readSamLoop().target or 0) / 60)) end,
 			function(txt) ctx.setSamLoopTarget(tonumber(txt) or 0) end, 2)
 
+		-- Jeda hop / jendela stop (detik)
+		makeInput(acc, "Jeda Hop (detik)", "Jendela sebelum pindah server (min 3). Makin kecil = hop makin cepat",
+			function() return tostring(math.floor(ctx.readSamLoop().hopDelay or 10)) end,
+			function(txt) ctx.setSamLoopHopDelay(tonumber(txt) or 10) end, 3)
+
 		-- Enable full loop
 		makeToggle(acc, "Enable Full Loop (Auto Hop)", "Hop + TP garden claim/submit. Set filter di Event garden.",
 			function() return ctx.samLoopActive() end,
 			function(v)
 				if v then ctx.startSamLoop() else ctx.stopSamLoop() end
-			end, 3)
+			end, 4)
 	end
 end

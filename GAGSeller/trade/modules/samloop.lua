@@ -87,7 +87,8 @@ return function(ctx)
 				local goGarden = ready
 				local reason = ready and "timer siap -> ke Garden"
 					or (("hop #%d (sisa %ds)"):format((st.hops or 0) + 1, math.floor(tl)))
-				for i = 10, 1, -1 do
+				local win = math.max(3, math.floor(tonumber(readLoop().hopDelay) or 10))
+				for i = win, 1, -1 do
 					if not readLoop().active or ctx.state.samLoopId ~= myId or _G.__AH_samloopGen ~= myGen then return end
 					setStatus(("SamLoop: %s | pindah %ds (matikan toggle buat stop)"):format(reason, i))
 					task.wait(1)
@@ -123,6 +124,9 @@ return function(ctx)
 	end
 	function ctx.setSamLoopTarget(mins)
 		local st = readLoop(); st.target = math.max(0, (tonumber(mins) or 0) * 60); writeLoop(st)
+	end
+	function ctx.setSamLoopHopDelay(secs)
+		local st = readLoop(); st.hopDelay = math.max(3, math.floor(tonumber(secs) or 10)); writeLoop(st)
 	end
 	function ctx.samLoopActive() return readLoop().active end
 
