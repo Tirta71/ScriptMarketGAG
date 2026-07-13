@@ -83,7 +83,7 @@ return function(ctx)
 				local goGarden = ready
 				local reason = ready and "timer siap -> ke Garden"
 					or (("hop #%d (sisa %ds)"):format((st.hops or 0) + 1, math.floor(tl)))
-				for i = 4, 1, -1 do
+				for i = 10, 1, -1 do
 					if not readLoop().active or ctx.state.samLoopId ~= myId then return end
 					setStatus(("SamLoop: %s | pindah %ds (matikan toggle buat stop)"):format(reason, i))
 					task.wait(1)
