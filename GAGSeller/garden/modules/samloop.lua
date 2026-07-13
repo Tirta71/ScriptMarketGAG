@@ -43,34 +43,53 @@ return function(ctx)
 		ctx.elevate()
 		task.wait(3) -- tunggu summer.lua & data siap
 
-		local st = readLoop()
-		if not st.active then return end
+		if not readLoop().active then return end
 
-		-- 1. Claim kalau reward siap
-		local sam = getSam()
-		local tries = 0
-		while sam and sam.RewardReady and tries < 3 do
-			setStatus("SamLoop: claim reward di garden...")
-			if ctx.samClaimOnce then ctx.samClaimOnce() end
-			task.wait(2); sam = getSam(); tries = tries + 1
-		end
+		-- Kerjakan claim + submit dengan retry sampai Sam kembali "Working" (pet ke-submit).
+		-- Error permanen (filter belum diset / tidak ada pet cocok) -> stop loop.
+		-- Error transien (gagal pegang pet dll) -> coba lagi. Ada deadline biar ga nyangkut.
+		local deadline = os.clock() + 90
+		local submitTries = 0
+		local done = false
 
-		-- 2. Submit pet baru kalau Sam kosong (Waiting)
-		sam = getSam()
-		if sam and not sam.RewardReady and not (sam.IsRunning or sam.SubmittedPet ~= nil) then
-			setStatus("SamLoop: submit pet baru...")
-			local ok, why = false, "no fn"
-			if ctx.samSubmitOnce then ok, why = ctx.samSubmitOnce() end
-			if not ok then
-				-- gagal (mis. filter belum diatur) -> stop loop biar ga muter kosong
-				setStatus("SamLoop STOP: gagal submit (" .. tostring(why) .. "). Atur filter pet di tab Event garden.")
-				st.active = false; writeLoop(st)
-				return
+		while readLoop().active and os.clock() < deadline and not done do
+			local sam = getSam()
+			if not sam then
+				setStatus("SamLoop: data Sam belum siap...")
+				task.wait(2)
+			elseif sam.RewardReady then
+				setStatus("SamLoop: claim reward...")
+				if ctx.samClaimOnce then ctx.samClaimOnce() end
+				task.wait(2)
+			elseif sam.IsRunning or sam.SubmittedPet ~= nil then
+				-- Sudah Working (pet ke-submit) -> selesai, balik hop
+				done = true
+			else
+				-- Waiting -> submit pet
+				submitTries = submitTries + 1
+				setStatus(("SamLoop: submit pet (coba %d)..."):format(submitTries))
+				local ok, why = false, "no fn"
+				if ctx.samSubmitOnce then ok, why = ctx.samSubmitOnce() end
+				if ok then
+					task.wait(2) -- biar state update jadi Working
+				else
+					local w = tostring(why or "")
+					if w:find("filter") or w:find("cocok") then
+						setStatus("SamLoop STOP: " .. w .. ". Atur filter pet di tab Event garden.")
+						local st = readLoop(); st.active = false; writeLoop(st)
+						return
+					end
+					if submitTries >= 5 then
+						setStatus("SamLoop STOP: submit gagal terus (" .. w .. ")")
+						local st = readLoop(); st.active = false; writeLoop(st)
+						return
+					end
+					task.wait(2) -- transien, coba lagi
+				end
 			end
-			task.wait(2)
 		end
 
-		-- 3. Balik ke Trade World buat hop lagi
+		-- Balik ke Trade World buat hop lagi
 		setStatus("SamLoop: balik ke Trade World...")
 		task.wait(1)
 		if readLoop().active then backToTradeWorld() end
