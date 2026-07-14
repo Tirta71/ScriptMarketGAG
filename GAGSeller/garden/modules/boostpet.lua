@@ -72,13 +72,27 @@ return function(ctx)
 						else
 							local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
 							if hum then
-								pcall(function() hum:EquipTool(tool) end)
-								task.wait(0.3)
-								pcall(function() PetBoostService:FireServer("ApplyBoost", uuid) end)
-								local dur = tonumber(tool:GetAttribute("p")) or 300
-								nextApply[uuid] = os.clock() + dur
-								setStatus(("Boost: %s -> #%s (re-apply %ds)"):format(baseName(tool.Name), uuid:sub(2, 5), math.floor(dur)))
-								task.wait(0.4)
+								-- Pastikan item boost BENAR-BENAR dipegang sebelum ApplyBoost (retry equip).
+								local held
+								for _ = 1, 3 do
+									pcall(function() hum:EquipTool(tool) end)
+									task.wait(0.35)
+									held = LP.Character and LP.Character:FindFirstChildWhichIsA("Tool")
+									if held and held:HasTag("PetBoost") then break end
+									tool = findBoostTool() -- tool bisa berubah instance
+									if not tool then break end
+								end
+								if held and held:HasTag("PetBoost") then
+									pcall(function() PetBoostService:FireServer("ApplyBoost", uuid) end)
+									local dur = tonumber(held:GetAttribute("p")) or 300
+									nextApply[uuid] = os.clock() + dur
+									setStatus(("Boost: %s -> #%s (re-apply %ds)"):format(baseName(held.Name), uuid:sub(2, 5), math.floor(dur)))
+									task.wait(0.4)
+								else
+									-- gagal pegang item -> JANGAN majuin timer, coba lagi loop berikutnya
+									setStatus("Boost: gagal pegang item, retry...")
+									task.wait(0.5)
+								end
 							end
 						end
 					end
