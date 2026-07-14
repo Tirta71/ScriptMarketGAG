@@ -133,10 +133,16 @@ return function(ctx)
 			end
 		end
 
-		-- D. LEPAS pet yang sudah MAX KG
+		-- D. LEPAS pet yang sudah MAX KG (+ webhook onFinished)
 		for _, uuid in ipairs(finishedMax) do
+			local pInfo = inv[uuid]
+			local pt = pInfo and pInfo.PetType or "?"
+			local w = pInfo and pInfo.PetData and pInfo.PetData.BaseWeight or 0
 			pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
 			localEq[uuid] = nil; localEqCount = localEqCount - 1
+			if ctx.webhookElephant and ctx.webhookElephant.onFinished then
+				pcall(function() ctx.webhookElephant.onFinished(ctx, pt, w) end)
+			end
 			task.wait(0.25)
 		end
 
