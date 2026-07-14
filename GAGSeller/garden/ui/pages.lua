@@ -55,8 +55,9 @@ return function(ctx)
 			BackgroundTransparency = 1, Text = "Loading stats...",
 			Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = C.txt,
 			TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true,
-			LineHeight = 1.35, RichText = true, LayoutOrder = 1
+			LineHeight = 1.35, RichText = true, LayoutOrder = 0
 		}, acc)
+		mk("Frame", { Size = UDim2.new(1, 0, 0, 12), BackgroundTransparency = 1, LayoutOrder = 1 }, acc)
 		task.spawn(function()
 			while ctx.alive() do
 				local ok, s = pcall(function() return ctx.getElephantSummary() end)
@@ -192,9 +193,10 @@ return function(ctx)
 			TextWrapped = true,
 			LineHeight = 1.35,
 			RichText = true,
-			LayoutOrder = 1
+			LayoutOrder = 0
 		}, statusAcc)
-		
+		mk("Frame", { Size = UDim2.new(1, 0, 0, 12), BackgroundTransparency = 1, LayoutOrder = 1 }, statusAcc)
+
 		task.spawn(function()
 			while ctx.alive() do
 				local ok, s = pcall(function() return ctx.getMutationSummary() end)
