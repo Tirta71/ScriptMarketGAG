@@ -87,11 +87,11 @@ return function(ctx)
 		makeInput(acc, "Max Target Pets", "Jumlah pet target aktif barengan",
 			function() return tostring(CFG.elephantMaxPets) end,
 			function(txt) CFG.elephantMaxPets = tonumber(txt) or 2; persist() end, 5)
-		makeToggle(acc, "Enable Automation Elephant", "Rotasi pet target otomatis berdasarkan berat",
+		makeToggle(acc, "Enable Automation Elephant", "Rotasi pet target otomatis. OFF = cabut semua pet dari garden.",
 			function() return CFG.elephantEnabled end,
 			function(v)
 				CFG.elephantEnabled = v; persist()
-				if v then ctx.startElephant() end
+				if v then ctx.startElephant() else ctx.stopElephant() end
 			end, 6)
 	end
 
