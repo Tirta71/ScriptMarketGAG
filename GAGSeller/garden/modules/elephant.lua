@@ -181,9 +181,9 @@ return function(ctx)
 		ctx.elevate()
 		ctx.state.elephantFirstRun = true
 
-		-- Webhook saat enable (kalau webhook aktif)
+		-- Webhook saat enable (sama seperti leveling: cukup URL keisi, sender cek URL sendiri)
 		task.spawn(function()
-			if CFG.webhookEnabled and ctx.webhookElephant then
+			if ctx.webhookElephant then
 				pcall(function() ctx.webhookElephant.sendEnabled(ctx) end)
 			end
 		end)
