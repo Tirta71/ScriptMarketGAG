@@ -181,6 +181,13 @@ return function(ctx)
 		ctx.elevate()
 		ctx.state.elephantFirstRun = true
 
+		-- Webhook saat enable (kalau webhook aktif)
+		task.spawn(function()
+			if CFG.webhookEnabled and ctx.webhookElephant then
+				pcall(function() ctx.webhookElephant.sendEnabled(ctx) end)
+			end
+		end)
+
 		while CFG.elephantEnabled and ctx.alive() and ctx.state.elephantId == myId do
 			pcall(checkElephant)
 			task.wait(3.0)
