@@ -37,14 +37,16 @@ return function(ctx)
 		return out
 	end
 
-	-- Cari 1 tool boost yang dipilih & masih ada di backpack.
+	-- Cari 1 tool boost yang dipilih (Character dulu = yang lagi dipegang, lalu Backpack).
 	local function findBoostTool()
-		local bp = LP:FindFirstChildOfClass("Backpack")
-		if not bp then return nil end
 		local sel = CFG.boostItemNames or {}
-		for _, t in ipairs(bp:GetChildren()) do
-			if t:IsA("Tool") and t:HasTag("PetBoost") and sel[baseName(t.Name)] then
-				return t
+		for _, src in ipairs({ LP.Character, LP:FindFirstChildOfClass("Backpack") }) do
+			if src then
+				for _, t in ipairs(src:GetChildren()) do
+					if t:IsA("Tool") and t:HasTag("PetBoost") and sel[baseName(t.Name)] then
+						return t
+					end
+				end
 			end
 		end
 		return nil
