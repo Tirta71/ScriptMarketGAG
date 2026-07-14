@@ -394,9 +394,12 @@ return function(ctx)
 
 			-- Jika ada pet yang perlu di-leveling:
 			if levelUuid then
-				ctx.state.mutationPhase = "Leveling Target"
-				-- Pastikan target pet + expTeam terpasang 100% tanpa kelewat
-				ensureEquippedTeam(expTeam, levelUuid)
+				-- Validasi EXP team + target pet LENGKAP dulu (no miss).
+				if ensureEquippedTeam(expTeam, levelUuid) then
+					ctx.state.mutationPhase = "Leveling Target"
+				else
+					ctx.state.mutationPhase = "Menunggu EXP Team lengkap..."
+				end
 				return
 			end
 
