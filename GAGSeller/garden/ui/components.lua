@@ -197,7 +197,15 @@ return function(ctx)
 		local function rebuild()
 			for _, o in ipairs(optBtns) do o.btn:Destroy() end
 			optBtns = {}
-			for _, opt in ipairs(getOptions()) do
+			-- Selected-first konsisten: yang dipilih (✓) di atas, urutan asli dipertahankan.
+			local raw = getOptions()
+			local ordered, sel, unsel = {}, {}, {}
+			for _, o in ipairs(raw) do
+				if selSet[o.value] then sel[#sel + 1] = o else unsel[#unsel + 1] = o end
+			end
+			for _, o in ipairs(sel) do ordered[#ordered + 1] = o end
+			for _, o in ipairs(unsel) do ordered[#ordered + 1] = o end
+			for _, opt in ipairs(ordered) do
 				local value, display = opt.value, opt.display
 				local ob = mk("TextButton", { Size = UDim2.new(1, 0, 0, 24), BackgroundColor3 = C.row, Text = "  " .. display, TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = C.txt, AutoButtonColor = false }, scroll)
 				corner(ob, 4)

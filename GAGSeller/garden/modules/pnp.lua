@@ -72,7 +72,10 @@ return function(ctx)
 			local pd = v.PetData or {}
 			local age = pd.Level or 0
 			local mut = pd.MutationType
-			local mutStr = (mut and mut ~= "" and mut ~= "Normal") and (" " .. tostring(mut)) or ""
+			-- Tampilkan nama mutasi penuh (mis. "EV" -> "Everchanted"), bukan kode singkat.
+			local mutName = mut
+			if mut and ctx.reg and ctx.reg.mutDisplay then mutName = ctx.reg.mutDisplay(mut) end
+			local mutStr = (mut and mut ~= "" and mut ~= "Normal") and (" " .. tostring(mutName)) or ""
 			local tag = eqSet[uuid] and " [aktif]" or ""
 			out[#out + 1] = {
 				value = uuid,
