@@ -272,8 +272,8 @@ return function(ctx)
 				if v then ctx.startMutation() end
 			end, 9)
 
-		-- Accordion: Automation Cleanse Mutation (mutasi via aura + cleanse)
-		local cleanseAcc = makeAccordion(mutationPage, "Automation Cleanse Mutation", 2, false)
+		-- Accordion: Automation Mutation (mutasi via aura + cleanse)
+		local cleanseAcc = makeAccordion(mutationPage, "Automation Mutation", 2, false)
 
 		-- Status (live)
 		local cleanseLbl = mk("TextLabel", {
@@ -314,7 +314,7 @@ return function(ctx)
 		makeMultiDropdownDyn(cleanseAcc, "Pet Types for Mutation", "Tipe pet target yang mau dimutasi",
 			function() return ctx.getInventoryPetTypes(CFG.cleansePetTypes) end, CFG.cleansePetTypes, function() persist() end, 3)
 		makeMultiDropdown(cleanseAcc, "Mutations to Keep", "Mutasi ini disimpan (won't be cleansed)",
-			ctx.reg.MACHINE_MUT_OPTIONS or ctx.reg.MUT_OPTIONS or {"None"}, CFG.cleanseKeepMutations, function() persist() end, 4)
+			ctx.reg.MUT_OPTIONS or {"None"}, CFG.cleanseKeepMutations, function() persist() end, 4)
 		makeInput(cleanseAcc, "Max Pets in Garden", "Max pet target di garden barengan",
 			function() return tostring(CFG.cleanseMaxPets) end,
 			function(txt) CFG.cleanseMaxPets = tonumber(txt) or 2; persist() end, 5)
