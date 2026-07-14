@@ -47,15 +47,16 @@ return function(ctx)
 	------------------------------------------------------------------ ELEPHANT (V1)
 	do
 		local elephantPage = pageRef["Elephant"]
-		-- Status
-		local statusAcc = makeAccordion(elephantPage, "Status", 1, true)
+		local acc = makeAccordion(elephantPage, "Automation Elephant V1", 1, true)
+
+		-- Status (live)
 		local statusLbl = mk("TextLabel", {
 			Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
 			BackgroundTransparency = 1, Text = "Loading stats...",
 			Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = C.txt,
 			TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true,
 			LineHeight = 1.35, RichText = true, LayoutOrder = 1
-		}, statusAcc)
+		}, acc)
 		task.spawn(function()
 			while ctx.alive() do
 				local ok, s = pcall(function() return ctx.getElephantSummary() end)
@@ -75,24 +76,23 @@ return function(ctx)
 			end
 		end)
 
-		-- Settings
-		local setAcc = makeAccordion(elephantPage, "Automation Elephant Settings", 2, true)
-		makeMultiDropdownDyn(setAcc, "V1 Pet Team", "Select elephant pet team (tetap di garden)",
-			function() return ctx.inventoryPetOptions(CFG.elephantTeamUuids) end, CFG.elephantTeamUuids, function() persist() end, 1)
-		makeMultiDropdownDyn(setAcc, "V1 Target Pet Types", "Select pet types to auto-elephant",
-			function() return ctx.getInventoryPetTypes(CFG.elephantPetTypes) end, CFG.elephantPetTypes, function() persist() end, 2)
-		makeInput(setAcc, "Target Weight (KG)", "Berat max sebelum diganti (mis. 5.5)",
+		-- Settings (dalam accordion yang sama)
+		makeMultiDropdownDyn(acc, "V1 Pet Team", "Select elephant pet team (tetap di garden)",
+			function() return ctx.inventoryPetOptions(CFG.elephantTeamUuids) end, CFG.elephantTeamUuids, function() persist() end, 2)
+		makeMultiDropdownDyn(acc, "V1 Target Pet Types", "Select pet types to auto-elephant",
+			function() return ctx.getInventoryPetTypes(CFG.elephantPetTypes) end, CFG.elephantPetTypes, function() persist() end, 3)
+		makeInput(acc, "Target Weight (KG)", "Berat max sebelum diganti (mis. 5.5)",
 			function() return tostring(CFG.elephantTargetWeight) end,
-			function(txt) CFG.elephantTargetWeight = tonumber(txt) or 5.5; persist() end, 3)
-		makeInput(setAcc, "Max Target Pets", "Jumlah pet target aktif barengan",
+			function(txt) CFG.elephantTargetWeight = tonumber(txt) or 5.5; persist() end, 4)
+		makeInput(acc, "Max Target Pets", "Jumlah pet target aktif barengan",
 			function() return tostring(CFG.elephantMaxPets) end,
-			function(txt) CFG.elephantMaxPets = tonumber(txt) or 2; persist() end, 4)
-		makeToggle(setAcc, "Enable Automation Elephant", "Rotasi pet target otomatis berdasarkan berat",
+			function(txt) CFG.elephantMaxPets = tonumber(txt) or 2; persist() end, 5)
+		makeToggle(acc, "Enable Automation Elephant", "Rotasi pet target otomatis berdasarkan berat",
 			function() return CFG.elephantEnabled end,
 			function(v)
 				CFG.elephantEnabled = v; persist()
 				if v then ctx.startElephant() end
-			end, 5)
+			end, 6)
 	end
 
 	------------------------------------------------------------------ LEVELING
