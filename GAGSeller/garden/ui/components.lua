@@ -128,6 +128,16 @@ return function(ctx)
 
 		local built = false
 		local optBtns = {}
+		-- Urutkan: yang dipilih (✓) di paling atas, sisanya ikut urutan asli.
+		local function reorder()
+			local i = 0
+			for _, opt in ipairs(options) do
+				if selSet[opt] and optBtns[opt] then i = i + 1; optBtns[opt].LayoutOrder = i end
+			end
+			for _, opt in ipairs(options) do
+				if not selSet[opt] and optBtns[opt] then i = i + 1; optBtns[opt].LayoutOrder = i end
+			end
+		end
 		local function build()
 			if built then return end; built = true
 			for _, opt in ipairs(options) do
@@ -137,10 +147,11 @@ return function(ctx)
 				local function rend() check.Text = selSet[opt] and "✓" or ""; ob.BackgroundColor3 = selSet[opt] and Color3.fromRGB(45, 44, 30) or C.row end
 				ob.MouseButton1Click:Connect(function()
 					if selSet[opt] then selSet[opt] = nil else selSet[opt] = true end
-					rend(); updateSummary(); if onChange then onChange() end
+					rend(); updateSummary(); reorder(); if onChange then onChange() end
 				end)
 				rend(); optBtns[opt] = ob
 			end
+			reorder()
 		end
 		search:GetPropertyChangedSignal("Text"):Connect(function()
 			local q = search.Text:lower()
@@ -149,6 +160,7 @@ return function(ctx)
 		head.MouseButton1Click:Connect(function()
 			if not built then build() end
 			listFrame.Visible = not listFrame.Visible
+			if listFrame.Visible then reorder() end
 		end)
 		updateSummary()
 		return updateSummary
