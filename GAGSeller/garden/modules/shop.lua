@@ -1,6 +1,10 @@
 --[[ shop.lua — Automation Buy Seed / Egg / Gear.
-     Opsi dropdown diambil REALTIME dari stock shop game (DataService), jadi
-     kalau game update shop, otomatis ikut (tanpa ubah kode).
+     Opsi dropdown diambil dari REGISTRY katalog shop (bukan stock), jadi semua
+     item tampil walau lagi habis; item baru dari update game auto masuk.
+       Seed -> SeedShopData
+       Gear -> GearShopData.Gear
+       Egg  -> PetEggData
+     Ada opsi "All" = beli semua yang lagi ada stock.
      Remote:
        BuySeedStock:FireServer("Shop", seedName)
        BuyGearStock:FireServer(gearName)
@@ -20,55 +24,34 @@ return function(ctx)
 		return ok and d or nil
 	end
 
-	----------------------------------------------------------------- opsi realtime
-	local function sortSel(out, sel)
-		table.sort(out, function(a, b)
-			local sa = sel and sel[a.value] and 1 or 0
-			local sb = sel and sel[b.value] and 1 or 0
-			if sa ~= sb then return sa > sb end
-			return a.display < b.display
-		end)
+	-- Ambil daftar nama dari registry katalog; buang key non-item (RefreshTime, Gear).
+	local function catalogNames(getTbl)
+		local ok, t = pcall(getTbl)
+		local out = {}
+		if ok and type(t) == "table" then
+			for k in pairs(t) do
+				local n = tostring(k)
+				if n ~= "RefreshTime" and n ~= "Gear" then out[#out + 1] = n end
+			end
+			table.sort(out)
+		end
+		return out
+	end
+
+	local function optionsFrom(names, sel)
+		local out = { { value = "All", display = "All (beli semua)" } }
+		for _, n in ipairs(names) do out[#out + 1] = { value = n, display = n } end
 		return out
 	end
 
 	function ctx.getSeedShopOptions(sel)
-		local out = {}
-		local d = getData()
-		local st = d and d.SeedStock and d.SeedStock.Stocks
-		if type(st) == "table" then
-			for name, v in pairs(st) do
-				out[#out + 1] = { value = name, display = ("%s (x%s)"):format(name, tostring(type(v) == "table" and v.Stock or v)) }
-			end
-		end
-		return sortSel(out, sel)
+		return optionsFrom(catalogNames(function() return require(RS.Data.SeedShopData) end), sel)
 	end
-
 	function ctx.getGearShopOptions(sel)
-		local out = {}
-		local d = getData()
-		local st = d and d.GearStock and d.GearStock.Stocks
-		if type(st) == "table" then
-			for name, v in pairs(st) do
-				out[#out + 1] = { value = name, display = ("%s (x%s)"):format(name, tostring(type(v) == "table" and v.Stock or v)) }
-			end
-		end
-		return sortSel(out, sel)
+		return optionsFrom(catalogNames(function() return require(RS.Data.GearShopData).Gear end), sel)
 	end
-
 	function ctx.getEggShopOptions(sel)
-		local out, seen = {}, {}
-		local d = getData()
-		local st = d and d.PetEggStock and d.PetEggStock.Stocks
-		if type(st) == "table" then
-			for _, v in pairs(st) do
-				local nm = type(v) == "table" and v.EggName
-				if nm and not seen[nm] then
-					seen[nm] = true
-					out[#out + 1] = { value = nm, display = nm }
-				end
-			end
-		end
-		return sortSel(out, sel)
+		return optionsFrom(catalogNames(function() return require(RS.Data.PetEggData) end), sel)
 	end
 
 	----------------------------------------------------------------- loop beli
@@ -79,15 +62,17 @@ return function(ctx)
 		while CFG.buySeedEnabled and ctx.alive() and ctx.state.buySeedId == myId do
 			local d = getData()
 			local st = d and d.SeedStock and d.SeedStock.Stocks or {}
+			local sel = CFG.buySeedNames or {}
+			local all = sel["All"]
 			local bought = 0
-			for name in pairs(CFG.buySeedNames or {}) do
-				local v = st[name]
-				local stock = type(v) == "table" and v.Stock or 0
-				for _ = 1, stock do
-					if not CFG.buySeedEnabled or ctx.state.buySeedId ~= myId then break end
-					pcall(function() BuySeedStock:FireServer("Shop", name) end)
-					bought = bought + 1
-					task.wait(0.15)
+			for name, v in pairs(st) do
+				if all or sel[name] then
+					local stock = type(v) == "table" and v.Stock or 0
+					for _ = 1, stock do
+						if not CFG.buySeedEnabled or ctx.state.buySeedId ~= myId then break end
+						pcall(function() BuySeedStock:FireServer("Shop", name) end)
+						bought = bought + 1; task.wait(0.15)
+					end
 				end
 			end
 			setStatus(bought > 0 and ("Buy Seed: beli %d"):format(bought) or "Buy Seed: nunggu stock")
@@ -102,15 +87,17 @@ return function(ctx)
 		while CFG.buyGearEnabled and ctx.alive() and ctx.state.buyGearId == myId do
 			local d = getData()
 			local st = d and d.GearStock and d.GearStock.Stocks or {}
+			local sel = CFG.buyGearNames or {}
+			local all = sel["All"]
 			local bought = 0
-			for name in pairs(CFG.buyGearNames or {}) do
-				local v = st[name]
-				local stock = type(v) == "table" and v.Stock or 0
-				for _ = 1, stock do
-					if not CFG.buyGearEnabled or ctx.state.buyGearId ~= myId then break end
-					pcall(function() BuyGearStock:FireServer(name) end)
-					bought = bought + 1
-					task.wait(0.15)
+			for name, v in pairs(st) do
+				if all or sel[name] then
+					local stock = type(v) == "table" and v.Stock or 0
+					for _ = 1, stock do
+						if not CFG.buyGearEnabled or ctx.state.buyGearId ~= myId then break end
+						pcall(function() BuyGearStock:FireServer(name) end)
+						bought = bought + 1; task.wait(0.15)
+					end
 				end
 			end
 			setStatus(bought > 0 and ("Buy Gear: beli %d"):format(bought) or "Buy Gear: nunggu stock")
@@ -125,16 +112,17 @@ return function(ctx)
 		while CFG.buyEggEnabled and ctx.alive() and ctx.state.buyEggId == myId do
 			local d = getData()
 			local st = d and d.PetEggStock and d.PetEggStock.Stocks or {}
+			local sel = CFG.buyEggNames or {}
+			local all = sel["All"]
 			local bought = 0
 			for index, v in pairs(st) do
 				local nm = type(v) == "table" and v.EggName
 				local stock = type(v) == "table" and v.Stock or 0
-				if nm and (CFG.buyEggNames or {})[nm] then
+				if nm and (all or sel[nm]) then
 					for _ = 1, stock do
 						if not CFG.buyEggEnabled or ctx.state.buyEggId ~= myId then break end
 						pcall(function() BuyPetEgg:FireServer(index) end)
-						bought = bought + 1
-						task.wait(0.15)
+						bought = bought + 1; task.wait(0.15)
 					end
 				end
 			end
