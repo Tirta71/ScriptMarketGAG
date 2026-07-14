@@ -476,7 +476,7 @@ return function(ctx)
 	local whAcc = makeAccordion(misc, "Discord Webhook Settings", 1, true)
 
 	-- Discord Webhook URL Input
-	makeInput(whAcc, "Discord Webhook URL", "Webhook URL for automation updates (Leveling & Mutation)",
+	makeInput(whAcc, "Discord Webhook URL", "Webhook URL for automation updates (Leveling, Mutation & Elephant)",
 		function() return CFG.webhookUrl end,
 		function(txt) CFG.webhookUrl = txt; persist() end, 1)
 
