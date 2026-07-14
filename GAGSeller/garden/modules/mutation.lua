@@ -71,7 +71,7 @@ return function(ctx)
 				if not targetActive[cu] then
 					pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
 					unequippedAny = true
-					task.wait(0.2)
+					task.wait(0.1)
 				end
 			end
 
@@ -82,7 +82,7 @@ return function(ctx)
 				if pos then
 					pcall(function() PetsService:FireServer("EquipPet", targetPetUuid, CFrame.new(pos)) end)
 					equippedAny = true
-					task.wait(0.25)
+					task.wait(0.1)
 				end
 			end
 
@@ -94,7 +94,7 @@ return function(ctx)
 					if pos then
 						pcall(function() PetsService:FireServer("EquipPet", uuid, CFrame.new(pos)) end)
 						equippedAny = true
-						task.wait(0.25)
+						task.wait(0.1)
 					end
 				end
 			end
