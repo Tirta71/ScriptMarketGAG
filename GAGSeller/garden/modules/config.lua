@@ -47,6 +47,13 @@ return function(ctx)
 		mutationDelayAutoClaim = 0.5,
 		mutationEnabled       = false,
 
+		-- Automation Elephant (V1)
+		elephantTeamUuids   = {},
+		elephantPetTypes    = {},
+		elephantTargetWeight = 5.5,
+		elephantMaxPets     = 2,
+		elephantEnabled     = false,
+
 		-- Automation Event (Sam The Clam)
 		summerEventEnabled = false,
 		summerPetTypes     = {},   -- set tipe pet yang boleh di-feed; kosong = pakai filter berat
@@ -111,6 +118,12 @@ return function(ctx)
 			CFG.mutationTargetAge     = tonumber(st.mutationTargetAge) or 50
 			CFG.mutationDelayAutoClaim = tonumber(st.mutationDelayAutoClaim) or 0.5
 			CFG.mutationEnabled       = st.mutationEnabled or false
+
+			CFG.elephantTeamUuids   = (type(st.elephantTeamUuids) == "table") and st.elephantTeamUuids or {}
+			CFG.elephantPetTypes    = (type(st.elephantPetTypes) == "table") and st.elephantPetTypes or {}
+			CFG.elephantTargetWeight = tonumber(st.elephantTargetWeight) or 5.5
+			CFG.elephantMaxPets     = tonumber(st.elephantMaxPets) or 2
+			CFG.elephantEnabled     = st.elephantEnabled or false
 
 			CFG.summerEventEnabled = st.summerEventEnabled or false
 			CFG.summerPetTypes     = (type(st.summerPetTypes) == "table") and st.summerPetTypes or {}

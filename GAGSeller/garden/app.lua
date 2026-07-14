@@ -61,4 +61,11 @@ return function(ctx)
 		ctx.startMutation()
 		ctx.log("Auto-resume: Mutation ON.")
 	end
+
+	-- auto-resume Elephant kalau sebelumnya aktif
+	if CFG.elephantEnabled and ctx.startElephant then
+		task.wait(2.5)
+		ctx.startElephant()
+		ctx.log("Auto-resume: Elephant ON.")
+	end
 end

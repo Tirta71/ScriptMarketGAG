@@ -40,8 +40,59 @@ return function(ctx)
 		corner(box, 8); stroke(box); pad(box, 14, 14, 12, 12)
 		mk("TextLabel", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = "Fitur untuk tab ini belum tersedia.", Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top }, box)
 	end
-	for _, name in ipairs({ "Elephant", "Growth", "Shop" }) do
+	for _, name in ipairs({ "Growth", "Shop" }) do
 		placeholder(pageRef[name])
+	end
+
+	------------------------------------------------------------------ ELEPHANT (V1)
+	do
+		local elephantPage = pageRef["Elephant"]
+		-- Status
+		local statusAcc = makeAccordion(elephantPage, "Status", 1, true)
+		local statusLbl = mk("TextLabel", {
+			Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
+			BackgroundTransparency = 1, Text = "Loading stats...",
+			Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = C.txt,
+			TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true,
+			LineHeight = 1.35, RichText = true, LayoutOrder = 1
+		}, statusAcc)
+		task.spawn(function()
+			while ctx.alive() do
+				local ok, s = pcall(function() return ctx.getElephantSummary() end)
+				if ok and s then
+					local col = s.status == "ACTIVE" and "#5acc78" or "#dc5050"
+					statusLbl.Text = string.format(
+						"Automation Status: <font color=\"%s\"><b>%s</b></font>\n\n" ..
+						"Elephant Team: <font color=\"#8c929e\">%s</font>\n" ..
+						"Target Types: <font color=\"#f5c82d\">%s</font>\n" ..
+						"Target Pets Ready: <font color=\"#8c929e\">%s</font>\n" ..
+						"Pets at Max KG: <font color=\"#8c929e\">%s</font>\n\n" ..
+						"Max Target Pets: <font color=\"#8c929e\">%s</font>\n" ..
+						"Target Weight: <font color=\"#f5c82d\"><b>%s</b></font>",
+						col, s.status, s.team, s.types, s.ready, s.maxKg, s.maxTarget, s.targetWeight)
+				end
+				task.wait(1.5)
+			end
+		end)
+
+		-- Settings
+		local setAcc = makeAccordion(elephantPage, "Automation Elephant Settings", 2, true)
+		makeMultiDropdownDyn(setAcc, "V1 Pet Team", "Select elephant pet team (tetap di garden)",
+			function() return ctx.inventoryPetOptions(CFG.elephantTeamUuids) end, CFG.elephantTeamUuids, function() persist() end, 1)
+		makeMultiDropdownDyn(setAcc, "V1 Target Pet Types", "Select pet types to auto-elephant",
+			function() return ctx.getInventoryPetTypes(CFG.elephantPetTypes) end, CFG.elephantPetTypes, function() persist() end, 2)
+		makeInput(setAcc, "Target Weight (KG)", "Berat max sebelum diganti (mis. 5.5)",
+			function() return tostring(CFG.elephantTargetWeight) end,
+			function(txt) CFG.elephantTargetWeight = tonumber(txt) or 5.5; persist() end, 3)
+		makeInput(setAcc, "Max Target Pets", "Jumlah pet target aktif barengan",
+			function() return tostring(CFG.elephantMaxPets) end,
+			function(txt) CFG.elephantMaxPets = tonumber(txt) or 2; persist() end, 4)
+		makeToggle(setAcc, "Enable Automation Elephant", "Rotasi pet target otomatis berdasarkan berat",
+			function() return CFG.elephantEnabled end,
+			function(v)
+				CFG.elephantEnabled = v; persist()
+				if v then ctx.startElephant() end
+			end, 5)
 	end
 
 	------------------------------------------------------------------ LEVELING

@@ -75,6 +75,7 @@ local MODULES = {
 	"modules/accept.lua",
 	"modules/pnp.lua",
 	"modules/leveling.lua",
+	"modules/elephant.lua",
 	"modules/mutation.lua",
 	"modules/summer.lua",
 	"modules/samloop.lua",
