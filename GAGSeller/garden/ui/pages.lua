@@ -251,8 +251,8 @@ return function(ctx)
 			function() return ctx.getInventoryPetTypes(CFG.mutationTargetTypes) end, CFG.mutationTargetTypes, function() persist() end, 5)
 
 		-- Target Mutations (Multi-dropdown Mutations)
-		makeMultiDropdown(settingsAcc, "Target Mutations (Machine)", "Stop when pet gets these mutations",
-			ctx.reg.MUT_OPTIONS or {"None"}, CFG.mutationTargetMutations, function() persist() end, 6)
+		makeMultiDropdown(settingsAcc, "Target Mutations (Machine)", "Stop when pet gets these mutations (hanya mutasi mesin)",
+			ctx.reg.MACHINE_MUT_OPTIONS or ctx.reg.MUT_OPTIONS or {"None"}, CFG.mutationTargetMutations, function() persist() end, 6)
 
 		-- Target Age (Input)
 		makeInput(settingsAcc, "Target Age", "Level to reach before submitting (e.g. 50 or 500)",
