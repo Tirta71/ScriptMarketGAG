@@ -105,6 +105,16 @@ return function(ctx)
 			end
 			task.wait(0.3)
 		end
+
+		-- Verifikasi kelengkapan: SEMUA anggota target harus benar-benar ke-equip (no miss).
+		local ok, d = pcall(function() return DataService:GetData() end)
+		local eq = ok and d and d.PetsData and d.PetsData.EquippedPets or {}
+		local eqSet = {}
+		for _, uuid in ipairs(eq) do eqSet[cleanUuid(uuid)] = true end
+		for cu in pairs(targetActive) do
+			if not eqSet[cu] then return false end
+		end
+		return true
 	end
 
 	ctx.state.mutationStatus = "Idle"
@@ -210,11 +220,13 @@ return function(ctx)
 
 		-- A. DETEKSI APAKAH PET READY UNTUK DICLAIM
 		if machine.PetReady then
+			-- Validasi Phoenix team LENGKAP dulu (no miss) sebelum claim.
+			if not ensureEquippedTeam(phoenixTeam) then
+				ctx.state.mutationPhase = "Menunggu Phoenix Team lengkap..."
+				return
+			end
 			ctx.state.mutationPhase = "Claiming Pet"
-			
-			-- Pastikan phoenix team terpasang 100% tanpa kelewat
-			ensureEquippedTeam(phoenixTeam)
-			
+
 			-- Tunggu delay klaim
 			task.wait(delayClaim)
 			
@@ -277,9 +289,12 @@ return function(ctx)
 
 		-- B. DETEKSI APAKAH MESIN SEDANG BERJALAN
 		if machine.IsRunning or (machine.TimeLeft and machine.TimeLeft > 0) then
-			ctx.state.mutationPhase = "Boosting Machine"
-			-- Pastikan boost team terpasang 100% tanpa kelewat
-			ensureEquippedTeam(boostTeam)
+			-- Validasi Boost team LENGKAP dulu (no miss) baru dianggap boosting.
+			if ensureEquippedTeam(boostTeam) then
+				ctx.state.mutationPhase = "Boosting Machine"
+			else
+				ctx.state.mutationPhase = "Menunggu Boost Team lengkap..."
+			end
 			return
 		end
 
