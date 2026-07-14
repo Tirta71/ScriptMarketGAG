@@ -75,10 +75,19 @@ return function(ctx)
 		return { state = state, timer = timer, reward = reward, submitted = submitted }
 	end
 
-	-- daftar tipe pet unik dari INVENTORY buat dropdown (reuse kalau ada, atau bikin di sini)
+	-- daftar tipe pet unik dari INVENTORY buat dropdown.
+	-- Sekaligus auto-prune: tipe yang sudah TIDAK ADA di inventory dibuang dari pilihan
+	-- (biar ga nyangkut kepilih padahal pet-nya habis).
 	function ctx.getSummerPetTypes(selectedSet)
-		if ctx.getInventoryPetTypes then return ctx.getInventoryPetTypes(selectedSet) end
-		return {}
+		local opts = ctx.getInventoryPetTypes and ctx.getInventoryPetTypes(selectedSet) or {}
+		local avail = {}
+		for _, o in ipairs(opts) do avail[o.value] = true end
+		local changed = false
+		for t in pairs(CFG.summerPetTypes or {}) do
+			if not avail[t] then CFG.summerPetTypes[t] = nil; changed = true end
+		end
+		if changed and ctx.persistState then ctx.persistState() end
+		return opts
 	end
 
 	-- Ambil kandidat pet Tool dari Backpack yang lolos filter, urut berat menaik (feed teringan dulu).
@@ -91,9 +100,10 @@ return function(ctx)
 		local minW = tonumber(CFG.summerMinWeight) or 0
 		local maxW = tonumber(CFG.summerMaxWeight) or 0
 
-		-- Safety: wajib ada minimal 1 filter (tipe atau berat) supaya tidak asal feed
-		if not hasTypeFilter and minW <= 0 and maxW <= 0 then
-			return nil, "atur filter pet/berat dulu (biar ga salah feed)"
+		-- Safety: WAJIB pilih tipe pet (berat cuma nyaring di dalam tipe).
+		-- Kalau tipe habis/kosong -> stop, jangan feed pet lain sembarangan.
+		if not hasTypeFilter then
+			return nil, "pilih tipe pet di filter dulu (biar ga salah feed)"
 		end
 
 		local best
