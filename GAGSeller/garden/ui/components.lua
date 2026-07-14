@@ -235,6 +235,7 @@ return function(ctx)
 
 	----------------------------------------------------------------- accordion
 	local function makeAccordion(parent, title, order, openByDefault)
+		openByDefault = false -- semua accordion mulai tertutup saat pertama load
 		local TS = game:GetService("TweenService")
 		local container = mk("Frame", { Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundColor3 = C.row, BorderSizePixel = 0, LayoutOrder = order }, parent)
 		corner(container, 8); stroke(container)
