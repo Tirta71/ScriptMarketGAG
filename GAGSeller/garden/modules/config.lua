@@ -47,6 +47,11 @@ return function(ctx)
 		mutationDelayAutoClaim = 0.5,
 		mutationEnabled       = false,
 
+		-- Automation Boost Pet
+		boostPetUuids  = {},
+		boostItemNames = {},
+		boostEnabled   = false,
+
 		-- Automation Elephant (V1)
 		elephantTeamUuids   = {},
 		elephantPetTypes    = {},
@@ -118,6 +123,10 @@ return function(ctx)
 			CFG.mutationTargetAge     = tonumber(st.mutationTargetAge) or 50
 			CFG.mutationDelayAutoClaim = tonumber(st.mutationDelayAutoClaim) or 0.5
 			CFG.mutationEnabled       = st.mutationEnabled or false
+
+			CFG.boostPetUuids  = (type(st.boostPetUuids) == "table") and st.boostPetUuids or {}
+			CFG.boostItemNames = (type(st.boostItemNames) == "table") and st.boostItemNames or {}
+			CFG.boostEnabled   = st.boostEnabled or false
 
 			CFG.elephantTeamUuids   = (type(st.elephantTeamUuids) == "table") and st.elephantTeamUuids or {}
 			CFG.elephantPetTypes    = (type(st.elephantPetTypes) == "table") and st.elephantPetTypes or {}

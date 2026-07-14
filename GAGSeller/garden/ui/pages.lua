@@ -382,6 +382,19 @@ return function(ctx)
 		end, 5)
 	ctx.state.pnpMonitorBtnRender = pnpMonitorBtnRender
 
+	-- Accordion: Automation Boost Pet
+	local boostAcc = makeAccordion(pet, "Automation Boost Pet", 2, false)
+	makeMultiDropdownDyn(boostAcc, "Select Pets to Boost", "Pilih pet yang mau di-boost (aktif di garden)",
+		function() return ctx.inventoryPetOptions(CFG.boostPetUuids) end, CFG.boostPetUuids, function() persist() end, 1)
+	makeMultiDropdownDyn(boostAcc, "Select Boost Items", "Pilih item boost (Pet Toy) yang dipakai",
+		function() return ctx.getBoostItemOptions(CFG.boostItemNames) end, CFG.boostItemNames, function() persist() end, 2)
+	makeToggle(boostAcc, "Enable Automation Boost", "Auto apply boost item ke pet, re-apply pas boost habis",
+		function() return CFG.boostEnabled end,
+		function(v)
+			CFG.boostEnabled = v; persist()
+			if v then ctx.startBoostPet() end
+		end, 3)
+
 	------------------------------------------------------------------ INVENTORY
 	local inv = pageRef["Inventory"]
 

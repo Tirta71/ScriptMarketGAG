@@ -75,6 +75,7 @@ local MODULES = {
 	"modules/trade.lua",
 	"modules/accept.lua",
 	"modules/pnp.lua",
+	"modules/boostpet.lua",
 	"modules/leveling.lua",
 	"modules/elephant.lua",
 	"modules/mutation.lua",

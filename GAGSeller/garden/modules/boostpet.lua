@@ -1,0 +1,92 @@
+--[[ boostpet.lua — Automation Boost Pet.
+     Pilih pet + item boost (Pet Toy). Otomatis apply boost ke pet;
+     re-apply pas boost habis (berdasar durasi item, atribut "p" = boostTime detik).
+     Mekanik: pegang Tool bertag "PetBoost" lalu PetBoostService:FireServer("ApplyBoost", petUuid). ]]
+return function(ctx)
+	local DataService = ctx.deps.DataService
+	local CFG = ctx.CFG
+	local LP = ctx.LP
+	local RS = game:GetService("ReplicatedStorage")
+	local PetBoostService = RS:WaitForChild("GameEvents"):WaitForChild("PetBoostService")
+	local function setStatus(s) ctx.setStatus(s) end
+
+	-- "Medium Pet Toy x42[Passive Boost]" -> "Medium Pet Toy"
+	local function baseName(n) return (tostring(n):gsub("%s*x%d+.*$", "")) end
+
+	-- Daftar item boost (tag PetBoost) di backpack, dedupe per base name -> dropdown.
+	function ctx.getBoostItemOptions(selectedSet)
+		local out, seen = {}, {}
+		local bp = LP:FindFirstChildOfClass("Backpack")
+		if not bp then return out end
+		for _, t in ipairs(bp:GetChildren()) do
+			if t:IsA("Tool") and t:HasTag("PetBoost") then
+				local bn = baseName(t.Name)
+				if not seen[bn] then
+					seen[bn] = true
+					local dur = t:GetAttribute("p")
+					out[#out + 1] = { value = bn, display = dur and (bn .. " (" .. tostring(dur) .. "s)") or bn }
+				end
+			end
+		end
+		table.sort(out, function(a, b)
+			local sa = selectedSet and selectedSet[a.value] and 1 or 0
+			local sb = selectedSet and selectedSet[b.value] and 1 or 0
+			if sa ~= sb then return sa > sb end
+			return a.display < b.display
+		end)
+		return out
+	end
+
+	-- Cari 1 tool boost yang dipilih & masih ada di backpack.
+	local function findBoostTool()
+		local bp = LP:FindFirstChildOfClass("Backpack")
+		if not bp then return nil end
+		local sel = CFG.boostItemNames or {}
+		for _, t in ipairs(bp:GetChildren()) do
+			if t:IsA("Tool") and t:HasTag("PetBoost") and sel[baseName(t.Name)] then
+				return t
+			end
+		end
+		return nil
+	end
+
+	local nextApply = {} -- uuid -> os.clock() kapan boleh re-apply
+
+	local function boostLoop()
+		ctx.state.boostId = (ctx.state.boostId or 0) + 1
+		local myId = ctx.state.boostId
+		ctx.elevate()
+
+		while CFG.boostEnabled and ctx.alive() and ctx.state.boostId == myId do
+			local pets = CFG.boostPetUuids or {}
+			if not next(pets) then
+				setStatus("Boost: pilih pet dulu")
+				task.wait(3)
+			else
+				for uuid in pairs(pets) do
+					if not CFG.boostEnabled or ctx.state.boostId ~= myId then break end
+					if os.clock() >= (nextApply[uuid] or 0) then
+						local tool = findBoostTool()
+						if not tool then
+							setStatus("Boost: item habis / belum dipilih")
+						else
+							local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+							if hum then
+								pcall(function() hum:EquipTool(tool) end)
+								task.wait(0.3)
+								pcall(function() PetBoostService:FireServer("ApplyBoost", uuid) end)
+								local dur = tonumber(tool:GetAttribute("p")) or 300
+								nextApply[uuid] = os.clock() + dur
+								setStatus(("Boost: %s -> #%s (re-apply %ds)"):format(baseName(tool.Name), uuid:sub(2, 5), math.floor(dur)))
+								task.wait(0.4)
+							end
+						end
+					end
+				end
+				task.wait(2)
+			end
+		end
+	end
+
+	function ctx.startBoostPet() task.spawn(boostLoop) end
+end

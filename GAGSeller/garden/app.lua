@@ -68,4 +68,11 @@ return function(ctx)
 		ctx.startElephant()
 		ctx.log("Auto-resume: Elephant ON.")
 	end
+
+	-- auto-resume Boost Pet kalau sebelumnya aktif
+	if CFG.boostEnabled and ctx.startBoostPet then
+		task.wait(2.5)
+		ctx.startBoostPet()
+		ctx.log("Auto-resume: Boost Pet ON.")
+	end
 end
