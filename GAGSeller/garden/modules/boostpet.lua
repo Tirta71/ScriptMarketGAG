@@ -37,22 +37,38 @@ return function(ctx)
 		return out
 	end
 
-	-- Cari 1 tool boost yang dipilih (Character dulu = yang lagi dipegang, lalu Backpack).
-	local function findBoostTool()
+	local THRESHOLD = 5 -- detik; boost dianggap habis kalau sisa <= ini
+
+	-- Baca boostType yang MASIH aktif di pet (dari PetData.Boosts, sisa Time > THRESHOLD).
+	local function petActiveTypes(uuid)
+		local out = {}
+		local ok, d = pcall(function() return DataService:GetData() end)
+		local data = ok and d and d.PetsData and d.PetsData.PetInventory and d.PetsData.PetInventory.Data
+		local pd = data and data[uuid]
+		local boosts = pd and pd.PetData and pd.PetData.Boosts
+		if type(boosts) == "table" then
+			for _, b in ipairs(boosts) do
+				if b.BoostType and (tonumber(b.Time) or 0) > THRESHOLD then out[b.BoostType] = true end
+			end
+		end
+		return out
+	end
+
+	-- Cari tool boost dipilih (Character dulu) yang boostType-nya BELUM aktif di pet.
+	local function findToolForMissing(activeTypes)
 		local sel = CFG.boostItemNames or {}
 		for _, src in ipairs({ LP.Character, LP:FindFirstChildOfClass("Backpack") }) do
 			if src then
 				for _, t in ipairs(src:GetChildren()) do
 					if t:IsA("Tool") and t:HasTag("PetBoost") and sel[baseName(t.Name)] then
-						return t
+						local bt = t:GetAttribute("q")
+						if bt and not activeTypes[bt] then return t end
 					end
 				end
 			end
 		end
 		return nil
 	end
-
-	local nextApply = {} -- uuid -> os.clock() kapan boleh re-apply
 
 	local function boostLoop()
 		ctx.state.boostId = (ctx.state.boostId or 0) + 1
@@ -67,34 +83,26 @@ return function(ctx)
 			else
 				for uuid in pairs(pets) do
 					if not CFG.boostEnabled or ctx.state.boostId ~= myId then break end
-					if os.clock() >= (nextApply[uuid] or 0) then
-						local tool = findBoostTool()
-						if not tool then
-							setStatus("Boost: item habis / belum dipilih")
-						else
-							local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
-							if hum then
-								-- Pastikan item boost BENAR-BENAR dipegang sebelum ApplyBoost (retry equip).
-								local held
-								for _ = 1, 3 do
-									pcall(function() hum:EquipTool(tool) end)
-									task.wait(0.35)
-									held = LP.Character and LP.Character:FindFirstChildWhichIsA("Tool")
-									if held and held:HasTag("PetBoost") then break end
-									tool = findBoostTool() -- tool bisa berubah instance
-									if not tool then break end
-								end
-								if held and held:HasTag("PetBoost") then
-									pcall(function() PetBoostService:FireServer("ApplyBoost", uuid) end)
-									local dur = tonumber(held:GetAttribute("p")) or 300
-									nextApply[uuid] = os.clock() + dur
-									setStatus(("Boost: %s -> #%s (re-apply %ds)"):format(baseName(held.Name), uuid:sub(2, 5), math.floor(dur)))
-									task.wait(0.4)
-								else
-									-- gagal pegang item -> JANGAN majuin timer, coba lagi loop berikutnya
-									setStatus("Boost: gagal pegang item, retry...")
-									task.wait(0.5)
-								end
+					-- Cek state asli: boost apa yang masih aktif di pet ini
+					local active = petActiveTypes(uuid)
+					local tool = findToolForMissing(active)
+					if tool then
+						local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+						if hum then
+							-- pastikan item bener-bener dipegang sebelum ApplyBoost
+							local held
+							for _ = 1, 3 do
+								pcall(function() hum:EquipTool(tool) end)
+								task.wait(0.35)
+								held = LP.Character and LP.Character:FindFirstChildWhichIsA("Tool")
+								if held and held:HasTag("PetBoost") then break end
+								tool = findToolForMissing(active)
+								if not tool then break end
+							end
+							if held and held:HasTag("PetBoost") then
+								pcall(function() PetBoostService:FireServer("ApplyBoost", uuid) end)
+								setStatus(("Boost: %s -> #%s"):format(baseName(held.Name), uuid:sub(2, 5)))
+								task.wait(0.6)
 							end
 						end
 					end
