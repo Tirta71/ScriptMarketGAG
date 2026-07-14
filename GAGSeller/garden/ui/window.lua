@@ -83,8 +83,8 @@ return function(ctx)
 	-- content
 	local content = mk("Frame", { Size = UDim2.new(1, -206, 1, -66), Position = UDim2.fromOffset(196, 50), BackgroundTransparency = 1 }, main)
 
-	-- status footer
-	local statusText = mk("TextLabel", { Size = UDim2.new(1, -206, 0, 18), Position = UDim2.new(0, 196, 1, -22), BackgroundTransparency = 1, Text = "Status: idle", Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left }, main)
+	-- status footer (disembunyikan; automation punya panel status sendiri)
+	local statusText = mk("TextLabel", { Size = UDim2.new(1, -206, 0, 18), Position = UDim2.new(0, 196, 1, -22), BackgroundTransparency = 1, Text = "Status: idle", Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, Visible = false }, main)
 
 	function ctx.setStatus(s)
 		statusText.Text = "Status: " .. tostring(s)
