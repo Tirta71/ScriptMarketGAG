@@ -47,6 +47,14 @@ return function(ctx)
 		mutationDelayAutoClaim = 0.5,
 		mutationEnabled       = false,
 
+		-- Automation Shop (buy seed/egg/gear)
+		buySeedNames   = {},
+		buySeedEnabled = false,
+		buyEggNames    = {},
+		buyEggEnabled  = false,
+		buyGearNames   = {},
+		buyGearEnabled = false,
+
 		-- Automation Cleanse Mutation (mutasi via aura + cleanse)
 		cleanseTeamUuids     = {},   -- Pet Team for Mutation (aura pemberi mutasi)
 		cleansePetTypes      = {},   -- Pet Types for Mutation (target)
@@ -130,6 +138,13 @@ return function(ctx)
 			CFG.mutationTargetAge     = tonumber(st.mutationTargetAge) or 50
 			CFG.mutationDelayAutoClaim = tonumber(st.mutationDelayAutoClaim) or 0.5
 			CFG.mutationEnabled       = st.mutationEnabled or false
+
+			CFG.buySeedNames   = (type(st.buySeedNames) == "table") and st.buySeedNames or {}
+			CFG.buySeedEnabled = st.buySeedEnabled or false
+			CFG.buyEggNames    = (type(st.buyEggNames) == "table") and st.buyEggNames or {}
+			CFG.buyEggEnabled  = st.buyEggEnabled or false
+			CFG.buyGearNames   = (type(st.buyGearNames) == "table") and st.buyGearNames or {}
+			CFG.buyGearEnabled = st.buyGearEnabled or false
 
 			CFG.cleanseTeamUuids     = (type(st.cleanseTeamUuids) == "table") and st.cleanseTeamUuids or {}
 			CFG.cleansePetTypes      = (type(st.cleansePetTypes) == "table") and st.cleansePetTypes or {}

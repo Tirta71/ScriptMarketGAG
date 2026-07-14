@@ -40,8 +40,34 @@ return function(ctx)
 		corner(box, 8); stroke(box); pad(box, 14, 14, 12, 12)
 		mk("TextLabel", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = "Fitur untuk tab ini belum tersedia.", Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top }, box)
 	end
-	for _, name in ipairs({ "Growth", "Shop" }) do
+	for _, name in ipairs({ "Growth" }) do
 		placeholder(pageRef[name])
+	end
+
+	------------------------------------------------------------------ SHOP
+	do
+		local shopPage = pageRef["Shop"]
+
+		local seedAcc = makeAccordion(shopPage, "Automation Buy Seed", 1, false)
+		makeMultiDropdownDyn(seedAcc, "Select Seeds to Buy", "Pilih seed buat auto-beli (stock realtime)",
+			function() return ctx.getSeedShopOptions(CFG.buySeedNames) end, CFG.buySeedNames, function() persist() end, 1)
+		makeToggle(seedAcc, "Enable Automation Buy Seed", "Auto-beli seed terpilih tiap ada stock",
+			function() return CFG.buySeedEnabled end,
+			function(v) CFG.buySeedEnabled = v; persist(); if v then ctx.startBuySeed() end end, 2)
+
+		local eggAcc = makeAccordion(shopPage, "Automation Buy Egg", 2, false)
+		makeMultiDropdownDyn(eggAcc, "Select Eggs to Buy", "Pilih egg buat auto-beli (stock realtime)",
+			function() return ctx.getEggShopOptions(CFG.buyEggNames) end, CFG.buyEggNames, function() persist() end, 1)
+		makeToggle(eggAcc, "Enable Automation Buy Egg", "Auto-beli egg terpilih tiap ada stock",
+			function() return CFG.buyEggEnabled end,
+			function(v) CFG.buyEggEnabled = v; persist(); if v then ctx.startBuyEgg() end end, 2)
+
+		local gearAcc = makeAccordion(shopPage, "Automation Buy Gear", 3, false)
+		makeMultiDropdownDyn(gearAcc, "Select Gear to Buy", "Pilih gear buat auto-beli (stock realtime)",
+			function() return ctx.getGearShopOptions(CFG.buyGearNames) end, CFG.buyGearNames, function() persist() end, 1)
+		makeToggle(gearAcc, "Enable Automation Buy Gear", "Auto-beli gear terpilih tiap ada stock",
+			function() return CFG.buyGearEnabled end,
+			function(v) CFG.buyGearEnabled = v; persist(); if v then ctx.startBuyGear() end end, 2)
 	end
 
 	------------------------------------------------------------------ ELEPHANT (V1)

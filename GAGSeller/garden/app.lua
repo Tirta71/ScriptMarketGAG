@@ -82,4 +82,9 @@ return function(ctx)
 		ctx.startCleanse()
 		ctx.log("Auto-resume: Cleanse ON.")
 	end
+
+	-- auto-resume Shop (buy seed/egg/gear)
+	if CFG.buySeedEnabled and ctx.startBuySeed then ctx.startBuySeed(); ctx.log("Auto-resume: Buy Seed ON.") end
+	if CFG.buyEggEnabled and ctx.startBuyEgg then ctx.startBuyEgg(); ctx.log("Auto-resume: Buy Egg ON.") end
+	if CFG.buyGearEnabled and ctx.startBuyGear then ctx.startBuyGear(); ctx.log("Auto-resume: Buy Gear ON.") end
 end
