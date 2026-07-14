@@ -91,6 +91,48 @@ return function(ctx)
 
 	ctx.state.cleansePhase = "Idle"
 
+	-- Ringkasan status untuk UI
+	function ctx.getCleanseSummary()
+		local ok, d = pcall(function() return DataService:GetData() end)
+		local inv = ok and d and d.PetsData and d.PetsData.PetInventory and d.PetsData.PetInventory.Data or {}
+
+		local teamCount = 0
+		for _ in pairs(CFG.cleanseTeamUuids or {}) do teamCount = teamCount + 1 end
+		local typesList = {}
+		for k in pairs(CFG.cleansePetTypes or {}) do typesList[#typesList + 1] = k end
+		table.sort(typesList)
+		local keepOrder = {}
+		for k in pairs(CFG.cleanseKeepMutations or {}) do keepOrder[#keepOrder + 1] = k end
+		table.sort(keepOrder)
+
+		local ready, already = 0, {}
+		for _, k in ipairs(keepOrder) do already[k] = 0 end
+		for _, v in pairs(inv) do
+			local pt = v.PetType
+			if pt and CFG.cleansePetTypes[pt] then
+				local pd = v.PetData or {}
+				local disp = hasMut(pd) and mutName(pd.MutationType) or "None"
+				if CFG.cleanseKeepMutations[disp] then
+					already[disp] = (already[disp] or 0) + 1
+				elseif not pd.IsFavorite then
+					ready = ready + 1
+				end
+			end
+		end
+
+		return {
+			status = CFG.cleanseEnabled and "ACTIVE" or "STOPPED",
+			team = teamCount,
+			types = #typesList > 0 and table.concat(typesList, ", ") or "None",
+			keep = #keepOrder > 0 and table.concat(keepOrder, ", ") or "None",
+			ready = ready,
+			already = already,
+			keepOrder = keepOrder,
+			maxPets = CFG.cleanseMaxPets or 2,
+			phase = ctx.state.cleansePhase or "Idle",
+		}
+	end
+
 	----------------------------------------------------------------- loop utama
 	local function checkCleanse()
 		local ok, d = pcall(function() return DataService:GetData() end)

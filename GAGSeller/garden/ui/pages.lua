@@ -274,21 +274,56 @@ return function(ctx)
 
 		-- Accordion: Automation Cleanse Mutation (mutasi via aura + cleanse)
 		local cleanseAcc = makeAccordion(mutationPage, "Automation Cleanse Mutation", 2, false)
+
+		-- Status (live)
+		local cleanseLbl = mk("TextLabel", {
+			Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
+			BackgroundTransparency = 1, Text = "Loading stats...",
+			Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = C.txt,
+			TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true,
+			LineHeight = 1.35, RichText = true, LayoutOrder = 0
+		}, cleanseAcc)
+		mk("Frame", { Size = UDim2.new(1, 0, 0, 12), BackgroundTransparency = 1, LayoutOrder = 1 }, cleanseAcc)
+		task.spawn(function()
+			while ctx.alive() do
+				local ok, s = pcall(function() return ctx.getCleanseSummary() end)
+				if ok and s then
+					local col = s.status == "ACTIVE" and "#5acc78" or "#dc5050"
+					local alreadyLines = ""
+					for _, k in ipairs(s.keepOrder) do
+						alreadyLines = alreadyLines .. string.format("- Already %s: <font color=\"#8c929e\">%d pets</font>\n", k, s.already[k] or 0)
+					end
+					cleanseLbl.Text = string.format(
+						"Automation Status: <font color=\"%s\"><b>%s</b></font>\n\n" ..
+						"Mutation Team: <font color=\"#8c929e\">%d pets</font>\n" ..
+						"Target Types: <font color=\"#f5c82d\">%s</font>\n" ..
+						"Mutations to Keep: <font color=\"#f5c82d\">%s</font>\n\n" ..
+						"Pet Statistics:\n" ..
+						"- Pets Ready to Mutation: <font color=\"#8c929e\">%d pets</font>\n" ..
+						"%s\n" ..
+						"Max in Garden: <font color=\"#8c929e\">%d pets</font>\n\n" ..
+						"Status: <font color=\"#85d0ff\">%s</font>",
+						col, s.status, s.team, s.types, s.keep, s.ready, alreadyLines, s.maxPets, s.phase)
+				end
+				task.wait(1.5)
+			end
+		end)
+
 		makeMultiDropdownDyn(cleanseAcc, "Pet Team for Mutation", "Pet aura pemberi mutasi (tetap di garden)",
-			function() return ctx.inventoryPetOptions(CFG.cleanseTeamUuids) end, CFG.cleanseTeamUuids, function() persist() end, 1)
+			function() return ctx.inventoryPetOptions(CFG.cleanseTeamUuids) end, CFG.cleanseTeamUuids, function() persist() end, 2)
 		makeMultiDropdownDyn(cleanseAcc, "Pet Types for Mutation", "Tipe pet target yang mau dimutasi",
-			function() return ctx.getInventoryPetTypes(CFG.cleansePetTypes) end, CFG.cleansePetTypes, function() persist() end, 2)
+			function() return ctx.getInventoryPetTypes(CFG.cleansePetTypes) end, CFG.cleansePetTypes, function() persist() end, 3)
 		makeMultiDropdown(cleanseAcc, "Mutations to Keep", "Mutasi ini disimpan (won't be cleansed)",
-			ctx.reg.MACHINE_MUT_OPTIONS or ctx.reg.MUT_OPTIONS or {"None"}, CFG.cleanseKeepMutations, function() persist() end, 3)
+			ctx.reg.MACHINE_MUT_OPTIONS or ctx.reg.MUT_OPTIONS or {"None"}, CFG.cleanseKeepMutations, function() persist() end, 4)
 		makeInput(cleanseAcc, "Max Pets in Garden", "Max pet target di garden barengan",
 			function() return tostring(CFG.cleanseMaxPets) end,
-			function(txt) CFG.cleanseMaxPets = tonumber(txt) or 2; persist() end, 4)
+			function(txt) CFG.cleanseMaxPets = tonumber(txt) or 2; persist() end, 5)
 		makeToggle(cleanseAcc, "Enable Automation Cleanse", "Mutasi target via aura; cleanse mutasi salah, simpan mutasi keep",
 			function() return CFG.cleanseEnabled end,
 			function(v)
 				CFG.cleanseEnabled = v; persist()
 				if v then ctx.startCleanse() end
-			end, 5)
+			end, 6)
 	end
 
 	------------------------------------------------------------------ EVENT
