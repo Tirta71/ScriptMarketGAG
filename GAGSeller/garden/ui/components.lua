@@ -198,6 +198,8 @@ return function(ctx)
 				rend()
 				optBtns[#optBtns + 1] = { btn = ob, display = display:lower() }
 			end
+			-- refresh label "N dipilih" (selSet bisa berubah oleh auto-prune di getOptions)
+			updateSummary()
 		end
 		search:GetPropertyChangedSignal("Text"):Connect(function()
 			local q = search.Text:lower()
