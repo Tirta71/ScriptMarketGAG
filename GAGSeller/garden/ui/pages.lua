@@ -370,12 +370,22 @@ return function(ctx)
 		function(v) CFG.autoUnfavorite = v; persist() end, 7)
 
 	-- Trade Status
-	local stFrame = mk("Frame", { Size = UDim2.new(1, 0, 0, 48), BackgroundTransparency = 1, LayoutOrder = 8 }, at)
+	local stFrame = mk("Frame", { Size = UDim2.new(1, 0, 0, 66), BackgroundTransparency = 1, LayoutOrder = 8 }, at)
 	mk("TextLabel", { Size = UDim2.new(1, 0, 0, 20), Position = UDim2.fromOffset(0, 4), BackgroundTransparency = 1, Text = "Trade Status", Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = C.txt, TextXAlignment = Enum.TextXAlignment.Left }, stFrame)
-	local stLbl = mk("TextLabel", { Size = UDim2.new(1, 0, 0, 30), Position = UDim2.fromOffset(0, 22), BackgroundTransparency = 1, Text = "Completed: 0 / 0\nStatus: IDLE", Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top }, stFrame)
+	local stLbl = mk("TextLabel", { Size = UDim2.new(1, 0, 0, 44), Position = UDim2.fromOffset(0, 22), BackgroundTransparency = 1, Text = "Completed: 0 / 0\nPet cocok filter: -\nStatus: IDLE", Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, RichText = true }, stFrame)
 	function ctx.refreshTradeStatus()
-		stLbl.Text = ("Completed: %d / %d\nStatus: %s"):format(ctx.state.completed, CFG.totalTrades, ctx.state.status)
+		local avail = ctx.countMatchingPets and ctx.countMatchingPets() or 0
+		local availCol = avail > 0 and "#5acc78" or "#dc5050"
+		stLbl.Text = ("Completed: %d / %d\nPet cocok filter: <font color=\"%s\"><b>%d</b></font>\nStatus: %s"):format(
+			ctx.state.completed, CFG.totalTrades, availCol, avail, ctx.state.status)
 	end
+	-- refresh live tiap 2 detik biar jumlah pet update walau filter berubah
+	task.spawn(function()
+		while ctx.alive() do
+			pcall(function() ctx.refreshTradeStatus() end)
+			task.wait(2)
+		end
+	end)
 
 	-- Enable Automation Trade
 	makeToggle(at, "Enable Automation Trade", "Send trade, add pets, wait for accept, confirm",

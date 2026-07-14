@@ -78,6 +78,23 @@ return function(ctx)
 	end
 	ctx.matchingPetUuids = matchingPetUuids
 
+	-- Hitung SEMUA pet yang cocok filter (tanpa limit) untuk status GUI.
+	function ctx.countMatchingPets()
+		local n = 0
+		local d = getData()
+		local pinv = d and d.PetsData and d.PetsData.PetInventory and d.PetsData.PetInventory.Data
+		if not pinv then return 0 end
+		local equipped = {}
+		if d.PetsData.EquippedPets then for _, u in ipairs(d.PetsData.EquippedPets) do equipped[u] = true end end
+		for uuid, v in pairs(pinv) do
+			if not equipped[uuid] and petPasses(v) then
+				local fav = v.PetData.IsFavorite
+				if (not fav) or CFG.autoUnfavorite then n = n + 1 end
+			end
+		end
+		return n
+	end
+
 	----------------------------------------------------------------- trade-state read
 	local function replicatorData()
 		if not (TC and TC.CurrentTradeReplicator) then return nil end
@@ -281,6 +298,17 @@ return function(ctx)
 				if ctx.refreshTradeStatus then ctx.refreshTradeStatus() end
 				break
 			end
+			-- Stop kalau pet cocok filter sudah habis -> jangan kirim trade lagi.
+			if ctx.countMatchingPets() == 0 then
+				ctx.state.status = "DONE"
+				setStatus("Pet habis (sesuai filter). Trade dihentikan.")
+				ctx.state.tradeRunning = false
+				CFG.tradeEnabled = false
+				if ctx.persistState then ctx.persistState() end
+				if ctx.refreshTradeStatus then ctx.refreshTradeStatus() end
+				break
+			end
+
 			local target = CFG.targetPlayer ~= "" and Players:FindFirstChild(CFG.targetPlayer) or nil
 			if not target then
 				setStatus("Target player tidak ada / belum dipilih.")
