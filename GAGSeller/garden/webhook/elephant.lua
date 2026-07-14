@@ -46,7 +46,8 @@ function elephantWebhook.sendEnabled(ctx)
 	table.sort(typesList)
 	local typesText = #typesList > 0 and table.concat(typesList, ", ") or "None"
 
-	-- Boosting stats + max + queue
+	-- Boosting stats = pet yang SUDAH SELESAI (>= target/max KG), dikelompokkan per bracket.
+	-- Remains Queue = pet target yang belum max.
 	local byType = {}
 	local maxCount, queueCount = 0, 0
 	for _, v in pairs(inv) do
@@ -55,14 +56,14 @@ function elephantWebhook.sendEnabled(ctx)
 			local w = (v.PetData or {}).BaseWeight or 0
 			if w >= targetW then
 				maxCount = maxCount + 1
-			else
-				queueCount = queueCount + 1
 				local bt = byType[pt]
 				if not bt then bt = { total = 0, brackets = {}, order = {} }; byType[pt] = bt end
 				bt.total = bt.total + 1
 				local lbl = bracketLabel(w)
 				if not bt.brackets[lbl] then bt.brackets[lbl] = 0; bt.order[#bt.order + 1] = lbl end
 				bt.brackets[lbl] = bt.brackets[lbl] + 1
+			else
+				queueCount = queueCount + 1
 			end
 		end
 	end
