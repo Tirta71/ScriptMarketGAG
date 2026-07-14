@@ -229,38 +229,38 @@ return function(ctx)
 			end
 		end)
 
-		-- 2. Settings Accordion
-		local settingsAcc = makeAccordion(mutationPage, "Mutation Settings", 2, true)
+		-- Settings (dalam accordion yang sama dengan status)
+		local settingsAcc = statusAcc
 
 		-- EXP Team (Multi-dropdown UUIDs)
 		makeMultiDropdownDyn(settingsAcc, "EXP Team (Leveling)", "Pets for leveling target to age 50/500",
-			function() return ctx.inventoryPetOptions(CFG.mutationExpTeam) end, CFG.mutationExpTeam, function() persist() end, 1)
+			function() return ctx.inventoryPetOptions(CFG.mutationExpTeam) end, CFG.mutationExpTeam, function() persist() end, 2)
 
 		-- Boost Team (Machine) (Multi-dropdown UUIDs)
 		makeMultiDropdownDyn(settingsAcc, "Boost Team (Machine)", "Pets for boosting mutation machine speed",
-			function() return ctx.inventoryPetOptions(CFG.mutationBoostTeam) end, CFG.mutationBoostTeam, function() persist() end, 2)
+			function() return ctx.inventoryPetOptions(CFG.mutationBoostTeam) end, CFG.mutationBoostTeam, function() persist() end, 3)
 
 		-- Phoenix Team (Claim) (Multi-dropdown UUIDs)
 		makeMultiDropdownDyn(settingsAcc, "Phoenix Team (Claim)", "Pets for claiming mutated pet",
-			function() return ctx.inventoryPetOptions(CFG.mutationPhoenixTeam) end, CFG.mutationPhoenixTeam, function() persist() end, 3)
+			function() return ctx.inventoryPetOptions(CFG.mutationPhoenixTeam) end, CFG.mutationPhoenixTeam, function() persist() end, 4)
 
 		-- Target Pet Types (Multi-dropdown Pet Types)
 		makeMultiDropdownDyn(settingsAcc, "Target Pet Types", "Pet types to mutate",
-			function() return ctx.getInventoryPetTypes(CFG.mutationTargetTypes) end, CFG.mutationTargetTypes, function() persist() end, 4)
+			function() return ctx.getInventoryPetTypes(CFG.mutationTargetTypes) end, CFG.mutationTargetTypes, function() persist() end, 5)
 
 		-- Target Mutations (Multi-dropdown Mutations)
 		makeMultiDropdown(settingsAcc, "Target Mutations (Machine)", "Stop when pet gets these mutations",
-			ctx.reg.MUT_OPTIONS or {"None"}, CFG.mutationTargetMutations, function() persist() end, 5)
+			ctx.reg.MUT_OPTIONS or {"None"}, CFG.mutationTargetMutations, function() persist() end, 6)
 
 		-- Target Age (Input)
 		makeInput(settingsAcc, "Target Age", "Level to reach before submitting (e.g. 50 or 500)",
 			function() return tostring(CFG.mutationTargetAge) end,
-			function(txt) CFG.mutationTargetAge = tonumber(txt) or 50; persist() end, 6)
+			function(txt) CFG.mutationTargetAge = tonumber(txt) or 50; persist() end, 7)
 
 		-- Delay Auto Claim (Input)
 		makeInput(settingsAcc, "Delay Auto Claim (sec)", "Wait before claiming mutated pet from machine",
 			function() return tostring(CFG.mutationDelayAutoClaim) end,
-			function(txt) CFG.mutationDelayAutoClaim = tonumber(txt) or 0.5; persist() end, 7)
+			function(txt) CFG.mutationDelayAutoClaim = tonumber(txt) or 0.5; persist() end, 8)
 
 		-- Enable Auto Mutation Machine (Toggle)
 		ctx.state.mutationToggleRender = makeToggle(settingsAcc, "Enable Auto Mutation Machine", "Submit, start, and claim mutated pets automatically",
@@ -268,7 +268,7 @@ return function(ctx)
 			function(v)
 				CFG.mutationEnabled = v; persist()
 				if v then ctx.startMutation() end
-			end, 8)
+			end, 9)
 	end
 
 	------------------------------------------------------------------ EVENT
