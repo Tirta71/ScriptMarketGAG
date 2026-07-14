@@ -61,6 +61,26 @@ return function(ctx)
 		if q then pcall(function() q(ROUTER) end) end
 	end
 
+	-- Teleport dengan retry otomatis (nutup celah flood/gagal teleport).
+	-- Target disimpan di _G biar handler tunggal (per-sesi) tau harus retry ke mana.
+	local function doTeleport(placeId)
+		_G.__AH_lastTarget = placeId
+		queueHub()
+		pcall(function() TeleportService:Teleport(placeId, LP) end)
+	end
+	if not _G.__AH_tpHandler then
+		_G.__AH_tpHandler = true
+		pcall(function()
+			TeleportService.TeleportInitFailed:Connect(function(_, result, _, _)
+				if not readLoop().active or not _G.__AH_lastTarget then return end
+				local wait = (result == Enum.TeleportResult.Flooded) and 20 or 6
+				setStatus(("SamLoop: teleport gagal (%s), retry %ds..."):format(tostring(result), wait))
+				task.wait(wait)
+				if readLoop().active and _G.__AH_lastTarget then doTeleport(_G.__AH_lastTarget) end
+			end)
+		end)
+	end
+
 	local function coordinator()
 		-- Guard single-instance lintas re-load (auto-exec + queue_on_teleport bisa load 2x).
 		-- Coordinator terbaru menang; duplikat lama berhenti.
@@ -100,12 +120,11 @@ return function(ctx)
 					st.active = false; writeLoop(st); return
 				end
 
-				queueHub()
 				if goGarden then
-					pcall(function() TeleportService:Teleport(GARDEN_PLACE, LP) end)
+					doTeleport(GARDEN_PLACE)
 				else
 					st.hops = (st.hops or 0) + 1; writeLoop(st)
-					pcall(function() TeleportService:Teleport(TRADE_PLACE, LP) end)
+					doTeleport(TRADE_PLACE)
 				end
 				return -- script mati setelah teleport; lanjut di server baru
 			end

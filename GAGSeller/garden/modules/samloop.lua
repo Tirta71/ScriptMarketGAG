@@ -33,10 +33,27 @@ return function(ctx)
 		if q then pcall(function() q(ROUTER) end) end
 	end
 
+	local function doTeleport(placeId)
+		_G.__AH_lastTarget = placeId
+		queueHub()
+		pcall(function() TeleportService:Teleport(placeId, LP) end)
+	end
+	if not _G.__AH_tpHandler then
+		_G.__AH_tpHandler = true
+		pcall(function()
+			TeleportService.TeleportInitFailed:Connect(function(_, result, _, _)
+				if not readLoop().active or not _G.__AH_lastTarget then return end
+				local wait = (result == Enum.TeleportResult.Flooded) and 20 or 6
+				setStatus(("SamLoop: teleport gagal (%s), retry %ds..."):format(tostring(result), wait))
+				task.wait(wait)
+				if readLoop().active and _G.__AH_lastTarget then doTeleport(_G.__AH_lastTarget) end
+			end)
+		end)
+	end
+
 	local function backToTradeWorld()
 		local st = readLoop(); st.hops = 0; writeLoop(st)
-		queueHub()
-		pcall(function() TeleportService:Teleport(TRADE_PLACE, LP) end)
+		doTeleport(TRADE_PLACE)
 	end
 
 	local function gardenStep()
