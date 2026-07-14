@@ -183,6 +183,22 @@ return function(ctx)
 						pcall(function() PetsService:FireServer("UnequipPet", origUuid) end)
 						localEq[cu] = nil
 						task.wait(0.15)
+
+						-- Webhook: mutasi didapat
+						if ctx.webhookCleanse then
+							local gotType, gotMut, gotAge = pt, mutName(pd.MutationType), pd.Level or 0
+							local remains = 0
+							for _, iv in pairs(inv) do
+								local ipt = iv.PetType
+								if ipt and targetTypes[ipt] then
+									local ipd = iv.PetData or {}
+									if not ipd.IsFavorite and not isKept(ipd) then remains = remains + 1 end
+								end
+							end
+							task.spawn(function()
+								pcall(function() ctx.webhookCleanse.sendObtained(ctx, gotType, gotMut, gotAge, remains) end)
+							end)
+						end
 					elseif hasMut(pd) then
 						-- Mutasi salah -> cleanse (tetap di garden buat coba lagi)
 						ctx.state.cleansePhase = "Cleanse " .. mutName(pd.MutationType)

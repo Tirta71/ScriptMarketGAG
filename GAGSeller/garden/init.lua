@@ -66,6 +66,7 @@ ctx.sendWebhook     = loadRaw("webhook/sender.lua")      -- function(url, payloa
 ctx.webhookMutation = loadRaw("webhook/mutation.lua")    -- table {sendEnabled, sendSubmitted, sendClaimed}
 ctx.webhookLeveling = loadRaw("webhook/leveling.lua")    -- table leveling webhook
 ctx.webhookElephant = loadRaw("webhook/elephant.lua")    -- table elephant webhook
+ctx.webhookCleanse  = loadRaw("webhook/cleanse.lua")     -- table cleanse/mutation webhook
 
 local MODULES = {
 	"modules/services.lua",
