@@ -55,28 +55,37 @@ return function(ctx)
 	end
 
 	----------------------------------------------------------------- loop beli
+	local POLL = 5 -- detik; cukup buat cek marker restock (murah, ga spam)
+
 	local function buySeedLoop()
 		ctx.state.buySeedId = (ctx.state.buySeedId or 0) + 1
 		local myId = ctx.state.buySeedId
 		ctx.elevate()
+		local lastMarker
 		while CFG.buySeedEnabled and ctx.alive() and ctx.state.buySeedId == myId do
 			local d = getData()
-			local st = d and d.SeedStock and d.SeedStock.Stocks or {}
-			local sel = CFG.buySeedNames or {}
-			local all = sel["All"]
-			local bought = 0
-			for name, v in pairs(st) do
-				if all or sel[name] then
-					local stock = type(v) == "table" and v.Stock or 0
-					for _ = 1, stock do
-						if not CFG.buySeedEnabled or ctx.state.buySeedId ~= myId then break end
-						pcall(function() BuySeedStock:FireServer("Shop", name) end)
-						bought = bought + 1; task.wait(0.15)
+			local marker = d and d.SeedStock and d.SeedStock.Seed
+			if marker ~= lastMarker then -- restock baru (atau pertama jalan) -> beli
+				lastMarker = marker
+				local st = d and d.SeedStock and d.SeedStock.Stocks or {}
+				local sel = CFG.buySeedNames or {}
+				local all = sel["All"]
+				local bought = 0
+				for name, v in pairs(st) do
+					if all or sel[name] then
+						local stock = type(v) == "table" and v.Stock or 0
+						for _ = 1, stock do
+							if not CFG.buySeedEnabled or ctx.state.buySeedId ~= myId then break end
+							pcall(function() BuySeedStock:FireServer("Shop", name) end)
+							bought = bought + 1; task.wait(0.15)
+						end
 					end
 				end
+				setStatus(("Buy Seed: restock -> beli %d"):format(bought))
+			else
+				setStatus("Buy Seed: nunggu restock")
 			end
-			setStatus(bought > 0 and ("Buy Seed: beli %d"):format(bought) or "Buy Seed: nunggu stock")
-			task.wait(2)
+			task.wait(POLL)
 		end
 	end
 
@@ -84,24 +93,31 @@ return function(ctx)
 		ctx.state.buyGearId = (ctx.state.buyGearId or 0) + 1
 		local myId = ctx.state.buyGearId
 		ctx.elevate()
+		local lastMarker
 		while CFG.buyGearEnabled and ctx.alive() and ctx.state.buyGearId == myId do
 			local d = getData()
-			local st = d and d.GearStock and d.GearStock.Stocks or {}
-			local sel = CFG.buyGearNames or {}
-			local all = sel["All"]
-			local bought = 0
-			for name, v in pairs(st) do
-				if all or sel[name] then
-					local stock = type(v) == "table" and v.Stock or 0
-					for _ = 1, stock do
-						if not CFG.buyGearEnabled or ctx.state.buyGearId ~= myId then break end
-						pcall(function() BuyGearStock:FireServer(name) end)
-						bought = bought + 1; task.wait(0.15)
+			local marker = d and d.GearStock and d.GearStock.Gear
+			if marker ~= lastMarker then
+				lastMarker = marker
+				local st = d and d.GearStock and d.GearStock.Stocks or {}
+				local sel = CFG.buyGearNames or {}
+				local all = sel["All"]
+				local bought = 0
+				for name, v in pairs(st) do
+					if all or sel[name] then
+						local stock = type(v) == "table" and v.Stock or 0
+						for _ = 1, stock do
+							if not CFG.buyGearEnabled or ctx.state.buyGearId ~= myId then break end
+							pcall(function() BuyGearStock:FireServer(name) end)
+							bought = bought + 1; task.wait(0.15)
+						end
 					end
 				end
+				setStatus(("Buy Gear: restock -> beli %d"):format(bought))
+			else
+				setStatus("Buy Gear: nunggu restock")
 			end
-			setStatus(bought > 0 and ("Buy Gear: beli %d"):format(bought) or "Buy Gear: nunggu stock")
-			task.wait(2)
+			task.wait(POLL)
 		end
 	end
 
@@ -109,25 +125,32 @@ return function(ctx)
 		ctx.state.buyEggId = (ctx.state.buyEggId or 0) + 1
 		local myId = ctx.state.buyEggId
 		ctx.elevate()
+		local lastMarker
 		while CFG.buyEggEnabled and ctx.alive() and ctx.state.buyEggId == myId do
 			local d = getData()
-			local st = d and d.PetEggStock and d.PetEggStock.Stocks or {}
-			local sel = CFG.buyEggNames or {}
-			local all = sel["All"]
-			local bought = 0
-			for index, v in pairs(st) do
-				local nm = type(v) == "table" and v.EggName
-				local stock = type(v) == "table" and v.Stock or 0
-				if nm and (all or sel[nm]) then
-					for _ = 1, stock do
-						if not CFG.buyEggEnabled or ctx.state.buyEggId ~= myId then break end
-						pcall(function() BuyPetEgg:FireServer(index) end)
-						bought = bought + 1; task.wait(0.15)
+			local marker = d and d.PetEggStock and d.PetEggStock.Egg
+			if marker ~= lastMarker then
+				lastMarker = marker
+				local st = d and d.PetEggStock and d.PetEggStock.Stocks or {}
+				local sel = CFG.buyEggNames or {}
+				local all = sel["All"]
+				local bought = 0
+				for index, v in pairs(st) do
+					local nm = type(v) == "table" and v.EggName
+					local stock = type(v) == "table" and v.Stock or 0
+					if nm and (all or sel[nm]) then
+						for _ = 1, stock do
+							if not CFG.buyEggEnabled or ctx.state.buyEggId ~= myId then break end
+							pcall(function() BuyPetEgg:FireServer(index) end)
+							bought = bought + 1; task.wait(0.15)
+						end
 					end
 				end
+				setStatus(("Buy Egg: restock -> beli %d"):format(bought))
+			else
+				setStatus("Buy Egg: nunggu restock")
 			end
-			setStatus(bought > 0 and ("Buy Egg: beli %d"):format(bought) or "Buy Egg: nunggu stock")
-			task.wait(2)
+			task.wait(POLL)
 		end
 	end
 
