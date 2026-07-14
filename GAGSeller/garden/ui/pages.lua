@@ -272,18 +272,23 @@ return function(ctx)
 				if v then ctx.startMutation() end
 			end, 9)
 
-		-- Accordion: Automation Cleanse Mutation (pakai cleansing shard)
+		-- Accordion: Automation Cleanse Mutation (mutasi via aura + cleanse)
 		local cleanseAcc = makeAccordion(mutationPage, "Automation Cleanse Mutation", 2, false)
-		makeMultiDropdownDyn(cleanseAcc, "Pet Types to Cleanse", "Tipe pet yang mau di-cleanse mutasinya",
-			function() return ctx.getInventoryPetTypes(CFG.cleansePetTypes) end, CFG.cleansePetTypes, function() persist() end, 1)
-		makeMultiDropdown(cleanseAcc, "Mutations to Keep", "Mutasi ini TIDAK di-cleanse (dipertahankan)",
-			ctx.reg.MACHINE_MUT_OPTIONS or ctx.reg.MUT_OPTIONS or {"None"}, CFG.cleanseKeepMutations, function() persist() end, 2)
-		makeToggle(cleanseAcc, "Enable Automation Cleanse", "Cleanse pet yang mutasinya bukan di 'keep' pakai Cleansing Pet Shard",
+		makeMultiDropdownDyn(cleanseAcc, "Pet Team for Mutation", "Pet aura pemberi mutasi (tetap di garden)",
+			function() return ctx.inventoryPetOptions(CFG.cleanseTeamUuids) end, CFG.cleanseTeamUuids, function() persist() end, 1)
+		makeMultiDropdownDyn(cleanseAcc, "Pet Types for Mutation", "Tipe pet target yang mau dimutasi",
+			function() return ctx.getInventoryPetTypes(CFG.cleansePetTypes) end, CFG.cleansePetTypes, function() persist() end, 2)
+		makeMultiDropdown(cleanseAcc, "Mutations to Keep", "Mutasi ini disimpan (won't be cleansed)",
+			ctx.reg.MACHINE_MUT_OPTIONS or ctx.reg.MUT_OPTIONS or {"None"}, CFG.cleanseKeepMutations, function() persist() end, 3)
+		makeInput(cleanseAcc, "Max Pets in Garden", "Max pet target di garden barengan",
+			function() return tostring(CFG.cleanseMaxPets) end,
+			function(txt) CFG.cleanseMaxPets = tonumber(txt) or 2; persist() end, 4)
+		makeToggle(cleanseAcc, "Enable Automation Cleanse", "Mutasi target via aura; cleanse mutasi salah, simpan mutasi keep",
 			function() return CFG.cleanseEnabled end,
 			function(v)
 				CFG.cleanseEnabled = v; persist()
 				if v then ctx.startCleanse() end
-			end, 3)
+			end, 5)
 	end
 
 	------------------------------------------------------------------ EVENT

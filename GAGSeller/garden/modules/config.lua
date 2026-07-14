@@ -47,9 +47,11 @@ return function(ctx)
 		mutationDelayAutoClaim = 0.5,
 		mutationEnabled       = false,
 
-		-- Automation Cleanse Mutation
-		cleansePetTypes      = {},
-		cleanseKeepMutations = {},
+		-- Automation Cleanse Mutation (mutasi via aura + cleanse)
+		cleanseTeamUuids     = {},   -- Pet Team for Mutation (aura pemberi mutasi)
+		cleansePetTypes      = {},   -- Pet Types for Mutation (target)
+		cleanseKeepMutations = {},   -- Mutations to Keep (won't cleanse)
+		cleanseMaxPets       = 2,    -- Max Pets in Garden (target)
 		cleanseEnabled       = false,
 
 		-- Automation Boost Pet
@@ -129,8 +131,10 @@ return function(ctx)
 			CFG.mutationDelayAutoClaim = tonumber(st.mutationDelayAutoClaim) or 0.5
 			CFG.mutationEnabled       = st.mutationEnabled or false
 
+			CFG.cleanseTeamUuids     = (type(st.cleanseTeamUuids) == "table") and st.cleanseTeamUuids or {}
 			CFG.cleansePetTypes      = (type(st.cleansePetTypes) == "table") and st.cleansePetTypes or {}
 			CFG.cleanseKeepMutations = (type(st.cleanseKeepMutations) == "table") and st.cleanseKeepMutations or {}
+			CFG.cleanseMaxPets       = tonumber(st.cleanseMaxPets) or 2
 			CFG.cleanseEnabled       = st.cleanseEnabled or false
 
 			CFG.boostPetUuids  = (type(st.boostPetUuids) == "table") and st.boostPetUuids or {}
