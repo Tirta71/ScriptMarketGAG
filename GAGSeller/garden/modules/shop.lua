@@ -55,7 +55,9 @@ return function(ctx)
 	end
 
 	----------------------------------------------------------------- loop beli
-	local POLL = 5 -- detik; cukup buat cek marker restock (murah, ga spam)
+	-- Poll = cek marker restock (cuma BACA, bukan beli -> murah, ga lag).
+	-- Beli tetap hanya saat marker berubah (restock). 2s biar deteksi cepat (minim miss).
+	local POLL = 2
 
 	local function buySeedLoop()
 		ctx.state.buySeedId = (ctx.state.buySeedId or 0) + 1
