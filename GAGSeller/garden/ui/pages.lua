@@ -271,6 +271,19 @@ return function(ctx)
 				CFG.mutationEnabled = v; persist()
 				if v then ctx.startMutation() end
 			end, 9)
+
+		-- Accordion: Automation Cleanse Mutation (pakai cleansing shard)
+		local cleanseAcc = makeAccordion(mutationPage, "Automation Cleanse Mutation", 2, false)
+		makeMultiDropdownDyn(cleanseAcc, "Pet Types to Cleanse", "Tipe pet yang mau di-cleanse mutasinya",
+			function() return ctx.getInventoryPetTypes(CFG.cleansePetTypes) end, CFG.cleansePetTypes, function() persist() end, 1)
+		makeMultiDropdown(cleanseAcc, "Mutations to Keep", "Mutasi ini TIDAK di-cleanse (dipertahankan)",
+			ctx.reg.MACHINE_MUT_OPTIONS or ctx.reg.MUT_OPTIONS or {"None"}, CFG.cleanseKeepMutations, function() persist() end, 2)
+		makeToggle(cleanseAcc, "Enable Automation Cleanse", "Cleanse pet yang mutasinya bukan di 'keep' pakai Cleansing Pet Shard",
+			function() return CFG.cleanseEnabled end,
+			function(v)
+				CFG.cleanseEnabled = v; persist()
+				if v then ctx.startCleanse() end
+			end, 3)
 	end
 
 	------------------------------------------------------------------ EVENT

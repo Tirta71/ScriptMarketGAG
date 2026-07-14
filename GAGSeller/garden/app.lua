@@ -75,4 +75,11 @@ return function(ctx)
 		ctx.startBoostPet()
 		ctx.log("Auto-resume: Boost Pet ON.")
 	end
+
+	-- auto-resume Cleanse kalau sebelumnya aktif
+	if CFG.cleanseEnabled and ctx.startCleanse then
+		task.wait(2.5)
+		ctx.startCleanse()
+		ctx.log("Auto-resume: Cleanse ON.")
+	end
 end

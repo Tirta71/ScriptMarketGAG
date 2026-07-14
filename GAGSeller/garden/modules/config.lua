@@ -47,6 +47,11 @@ return function(ctx)
 		mutationDelayAutoClaim = 0.5,
 		mutationEnabled       = false,
 
+		-- Automation Cleanse Mutation
+		cleansePetTypes      = {},
+		cleanseKeepMutations = {},
+		cleanseEnabled       = false,
+
 		-- Automation Boost Pet
 		boostPetUuids  = {},
 		boostItemNames = {},
@@ -123,6 +128,10 @@ return function(ctx)
 			CFG.mutationTargetAge     = tonumber(st.mutationTargetAge) or 50
 			CFG.mutationDelayAutoClaim = tonumber(st.mutationDelayAutoClaim) or 0.5
 			CFG.mutationEnabled       = st.mutationEnabled or false
+
+			CFG.cleansePetTypes      = (type(st.cleansePetTypes) == "table") and st.cleansePetTypes or {}
+			CFG.cleanseKeepMutations = (type(st.cleanseKeepMutations) == "table") and st.cleanseKeepMutations or {}
+			CFG.cleanseEnabled       = st.cleanseEnabled or false
 
 			CFG.boostPetUuids  = (type(st.boostPetUuids) == "table") and st.boostPetUuids or {}
 			CFG.boostItemNames = (type(st.boostItemNames) == "table") and st.boostItemNames or {}
