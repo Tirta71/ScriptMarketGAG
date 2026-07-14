@@ -80,13 +80,17 @@ return function(ctx)
 	-- (biar ga nyangkut kepilih padahal pet-nya habis).
 	function ctx.getSummerPetTypes(selectedSet)
 		local opts = ctx.getInventoryPetTypes and ctx.getInventoryPetTypes(selectedSet) or {}
-		local avail = {}
-		for _, o in ipairs(opts) do avail[o.value] = true end
-		local changed = false
-		for t in pairs(CFG.summerPetTypes or {}) do
-			if not avail[t] then CFG.summerPetTypes[t] = nil; changed = true end
+		-- PENTING: cuma prune kalau data inventory beneran ke-load (opts tidak kosong).
+		-- Kalau kosong bisa jadi data belum siap -> jangan buang pilihan valid.
+		if #opts > 0 then
+			local avail = {}
+			for _, o in ipairs(opts) do avail[o.value] = true end
+			local changed = false
+			for t in pairs(CFG.summerPetTypes or {}) do
+				if not avail[t] then CFG.summerPetTypes[t] = nil; changed = true end
+			end
+			if changed and ctx.persistState then ctx.persistState() end
 		end
-		if changed and ctx.persistState then ctx.persistState() end
 		return opts
 	end
 
