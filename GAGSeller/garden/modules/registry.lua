@@ -31,16 +31,24 @@ return function(ctx)
 	end
 	table.sort(MUT_OPTIONS)
 
-	-- Mutasi yang HANYA bisa dihasilkan mesin mutasi (dari MachineMutationTypes).
+	-- Mutasi yang bisa dari mesin: MachineMutationTypes (base) + Level500MutationTypes (500 only).
 	local MACHINE_MUT_OPTIONS = { "None" }
 	do
 		local ok, MutReg = pcall(function()
 			return require(game:GetService("ReplicatedStorage").Data.PetRegistry.PetMutationRegistry)
 		end)
-		local machine = ok and MutReg and MutReg.MachineMutationTypes
-		if type(machine) == "table" and next(machine) then
-			local names = {}
-			for name in pairs(machine) do names[#names + 1] = tostring(name) end
+		local names, seen = {}, {}
+		if ok and MutReg then
+			for _, src in ipairs({ MutReg.MachineMutationTypes, MutReg.Level500MutationTypes }) do
+				if type(src) == "table" then
+					for name in pairs(src) do
+						local n = tostring(name)
+						if not seen[n] then seen[n] = true; names[#names + 1] = n end
+					end
+				end
+			end
+		end
+		if #names > 0 then
 			table.sort(names)
 			for _, n in ipairs(names) do MACHINE_MUT_OPTIONS[#MACHINE_MUT_OPTIONS + 1] = n end
 		else
