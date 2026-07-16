@@ -70,6 +70,7 @@ return function(ctx)
 
 	local function doRelocate(reason)
 		local preferred = math.max(1, math.floor(tonumber(CFG.relocatePreferred) or 20))
+		_G.__AH_reloActive = true -- tandai lagi proses pindah (buat retry handler)
 		setStatus("Relocate: " .. reason .. " -> cari server...")
 		log("Relocate: " .. reason)
 		queueHub()
@@ -83,6 +84,23 @@ return function(ctx)
 		end
 	end
 	function ctx.relocateNow() task.spawn(function() doRelocate("manual") end) end
+
+	-- Handle gagal teleport: retry otomatis (Flooded=20s, gagal lain=6s).
+	-- Semua kondisi (idle/sepi/manual) lewat doRelocate yang sama, jadi ke-cover.
+	-- Guard _G biar ga double-connect walau hub ke-load ulang.
+	if not _G.__AH_reloTpHandler then
+		_G.__AH_reloTpHandler = true
+		pcall(function()
+			TeleportService.TeleportInitFailed:Connect(function(_, result)
+				if not CFG.relocateEnabled or not _G.__AH_reloActive then return end
+				local wait = (result == Enum.TeleportResult.Flooded) and 20 or 6
+				setStatus(("Relocate: teleport gagal (%s), retry %ds..."):format(tostring(result), wait))
+				log(("Teleport gagal (%s), retry %ds..."):format(tostring(result), wait))
+				task.wait(wait)
+				if CFG.relocateEnabled and _G.__AH_reloActive then doRelocate("retry") end
+			end)
+		end)
+	end
 
 	local function loop()
 		ctx.state.relocateId = (ctx.state.relocateId or 0) + 1
@@ -115,6 +133,7 @@ return function(ctx)
 	end
 	function ctx.stopRelocate()
 		ctx.state.relocateId = (ctx.state.relocateId or 0) + 1
+		_G.__AH_reloActive = false -- batalkan retry yang mungkin tertunda
 		setStatus("Relocate: dimatikan")
 	end
 
