@@ -75,18 +75,25 @@ return function(ctx)
 
 	-- Mendapatkan semua tipe unik pet yang dimiliki di inventory
 	function ctx.getInventoryPetTypes(selectedSet)
-		local out = {}
+		local out, seen = {}, {}
 		local ok, d = pcall(function() return DataService:GetData() end)
-		if not ok or not d then return out end
-		local inv = d.PetsData and d.PetsData.PetInventory and d.PetsData.PetInventory.Data
-		if not inv then return out end
-		
-		local seen = {}
-		for _, v in pairs(inv) do
-			local pt = v.PetType
-			if pt and not seen[pt] then
-				seen[pt] = true
-				table.insert(out, { value = pt, display = pt })
+		local inv = ok and d and d.PetsData and d.PetsData.PetInventory and d.PetsData.PetInventory.Data
+		if inv then
+			for _, v in pairs(inv) do
+				local pt = v.PetType
+				if pt and not seen[pt] then
+					seen[pt] = true
+					table.insert(out, { value = pt, display = pt })
+				end
+			end
+		end
+		-- Selalu tampilkan tipe yang DIPILIH walau stok 0 (biar pilihan ga ilang dari filter).
+		if selectedSet then
+			for t in pairs(selectedSet) do
+				if not seen[t] then
+					seen[t] = true
+					table.insert(out, { value = t, display = t .. " (0 di inventory)" })
+				end
 			end
 		end
 		table.sort(out, function(a, b)
