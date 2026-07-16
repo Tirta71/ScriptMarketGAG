@@ -92,10 +92,10 @@ return function(ctx)
 
 	----------------------------------------------------------------- Left Sidebar
 	local sidebar = mk("Frame", {
-		Size = UDim2.new(0, 160, 1, -44), Position = UDim2.fromOffset(0, 44), BackgroundColor3 = C.panel, BorderSizePixel = 0
+		Size = UDim2.new(0, 160, 1, -40), Position = UDim2.fromOffset(0, 40), BackgroundColor3 = C.panel, BorderSizePixel = 0
 	}, main)
 	corner(sidebar, 10)
-	pad(sidebar, 12, 12, 12, 12)
+	pad(sidebar, 10, 10, 8, 10)
 
 	local tabButtonsFrame = mk("Frame", {
 		Size = UDim2.new(1, 0, 1, -52), Position = UDim2.fromOffset(0, 0), BackgroundTransparency = 1

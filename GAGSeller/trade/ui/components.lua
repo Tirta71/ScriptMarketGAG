@@ -184,18 +184,14 @@ return function(ctx)
 		return head
 	end
 
-	----------------------------------------------------------------- button (premium)
+	----------------------------------------------------------------- button (minimal/elegant)
 	local TS = game:GetService("TweenService")
 	local function makeButton(parent, title, color, onClick, order)
 		local base = color or C.acc
-		local btn = mk("TextButton", { Size = UDim2.new(1, 0, 0, 38), BackgroundColor3 = base, Text = "", AutoButtonColor = false, LayoutOrder = order }, parent)
-		corner(btn, 8); stroke(btn, base:Lerp(Color3.new(1, 1, 1), 0.15), 1)
-		local grad = mk("UIGradient", { Rotation = 25, Color = ColorSequence.new(base:Lerp(Color3.new(1, 1, 1), 0.18), base:Lerp(Color3.new(0, 0, 0), 0.12)) }, btn)
-		mk("TextLabel", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = title, Font = Enum.Font.GothamBold, TextSize = 13, TextColor3 = Color3.new(1, 1, 1) }, btn)
-		btn.MouseEnter:Connect(function() TS:Create(grad, TweenInfo.new(0.3), { Rotation = 205 }):Play() end)
-		btn.MouseLeave:Connect(function() TS:Create(grad, TweenInfo.new(0.3), { Rotation = 25 }):Play() end)
-		btn.MouseButton1Down:Connect(function() TS:Create(btn, TweenInfo.new(0.08), { Size = UDim2.new(1, 0, 0, 36) }):Play() end)
-		btn.MouseButton1Up:Connect(function() TS:Create(btn, TweenInfo.new(0.12, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = UDim2.new(1, 0, 0, 38) }):Play() end)
+		local btn = mk("TextButton", { Size = UDim2.new(1, 0, 0, 32), BackgroundColor3 = base, Text = title, Font = Enum.Font.GothamMedium, TextSize = 12, TextColor3 = Color3.new(1, 1, 1), AutoButtonColor = false, LayoutOrder = order }, parent)
+		corner(btn, 6); stroke(btn, C.stroke, 1)
+		btn.MouseEnter:Connect(function() TS:Create(btn, TweenInfo.new(0.15), { BackgroundColor3 = base:Lerp(Color3.new(1, 1, 1), 0.1) }):Play() end)
+		btn.MouseLeave:Connect(function() TS:Create(btn, TweenInfo.new(0.15), { BackgroundColor3 = base }):Play() end)
 		if onClick then btn.MouseButton1Click:Connect(onClick) end
 		return btn
 	end

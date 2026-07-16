@@ -178,15 +178,8 @@ return function(ctx)
 	end
 	ctx.renderInventory = renderInventory
 
-	-- === Premium refresh button ===
-	local refreshBtn = mk("TextButton", { Size = UDim2.new(1, 0, 0, 42), BackgroundColor3 = C.acc, Text = "", AutoButtonColor = false, LayoutOrder = 3 }, invPage)
-	corner(refreshBtn, 10); stroke(refreshBtn, C.acc, 1)
-	local rgrad = mk("UIGradient", { Rotation = 25, Color = ColorSequence.new(Color3.fromRGB(150, 110, 255), Color3.fromRGB(96, 60, 220)) }, refreshBtn)
-	mk("TextLabel", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = "🔄  Refresh Inventory", Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = Color3.new(1, 1, 1) }, refreshBtn)
-	local TS = game:GetService("TweenService")
-	refreshBtn.MouseEnter:Connect(function() TS:Create(rgrad, TweenInfo.new(0.3), { Rotation = 205 }):Play() end)
-	refreshBtn.MouseLeave:Connect(function() TS:Create(rgrad, TweenInfo.new(0.3), { Rotation = 25 }):Play() end)
-	refreshBtn.MouseButton1Click:Connect(renderInventory)
+	-- Refresh button (elegan, konsisten makeButton)
+	makeButton(invPage, "🔄  Refresh Inventory", C.acc, renderInventory, 3)
 	ctx.ui.tabBtns["Inventory"].btn.MouseButton1Click:Connect(renderInventory)
 
 	------------------------------------------------------------------ MISC PAGE
@@ -200,7 +193,7 @@ return function(ctx)
 		function() return CFG.webhookEnabled end,
 		function(v) CFG.webhookEnabled = v; persistState() end, 1)
 
-	local whBox = mk("TextBox", { Size = UDim2.new(1, 0, 0, 28), BackgroundColor3 = C.panel, PlaceholderText = "https://discord.com/api/webhooks/...", Text = CFG.webhookUrl, Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = C.acc, ClearTextOnFocus = false, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 2 }, webhookCard)
+	local whBox = mk("TextBox", { Size = UDim2.new(1, 0, 0, 28), BackgroundColor3 = C.panel, PlaceholderText = "https://discord.com/api/webhooks/...", Text = CFG.webhookUrl, Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = C.acc, ClearTextOnFocus = false, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, ClipsDescendants = true, LayoutOrder = 2 }, webhookCard)
 	corner(whBox, 6); stroke(whBox); pad(whBox, 6, 6, 0, 0)
 	whBox.FocusLost:Connect(function() CFG.webhookUrl = whBox.Text; persistState() end)
 
