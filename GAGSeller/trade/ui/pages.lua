@@ -110,12 +110,6 @@ return function(ctx)
 	------------------------------------------------------------------ INVENTORY PAGE
 	local invPage = makePage("Inventory", "Inventory Tracker", "🎒", 5)
 
-	local countBox = mk("Frame", { Size = UDim2.new(1, 0, 0, 230), BackgroundColor3 = C.row, LayoutOrder = 1 }, invPage)
-	corner(countBox, 8); stroke(countBox)
-	pad(countBox, 12, 12, 12, 12)
-
-	local countLbl = mk("TextLabel", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = "", Font = Enum.Font.Code, TextSize = 12, TextColor3 = C.txt, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true }, countBox)
-
 	-- format angka dgn pemisah ribuan (1234567 -> 1.234.567)
 	local function fmt(n)
 		local s = tostring(math.floor(tonumber(n) or 0))
@@ -124,16 +118,67 @@ return function(ctx)
 		return s
 	end
 
+	-- === Stat cards (Target Pets + Saldo Token) ===
+	local statRow = mk("Frame", { Size = UDim2.new(1, 0, 0, 88), BackgroundTransparency = 1, LayoutOrder = 1 }, invPage)
+	mk("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 12), SortOrder = Enum.SortOrder.LayoutOrder }, statRow)
+
+	local function statCard(order, icon, title, accent)
+		local card = mk("Frame", { Size = UDim2.new(0.5, -6, 1, 0), BackgroundColor3 = C.row, LayoutOrder = order, ClipsDescendants = true }, statRow)
+		corner(card, 12); stroke(card)
+		local glow = mk("Frame", { Size = UDim2.new(1, 0, 1, 0), BackgroundColor3 = accent, BackgroundTransparency = 0.9, BorderSizePixel = 0 }, card)
+		corner(glow, 12)
+		mk("UIGradient", { Rotation = 90, Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.82), NumberSequenceKeypoint.new(1, 1) }) }, glow)
+		mk("TextLabel", { Size = UDim2.new(1, -32, 0, 16), Position = UDim2.fromOffset(16, 14), BackgroundTransparency = 1, Text = icon .. "  " .. title, Font = Enum.Font.GothamMedium, TextSize = 11, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left }, card)
+		return mk("TextLabel", { Size = UDim2.new(1, -32, 0, 36), Position = UDim2.fromOffset(16, 36), BackgroundTransparency = 1, Text = "0", Font = Enum.Font.GothamBold, TextSize = 26, TextColor3 = accent, TextXAlignment = Enum.TextXAlignment.Left }, card)
+	end
+
+	local targetVal = statCard(1, "🎯", "TARGET PETS", C.acc)
+	local tokenVal  = statCard(2, "💰", "SALDO TOKEN", C.green)
+
+	-- === Breakdown per tipe pet ===
+	local listCard = mk("Frame", { Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundColor3 = C.row, LayoutOrder = 2 }, invPage)
+	corner(listCard, 12); stroke(listCard); pad(listCard, 14, 14, 12, 14)
+	mk("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }, listCard)
+	mk("TextLabel", { Size = UDim2.new(1, 0, 0, 18), BackgroundTransparency = 1, Text = "📋  Target Breakdown", Font = Enum.Font.GothamBold, TextSize = 13, TextColor3 = C.txt, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 1 }, listCard)
+	local rowsHolder = mk("Frame", { Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, LayoutOrder = 2 }, listCard)
+	mk("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, rowsHolder)
+	local emptyLbl = mk("TextLabel", { Size = UDim2.new(1, 0, 0, 26), BackgroundTransparency = 1, Text = "Belum ada pet target dipilih.", Font = Enum.Font.Gotham, TextSize = 12, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 1 }, rowsHolder)
+
+	local petRows = {}
 	local function renderInventory()
-		local summary, total = ctx.buildSummary()
-		local tok = ctx.getTokens()
-		local gross, net, cnt = ctx.estimateSales()
-		countLbl.Text = ("📊 Ringkasan Inventory (%d target dicari):\n%s\n\n💰 Saldo Token: %s\n\n🏷️ Estimasi Penjualan (%d pet cocok listing):\n   Kotor : %s Token\n   Bersih: %s Token (fee 2%%)"):format(
-			total, summary, fmt(tok), cnt, fmt(gross), fmt(net))
+		local counts = ctx.inventoryCounts()
+		local types  = ctx.selectedPetTypes()
+		local total = 0
+		for _, pt in ipairs(types) do total = total + (counts[pt] or 0) end
+		targetVal.Text = fmt(total)
+		tokenVal.Text  = fmt(ctx.getTokens())
+
+		for _, r in ipairs(petRows) do r:Destroy() end
+		petRows = {}
+		emptyLbl.Visible = (#types == 0)
+		for i, pt in ipairs(types) do
+			local c = counts[pt] or 0
+			local row = mk("Frame", { Size = UDim2.new(1, 0, 0, 34), BackgroundColor3 = C.panel, LayoutOrder = i + 1 }, rowsHolder)
+			corner(row, 8)
+			mk("Frame", { Size = UDim2.fromOffset(3, 16), Position = UDim2.new(0, 10, 0.5, -8), BackgroundColor3 = (c > 0 and C.acc or C.stroke), BorderSizePixel = 0 }, row)
+			mk("TextLabel", { Size = UDim2.new(1, -90, 1, 0), Position = UDim2.fromOffset(22, 0), BackgroundTransparency = 1, Text = pt, Font = Enum.Font.GothamMedium, TextSize = 12, TextColor3 = C.txt, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, row)
+			local pill = mk("Frame", { Size = UDim2.fromOffset(54, 22), Position = UDim2.new(1, -64, 0.5, -11), BackgroundColor3 = (c > 0 and C.acc or C.stroke), BorderSizePixel = 0 }, row)
+			corner(pill, 11)
+			mk("TextLabel", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = tostring(c), Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = Color3.new(1, 1, 1), TextXAlignment = Enum.TextXAlignment.Center }, pill)
+			petRows[#petRows + 1] = row
+		end
 	end
 	ctx.renderInventory = renderInventory
 
-	makeButton(invPage, "Refresh Inventory", C.acc, renderInventory, 2)
+	-- === Premium refresh button ===
+	local refreshBtn = mk("TextButton", { Size = UDim2.new(1, 0, 0, 42), BackgroundColor3 = C.acc, Text = "", AutoButtonColor = false, LayoutOrder = 3 }, invPage)
+	corner(refreshBtn, 10); stroke(refreshBtn, C.acc, 1)
+	local rgrad = mk("UIGradient", { Rotation = 25, Color = ColorSequence.new(Color3.fromRGB(150, 110, 255), Color3.fromRGB(96, 60, 220)) }, refreshBtn)
+	mk("TextLabel", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = "🔄  Refresh Inventory", Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = Color3.new(1, 1, 1) }, refreshBtn)
+	local TS = game:GetService("TweenService")
+	refreshBtn.MouseEnter:Connect(function() TS:Create(rgrad, TweenInfo.new(0.3), { Rotation = 205 }):Play() end)
+	refreshBtn.MouseLeave:Connect(function() TS:Create(rgrad, TweenInfo.new(0.3), { Rotation = 25 }):Play() end)
+	refreshBtn.MouseButton1Click:Connect(renderInventory)
 	ctx.ui.tabBtns["Inventory"].btn.MouseButton1Click:Connect(renderInventory)
 
 	------------------------------------------------------------------ MISC PAGE
