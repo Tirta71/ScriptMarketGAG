@@ -52,10 +52,16 @@ return function(ctx)
 	corner(main, 10)
 	stroke(main, C.stroke, 1)
 
-	-- Title bar & Dragger
+	-- Title bar & Dragger (satu container: judul + tombol min/close)
 	local titleBar = mk("Frame", {
-		Size = UDim2.new(1, 0, 0, 40), BackgroundColor3 = C.panel, BackgroundTransparency = 1, BorderSizePixel = 0
+		Size = UDim2.new(1, 0, 0, 40), BackgroundColor3 = C.panel, BorderSizePixel = 0, ZIndex = 2,
 	}, main)
+	corner(titleBar, 10)
+	mk("TextLabel", {
+		Size = UDim2.new(1, -80, 1, 0), Position = UDim2.fromOffset(14, 0), BackgroundTransparency = 1,
+		Text = "AllegiaanHub | GAG Trade", Font = Enum.Font.GothamBold, TextSize = 13, TextColor3 = C.acc,
+		TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 2,
+	}, titleBar)
 	do
 		local dragging, ds, sp
 		titleBar.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging = true; ds = i.Position; sp = main.Position end end)
@@ -86,20 +92,13 @@ return function(ctx)
 
 	----------------------------------------------------------------- Left Sidebar
 	local sidebar = mk("Frame", {
-		Size = UDim2.new(0, 160, 1, 0), BackgroundColor3 = C.panel, BorderSizePixel = 0
+		Size = UDim2.new(0, 160, 1, -44), Position = UDim2.fromOffset(0, 44), BackgroundColor3 = C.panel, BorderSizePixel = 0
 	}, main)
 	corner(sidebar, 10)
 	pad(sidebar, 12, 12, 12, 12)
 
-	local logo = mk("Frame", { Size = UDim2.new(1, 0, 0, 30), BackgroundTransparency = 1 }, sidebar)
-	mk("TextLabel", {
-		Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1,
-		Text = "AllegiaanHub | GAG Trade", Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = C.acc,
-		TextXAlignment = Enum.TextXAlignment.Left,
-	}, logo)
-
 	local tabButtonsFrame = mk("Frame", {
-		Size = UDim2.new(1, 0, 1, -94), Position = UDim2.fromOffset(0, 38), BackgroundTransparency = 1
+		Size = UDim2.new(1, 0, 1, -52), Position = UDim2.fromOffset(0, 0), BackgroundTransparency = 1
 	}, sidebar)
 	mk("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, tabButtonsFrame)
 
@@ -134,7 +133,7 @@ return function(ctx)
 
 	-- Right Content Frame
 	local content = mk("Frame", {
-		Size = UDim2.new(1, -172, 1, -20), Position = UDim2.fromOffset(166, 12), BackgroundTransparency = 1
+		Size = UDim2.new(1, -172, 1, -66), Position = UDim2.fromOffset(166, 44), BackgroundTransparency = 1
 	}, main)
 
 	----------------------------------------------------------------- Status footer
