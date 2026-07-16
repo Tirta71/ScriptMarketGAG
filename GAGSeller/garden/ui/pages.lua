@@ -272,9 +272,9 @@ return function(ctx)
 		makeMultiDropdownDyn(settingsAcc, "Phoenix Team (Claim)", "Pets for claiming mutated pet",
 			function() return ctx.inventoryPetOptions(CFG.mutationPhoenixTeam) end, CFG.mutationPhoenixTeam, function() persist() end, 4)
 
-		-- Target Pet Types (Multi-dropdown Pet Types)
-		makeMultiDropdownDyn(settingsAcc, "Target Pet Types", "Pet types to mutate",
-			function() return ctx.getInventoryPetTypes(CFG.mutationTargetTypes) end, CFG.mutationTargetTypes, function() persist() end, 5)
+		-- Target Pet Types (semua pet di game, bukan cuma yang di inventory)
+		makeMultiDropdown(settingsAcc, "Target Pet Types", "Pet types to mutate (semua pet di game)",
+			reg.PET_OPTIONS, CFG.mutationTargetTypes, function() persist() end, 5)
 
 		-- Target Mutations (Multi-dropdown Mutations)
 		makeMultiDropdown(settingsAcc, "Target Mutations (Machine)", "Stop when pet gets these mutations (hanya mutasi mesin)",
