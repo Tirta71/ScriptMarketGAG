@@ -24,8 +24,20 @@ return function(ctx)
 	------------------------------------------------------------------ SELL PAGE
 	local sellPage = makePage("Sell", "Sell Settings", "🛒", 1)
 
+	-- Enable Auto List (dipindah dari Misc) — toggle utama di atas
+	local autoListCard = mk("Frame", { Size = UDim2.new(1, 0, 0, 60), BackgroundColor3 = C.row, LayoutOrder = 1 }, sellPage)
+	corner(autoListCard, 8); stroke(autoListCard); pad(autoListCard, 12, 12, 0, 0)
+	local rAutoToggle = makeToggle(autoListCard, "Enable Auto List", "Periodically scan inventory and list matching pets",
+		function() return CFG.autoSell end,
+		function(v)
+			CFG.autoSell = v; persistState(); ctx.setStatus(v and "active" or "idle")
+			if v and not ctx.state.running then ctx.state.running = true; task.spawn(ctx.mainLoop)
+			elseif not v then ctx.state.running = false end
+		end, 1)
+	ctx.ui.rAutoToggle = rAutoToggle
+
 	-- Accordion: Booth Settings
-	local boothBody = makeAccordion(sellPage, "Booth Settings", 1)
+	local boothBody = makeAccordion(sellPage, "Booth Settings", 2)
 	makeSingleDropdown(boothBody, "Booth Skin", "Equip skins you own in Trade Plaza", reg.SKIN_OPTIONS,
 		function() return CFG.boothSkin or "Default" end,
 		function(name)
@@ -43,13 +55,9 @@ return function(ctx)
 		function(v) CFG.autoSwitchPortal = v; persistState() end, 3)
 
 	-- Accordion: Unlist Utilities
-	local unlistBody = makeAccordion(sellPage, "Unlist Pets Utilities", 2)
+	local unlistBody = makeAccordion(sellPage, "Unlist Pets Utilities", 3)
 	makeButton(unlistBody, "Unlist All Pets", C.red, ctx.unlistAll, 1)
 	makeButton(unlistBody, "Unclaim Booth", C.row, function() pcall(function() RemoveBooth:FireServer() end) log("Unclaim booth dikirim.") end, 2)
-
-	-- Accordion: Equip Utilities
-	local equipBody = makeAccordion(sellPage, "Equip Pets Utilities", 3)
-	makeButton(equipBody, "Unequip All Pets", C.row, ctx.unequipAllPets, 1)
 
 	-- Accordion: Automation Relocate Sell (auto server-hop kalau booth idle)
 	local reloBody = makeAccordion(sellPage, "Automation Relocate Sell", 4)
@@ -70,16 +78,16 @@ return function(ctx)
 		end, 4)
 	makeButton(reloBody, "Relocate Now", C.acc, function() ctx.relocateNow() end, 5)
 
-	------------------------------------------------------------------ LISTING PROFILE PAGES
+	------------------------------------------------------------------ LISTING PROFILES (accordion di Sell)
 	for i = 1, NUM_PROFILES do
 		local prof = CFG.profiles[i]
-		local profPage = makePage("Profile " .. i, "Listing Pets Profile " .. i, "📋", i + 1)
+		local profBody = makeAccordion(sellPage, "Profile " .. i, 4 + i)
 
 		local clearers = {} -- reset tiap listing (dipakai tombol Clear All)
 
 		for j = 1, NUM_LISTINGS do
 			local sub = prof.listings[j]
-			local listBody = makeAccordion(profPage, "Listing " .. j, j)
+			local listBody = makeAccordion(profBody, "Listing " .. j, j)
 
 			local petRefresh = makeDropdown(listBody, "Pet Types [Listing " .. j .. "]", "Select pet types to list", reg.PET_OPTIONS, sub.pets, function() persistState() end, 1)
 			local mutRefresh = makeDropdown(listBody, "Mutation [Listing " .. j .. "]", "Empty = non-mutated only, select = must have mutation", reg.MUT_OPTIONS, sub.muts, function() persistState() end, 2)
@@ -100,7 +108,7 @@ return function(ctx)
 			end
 		end
 
-		makeButton(profPage, "Clear All (Profile " .. i .. ")", C.red, function()
+		makeButton(profBody, "Clear All (Profile " .. i .. ")", C.red, function()
 			for _, clr in ipairs(clearers) do clr() end
 			persistState()
 			log(("Profile %d dibersihkan."):format(i))
@@ -184,18 +192,7 @@ return function(ctx)
 	------------------------------------------------------------------ MISC PAGE
 	local miscPage = makePage("Misc", "Miscellaneous Settings", "⚙️", 6)
 
-	local autoListToggleRow = mk("Frame", { Size = UDim2.new(1, 0, 0, 60), BackgroundColor3 = C.row, LayoutOrder = 1 }, miscPage)
-	corner(autoListToggleRow, 8); stroke(autoListToggleRow); pad(autoListToggleRow, 12, 12, 0, 0)
-	local rAutoToggle = makeToggle(autoListToggleRow, "Auto List Loop", "Periodically scan inventory and list matching pets",
-		function() return CFG.autoSell end,
-		function(v)
-			CFG.autoSell = v; persistState(); ctx.setStatus(v and "active" or "idle")
-			if v and not ctx.state.running then ctx.state.running = true; task.spawn(ctx.mainLoop)
-			elseif not v then ctx.state.running = false end
-		end, 1)
-	ctx.ui.rAutoToggle = rAutoToggle
-
-	local webhookCard = mk("Frame", { Size = UDim2.new(1, 0, 0, 128), BackgroundColor3 = C.row, LayoutOrder = 2 }, miscPage)
+	local webhookCard = mk("Frame", { Size = UDim2.new(1, 0, 0, 128), BackgroundColor3 = C.row, LayoutOrder = 1 }, miscPage)
 	corner(webhookCard, 8); stroke(webhookCard); pad(webhookCard, 12, 12, 8, 8)
 	mk("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, webhookCard)
 
