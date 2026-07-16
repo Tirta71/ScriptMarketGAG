@@ -204,7 +204,7 @@ return function(ctx)
 						task.wait(2)
 					end
 				else
-					setStatus("Summer: " .. tostring(why)); task.wait(5)
+					setStatus("Summer: " .. tostring(why)); task.wait(0.5)
 				end
 			end
 		end
