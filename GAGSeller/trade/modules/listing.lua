@@ -235,17 +235,15 @@ return function(ctx)
 			if prof and type(prof.listings) == "table" then
 				for li = 1, NUM_LISTINGS do
 					local sub = prof.listings[li]
-					local cap = sub and sub.maxList
-					if sub and next(sub.pets) and (sub.price or 0) > 0 and cap and cap > 0 then
-						local n = 0
+					-- Max Listings cuma batas slot tampil bersamaan; auto-list refill sampai
+					-- semua kejual, jadi estimasi hitung SEMUA pet cocok (tanpa cap).
+					if sub and next(sub.pets) and (sub.price or 0) > 0 and (sub.maxList or 0) > 0 then
 						for uuid, v in pairs(pets) do
-							if n >= cap then break end
 							local pd = v.PetData
 							if v.PetType and pd and not pd.IsFavorite and not locks[uuid]
 								and not equippedSet[uuid] and not claimed[uuid] then
 								if petMatches(v.PetType, pd, sub) then
 									claimed[uuid] = true
-									n = n + 1
 									total = total + math.floor(sub.price)
 									count = count + 1
 								end
