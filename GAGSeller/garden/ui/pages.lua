@@ -197,7 +197,7 @@ return function(ctx)
 			function() return CFG.levelingEnabled end,
 			function(v)
 				CFG.levelingEnabled = v; persist()
-				if v then ctx.startLeveling() end
+				if v then ctx.startLeveling() else ctx.stopLeveling() end
 			end, 5)
 	end
 
@@ -295,7 +295,7 @@ return function(ctx)
 			function() return CFG.mutationEnabled end,
 			function(v)
 				CFG.mutationEnabled = v; persist()
-				if v then ctx.startMutation() end
+				if v then ctx.startMutation() else ctx.stopMutation() end
 			end, 9)
 
 		-- Accordion: Automation Mutation (mutasi via aura + cleanse)
@@ -348,7 +348,7 @@ return function(ctx)
 			function() return CFG.cleanseEnabled end,
 			function(v)
 				CFG.cleanseEnabled = v; persist()
-				if v then ctx.startCleanse() end
+				if v then ctx.startCleanse() else ctx.stopCleanse() end
 			end, 6)
 	end
 

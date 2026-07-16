@@ -325,4 +325,28 @@ return function(ctx)
 	end
 
 	function ctx.startLeveling() task.spawn(levelingLoop) end
+
+	-- Lepas SEMUA pet dari garden (dipakai stop leveling/mutation/cleanse, mirror elephant).
+	function ctx.clearGarden(label)
+		task.spawn(function()
+			if ctx.setStatus then ctx.setStatus((label or "Clear") .. ": lepas pet dari garden...") end
+			task.wait(0.3)
+			for _ = 1, 30 do
+				local ok, d = pcall(function() return DataService:GetData() end)
+				local eq = ok and d and d.PetsData and d.PetsData.EquippedPets or {}
+				if #eq == 0 then break end
+				for _, uuid in ipairs(eq) do
+					pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
+					task.wait(0.2)
+				end
+				task.wait(0.4)
+			end
+			if ctx.setStatus then ctx.setStatus((label or "Clear") .. ": garden kosong.") end
+		end)
+	end
+
+	function ctx.stopLeveling()
+		ctx.state.levelingId = (ctx.state.levelingId or 0) + 1 -- matikan loop
+		ctx.clearGarden("Leveling")
+	end
 end

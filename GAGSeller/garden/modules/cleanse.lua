@@ -262,4 +262,9 @@ return function(ctx)
 	end
 
 	function ctx.startCleanse() task.spawn(cleanseLoop) end
+
+	function ctx.stopCleanse()
+		ctx.state.cleanseId = (ctx.state.cleanseId or 0) + 1 -- matikan loop
+		if ctx.clearGarden then ctx.clearGarden("Auto Mutation") end
+	end
 end

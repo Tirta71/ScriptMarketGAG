@@ -459,4 +459,9 @@ return function(ctx)
 	end
 
 	function ctx.startMutation() task.spawn(mutationLoop) end
+
+	function ctx.stopMutation()
+		ctx.state.mutationId = (ctx.state.mutationId or 0) + 1 -- matikan loop
+		if ctx.clearGarden then ctx.clearGarden("Mutation") end
+	end
 end
