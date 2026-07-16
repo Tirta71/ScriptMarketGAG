@@ -344,7 +344,7 @@ return function(ctx)
 		makeInput(cleanseAcc, "Max Pets in Garden", "Max pet target di garden barengan",
 			function() return tostring(CFG.cleanseMaxPets) end,
 			function(txt) CFG.cleanseMaxPets = tonumber(txt) or 2; persist() end, 5)
-		makeToggle(cleanseAcc, "Enable Automation Cleanse", "Mutasi target via aura; cleanse mutasi salah, simpan mutasi keep",
+		makeToggle(cleanseAcc, "Enable Auto Mutation", "Mutasi target via aura; cleanse mutasi salah, simpan mutasi keep",
 			function() return CFG.cleanseEnabled end,
 			function(v)
 				CFG.cleanseEnabled = v; persist()
