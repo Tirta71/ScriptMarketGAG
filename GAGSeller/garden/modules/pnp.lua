@@ -82,6 +82,18 @@ return function(ctx)
 				display = ("%s%s | Age %s | #%s%s"):format(pt, mutStr, tostring(age), uuid:sub(2, 5), tag),
 			}
 		end
+		-- Auto-prune UUID kepilih yang pet-nya udah ga ada di inventory (biar ga nyangkut
+		-- kepilih padahal pet-nya udah ilang). Cuma kalau inventory beneran ada isinya,
+		-- biar ga salah hapus saat data telat ke-load.
+		if selectedSet and next(inv) then
+			local valid = {}
+			for uuid in pairs(inv) do valid[uuid] = true end
+			local changed = false
+			for u in pairs(selectedSet) do
+				if not valid[u] then selectedSet[u] = nil; changed = true end
+			end
+			if changed and ctx.persistState then ctx.persistState() end
+		end
 		table.sort(out, function(a, b)
 			local selA = selectedSet and selectedSet[a.value] and 1 or 0
 			local selB = selectedSet and selectedSet[b.value] and 1 or 0
