@@ -1,0 +1,320 @@
+--[[ sniper.lua — Auto Snipe / Auto Buy pet dari booth pemain lain (Trade World).
+     5 profil (pet types + mutation + max price, urutan = prioritas). Scan listing
+     booth, beli otomatis kalau cocok & seller hadir. Kalau ga ada target -> cari
+     seller lintas server (FindSellers) lalu TeleportToListing (auto server-hop).
+     Beli: TradeEvents.Booths.BuyListing:InvokeServer(ownerPlayer, listingUUID).
+     Mengisi: ctx.startSnipe, ctx.stopSnipe, ctx.getSnipeStatus ]]
+return function(ctx)
+	local RS              = ctx.Services.RS
+	local Players         = ctx.Services.Players
+	local HttpService     = ctx.Services.HttpService
+	local TeleportService = game:GetService("TeleportService")
+	local LP  = ctx.LP
+	local CFG = ctx.CFG
+	local RR                = ctx.deps.RR
+	local DataService       = ctx.deps.DataService
+	local BuyListing        = ctx.deps.BuyListing
+	local FindSellers       = ctx.deps.FindSellers
+	local TeleportToListing = ctx.deps.TeleportToListing
+	local TokenRAPUtil      = ctx.deps.TokenRAPUtil
+	local comboKey   = ctx.reg.comboKey
+	local mutDisplay = ctx.reg.mutDisplay
+	local NUM = ctx.NUM_SNIPE or 5
+	local function log(m) ctx.log(m) end
+	local function setStatus(s) ctx.setStatus(s) end
+	local function running() return ctx.state.snipeRunning == true end
+
+	local ROUTER = "loadstring(game:HttpGet('https://raw.githubusercontent.com/Tirta71/ScriptMarketGAG/main/GAGSeller/init.lua'))()"
+
+	------------------------------------------------------------------ helpers
+	local function buildItemData(petType)
+		if TokenRAPUtil and TokenRAPUtil.GetDefaultItemData then
+			local ok, d = pcall(function() return TokenRAPUtil.GetDefaultItemData("Pet", petType) end)
+			if ok and d then return d end
+		end
+		return { PetType = petType, PetData = { MutationType = "Normal", Level = 0, LevelProgress = 0, Hunger = 0, BaseWeight = 1, Boosts = {} }, PetAbility = {} }
+	end
+
+	local function getTokens()
+		local ok, data = pcall(function() return DataService:GetData() end)
+		if ok and type(data) == "table" and type(data.TradeData) == "table" then
+			return data.TradeData.Tokens or 0
+		end
+		return math.huge
+	end
+	local function ownerToUserId(owner) return tonumber((tostring(owner):gsub("Player_", ""))) end
+
+	-- cari target dari data booth, cocokkan ke profil (index profil = prioritas)
+	local function collectTargets()
+		local ok, data = pcall(function() return RR.new("Booths"):GetDataAsync() end)
+		local targets = {}
+		if not ok or not data then return targets end
+		for _, b in pairs(data.Booths or {}) do
+			local owner = b.Owner
+			local pd = owner and data.Players and data.Players[owner]
+			if pd and pd.Listings then
+				for lid, l in pairs(pd.Listings) do
+					local it = pd.Items and pd.Items[l.ItemId]
+					local p  = it and it.PetData
+					if p and it.PetType then
+						local disp = mutDisplay(p.MutationType)
+						for pi = 1, NUM do
+							local prof = CFG.snipeProfiles[pi]
+							-- match by pet TYPE (dropdown = nama pet)
+							if prof and next(prof.pets) and prof.pets[it.PetType] then
+								local mutOK   = (not next(prof.muts)) or prof.muts[disp]
+								local priceOK = (prof.maxPrice or 0) <= 0 or l.Price <= prof.maxPrice
+								if mutOK and priceOK then
+									local ply = Players:GetPlayerByUserId(ownerToUserId(owner))
+									targets[#targets + 1] = {
+										profile = pi, pet = it.PetType, name = p.Name,
+										mut = disp, price = l.Price, uuid = lid,
+										owner = ply, present = ply ~= nil,
+									}
+									break -- profil prioritas tertinggi menang
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+		table.sort(targets, function(a, b)
+			if a.profile ~= b.profile then return a.profile < b.profile end
+			return a.price < b.price
+		end)
+		return targets
+	end
+
+	------------------------------------------------------------------ webhook notif beli
+	local function inventoryCounts()
+		local counts = {}
+		local ok, data = pcall(function() return DataService:GetData() end)
+		if ok and type(data) == "table" and data.PetsData and data.PetsData.PetInventory and data.PetsData.PetInventory.Data then
+			for _, v in pairs(data.PetsData.PetInventory.Data) do
+				local pt = v and v.PetType
+				if pt then counts[pt] = (counts[pt] or 0) + 1 end
+			end
+		end
+		return counts
+	end
+	local function snipeSelectedTypes()
+		local set, order = {}, {}
+		for pi = 1, NUM do
+			for pt in pairs(CFG.snipeProfiles[pi].pets) do
+				if not set[pt] then set[pt] = true; order[#order + 1] = pt end
+			end
+		end
+		table.sort(order)
+		return order
+	end
+	local function buildSnipeSummary()
+		local counts = inventoryCounts()
+		local lines, total = {}, 0
+		for _, pt in ipairs(snipeSelectedTypes()) do
+			local c = counts[pt] or 0
+			total = total + c
+			lines[#lines + 1] = ("%s: %d"):format(pt, c)
+		end
+		return (#lines > 0 and table.concat(lines, "\n") or "-"), total
+	end
+	local function notifyBuy(t)
+		if not ctx.sendWebhook then return end
+		local seller = (t.owner and (t.owner.DisplayName or t.owner.Name)) or "?"
+		local summary, total = buildSnipeSummary()
+		local tok = getTokens(); tok = (tok == math.huge) and "?" or tostring(tok)
+		ctx.sendWebhook({
+			username = "AllegiaanHub GAG Sniper",
+			embeds = {{
+				title = "✅ Pet Sniped!",
+				color = 3066993,
+				fields = {
+					{ name = "Pet",      value = tostring(t.pet),   inline = true },
+					{ name = "Mutation", value = tostring(t.mut),   inline = true },
+					{ name = "Price",    value = tostring(t.price) .. " Tokens", inline = true },
+					{ name = "Nickname", value = tostring(t.name),  inline = true },
+					{ name = "Profile",  value = "Snipe " .. t.profile, inline = true },
+					{ name = "Seller",   value = "@" .. seller,     inline = true },
+					{ name = ("📊 Total Punya (%d)"):format(total), value = summary, inline = false },
+					{ name = "💰 Sisa Token", value = tok .. " Tokens", inline = false },
+				},
+				footer = { text = "JobId: " .. tostring(game.JobId) },
+			}},
+		})
+	end
+
+	------------------------------------------------------------------ server hop (cari seller)
+	local HOP_FILE = "AllegiaanHub_snipehops.json"
+	local HOP_TTL  = 120
+	local visited  = {}
+	do
+		if type(isfile) == "function" and isfile(HOP_FILE) then
+			local ok, d = pcall(function() return HttpService:JSONDecode(readfile(HOP_FILE)) end)
+			if ok and type(d) == "table" then
+				local now = os.time()
+				for job, ts in pairs(d) do if type(ts) == "number" and (now - ts) < HOP_TTL then visited[job] = ts end end
+			end
+		end
+	end
+	local function saveVisited() pcall(function() writefile(HOP_FILE, HttpService:JSONEncode(visited)) end) end
+	local function markVisited(job) if job and job ~= "" then visited[job] = os.time(); saveVisited() end end
+	markVisited(game.JobId)
+
+	local function queueResume()
+		local q = queue_on_teleport or queueonteleport or (syn and syn.queue_on_teleport)
+		if q then pcall(function() q(ROUTER) end) end
+	end
+
+	local hopInProgress = false
+	local function serverHop()
+		if not CFG.snipeHop or hopInProgress then return end
+		hopInProgress = true
+		queueResume()
+
+		local searchTargets, seen = {}, {}
+		for pi = 1, NUM do
+			for pt in pairs(CFG.snipeProfiles[pi].pets) do
+				if not seen[pt] then seen[pt] = true; searchTargets[#searchTargets + 1] = pt end
+			end
+		end
+
+		local function findJobId(tbl)
+			if type(tbl) ~= "table" then return nil end
+			for _, v in pairs(tbl) do
+				if type(v) == "string" and v:match("^%w+-%w+-%w+-%w+-%w+$") then return v
+				elseif type(v) == "table" then local r = findJobId(v); if r then return r end end
+			end
+			return nil
+		end
+
+		local function attempt()
+			while running() do
+				for i = #searchTargets, 2, -1 do
+					local j = math.random(1, i); searchTargets[i], searchTargets[j] = searchTargets[j], searchTargets[i]
+				end
+				if #searchTargets > 0 then
+					setStatus("Snipe: cari seller online...")
+					for _, petType in ipairs(searchTargets) do
+						if not running() then return end
+						setStatus(("Snipe: cari seller %s"):format(petType))
+						local itemData = buildItemData(petType)
+						local ok, success, tpData = pcall(function()
+							return FindSellers:InvokeServer("Pet", itemData)
+						end)
+						if ok and success and tpData then
+							local targetJobId = (type(tpData) == "string" and tpData) or findJobId(tpData)
+							if targetJobId == game.JobId then
+								-- seller di server ini (harga > limit) -> lewati
+							elseif targetJobId and visited[targetJobId] then
+								-- sudah dikunjungi dalam TTL -> skip
+							elseif targetJobId then
+								setStatus(("Snipe: seller ketemu! TP (%s)..."):format(petType))
+								markVisited(targetJobId)
+								pcall(function() TeleportToListing:InvokeServer(tpData, true) end)
+								local t0 = os.clock()
+								repeat task.wait(1) until (not running()) or (os.clock() - t0) >= 8
+								if not running() then return end
+								log(("Snipe: TP ke %s gagal, cari lain..."):format(petType))
+							end
+						end
+						if not running() then return end
+						task.wait(1.5) -- anti rate-limit FindSellers
+					end
+				end
+				if not running() then return end
+				setStatus("Snipe: ga ada seller baru, tunggu 3s...")
+				task.wait(3)
+			end
+		end
+
+		local conn
+		conn = TeleportService.TeleportInitFailed:Connect(function(plr, _, msg)
+			if plr == LP then log("Snipe: teleport gagal: " .. tostring(msg)) end
+		end)
+		attempt()
+		if conn then conn:Disconnect() end
+		hopInProgress = false
+	end
+
+	------------------------------------------------------------------ core loop
+	local function anyProfileActive()
+		for i = 1, NUM do if next(CFG.snipeProfiles[i].pets) then return true end end
+		return false
+	end
+	local function buyPass()
+		local targets = collectTargets()
+		local buyable, bought = 0, 0
+		for _, t in ipairs(targets) do
+			if not running() then break end
+			if t.present then
+				buyable = buyable + 1
+				if getTokens() >= t.price then
+					local ok, success, m = pcall(function() return BuyListing:InvokeServer(t.owner, t.uuid) end)
+					if ok and success then
+						bought = bought + 1
+						log(("BUY %s [%s] @%d (Snipe %d)"):format(t.pet, t.mut, t.price, t.profile))
+						notifyBuy(t)
+					else
+						log(("FAIL %s @%d (%s)"):format(t.pet, t.price, tostring(m or success)))
+					end
+					task.wait(0.6)
+				end
+			end
+		end
+		return #targets, buyable, bought
+	end
+
+	local function mainLoop()
+		while running() do
+			if not anyProfileActive() then
+				setStatus("Snipe: pilih pet di profil dulu")
+				task.wait(2)
+			else
+				setStatus(("Snipe: scan... Token:%s"):format(tostring(getTokens())))
+				local total, buyable, bought = buyPass()
+				if not running() then break end
+				setStatus(("Snipe: target %d beli %d Token:%s"):format(total, bought, tostring(getTokens())))
+				if buyable > 0 and bought > 0 then
+					task.wait(3)
+				elseif CFG.snipeHop then
+					setStatus("Snipe: ga ada target, hop...")
+					task.wait(2); serverHop(); break
+				else
+					task.wait(3)
+				end
+			end
+		end
+	end
+
+	------------------------------------------------------------------ status utk GUI
+	function ctx.getSnipeStatus()
+		local parts = {}
+		for i = 1, NUM do
+			local pr = CFG.snipeProfiles[i]
+			if next(pr.pets) then
+				local first; for pt in pairs(pr.pets) do first = pt; break end
+				parts[#parts + 1] = ("[P%d] %s | Max %s"):format(i, first or "?", (pr.maxPrice or 0) > 0 and pr.maxPrice or "∞")
+			end
+		end
+		return {
+			on = CFG.snipeEnabled == true,
+			lines = #parts > 0 and table.concat(parts, "\n") or "No profile set",
+		}
+	end
+
+	function ctx.startSnipe()
+		if running() then return end
+		ctx.state.snipeRunning = true
+		hopInProgress = false
+		task.spawn(mainLoop)
+	end
+	function ctx.stopSnipe()
+		ctx.state.snipeRunning = false
+		hopInProgress = false
+	end
+
+	-- auto-resume setelah hop / rejoin
+	if CFG.snipeEnabled then
+		task.spawn(function() task.wait(1.5); ctx.startSnipe(); log("Auto-resume: Snipe ON.") end)
+	end
+end

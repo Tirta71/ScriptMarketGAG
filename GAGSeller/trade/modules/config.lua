@@ -6,6 +6,7 @@ return function(ctx)
 
 	local NUM_PROFILES = 3
 	local NUM_LISTINGS = 3
+	local NUM_SNIPE    = 5
 
 	local CFG = {
 		autoSell         = false,
@@ -19,7 +20,14 @@ return function(ctx)
 		relocateIdleMin    = 20,
 		relocateMinPlayers = 10,
 		relocatePreferred  = 20,
+		-- sniper / auto-buy
+		snipeEnabled       = false,
+		snipeHop           = true,
+		snipeProfiles      = {},
 	}
+	for i = 1, NUM_SNIPE do
+		CFG.snipeProfiles[i] = { pets = {}, muts = {}, maxPrice = 0 }
+	end
 	for i = 1, NUM_PROFILES do
 		CFG.profiles[i] = { listings = {} }
 		for j = 1, NUM_LISTINGS do
@@ -55,6 +63,18 @@ return function(ctx)
 			if st.relocateIdleMin    ~= nil then CFG.relocateIdleMin    = tonumber(st.relocateIdleMin) or 20 end
 			if st.relocateMinPlayers ~= nil then CFG.relocateMinPlayers = tonumber(st.relocateMinPlayers) or 10 end
 			if st.relocatePreferred  ~= nil then CFG.relocatePreferred  = tonumber(st.relocatePreferred) or 20 end
+			CFG.snipeEnabled = st.snipeEnabled or false
+			if st.snipeHop ~= nil then CFG.snipeHop = st.snipeHop end
+			if type(st.snipeProfiles) == "table" then
+				for i = 1, NUM_SNIPE do
+					local sp = st.snipeProfiles[i] or st.snipeProfiles[tostring(i)]
+					if type(sp) == "table" then
+						CFG.snipeProfiles[i].pets     = (type(sp.pets) == "table") and sp.pets or {}
+						CFG.snipeProfiles[i].muts     = (type(sp.muts) == "table") and sp.muts or {}
+						CFG.snipeProfiles[i].maxPrice = tonumber(sp.maxPrice) or 0
+					end
+				end
+			end
 			if type(st.profiles) == "table" then
 				for i = 1, NUM_PROFILES do
 					local sp = st.profiles[i] or st.profiles[tostring(i)]
@@ -78,6 +98,7 @@ return function(ctx)
 
 	ctx.NUM_PROFILES = NUM_PROFILES
 	ctx.NUM_LISTINGS = NUM_LISTINGS
+	ctx.NUM_SNIPE    = NUM_SNIPE
 	ctx.CFG          = CFG
 	ctx.persistState = persistState
 	ctx.loadState    = loadState

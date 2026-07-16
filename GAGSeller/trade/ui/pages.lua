@@ -7,6 +7,7 @@ return function(ctx)
 	local mk, corner, stroke, pad = ctx.mk, ctx.corner, ctx.stroke, ctx.pad
 	local NUM_PROFILES = ctx.NUM_PROFILES
 	local NUM_LISTINGS = ctx.NUM_LISTINGS
+	local NUM_SNIPE    = ctx.NUM_SNIPE
 	local reg          = ctx.reg
 	local persistState = ctx.persistState
 	local EquipSkin    = ctx.deps.EquipSkin
@@ -114,6 +115,48 @@ return function(ctx)
 			log(("Profile %d dibersihkan."):format(i))
 		end, NUM_LISTINGS + 1)
 	end
+
+	------------------------------------------------------------------ BUY PAGE (Auto Snipe)
+	local buyPage = makePage("Buy", "Auto Snipe", "🎯", 2)
+
+	-- Status snipe
+	local snipeStatusCard = mk("Frame", { Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundColor3 = C.row, LayoutOrder = 1 }, buyPage)
+	corner(snipeStatusCard, 8); stroke(snipeStatusCard); pad(snipeStatusCard, 12, 12, 10, 10)
+	mk("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, snipeStatusCard)
+	mk("TextLabel", { Size = UDim2.new(1, 0, 0, 18), BackgroundTransparency = 1, Text = "🎯  Snipe Status", Font = Enum.Font.GothamBold, TextSize = 13, TextColor3 = C.txt, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 1 }, snipeStatusCard)
+	local snipeStatusLbl = mk("TextLabel", { Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, Text = "", Font = Enum.Font.Gotham, TextSize = 12, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, LineHeight = 1.3, LayoutOrder = 2 }, snipeStatusCard)
+	local function refreshSnipeStatus()
+		local ok, s = pcall(function() return ctx.getSnipeStatus() end)
+		if ok and s then snipeStatusLbl.Text = ("Status: %s\n%s"):format(s.on and "ON" or "OFF", s.lines) end
+	end
+	ctx.refreshSnipeStatus = refreshSnipeStatus
+
+	-- Auto Snipe toggle
+	local snipeToggleCard = mk("Frame", { Size = UDim2.new(1, 0, 0, 60), BackgroundColor3 = C.row, LayoutOrder = 2 }, buyPage)
+	corner(snipeToggleCard, 8); stroke(snipeToggleCard); pad(snipeToggleCard, 12, 12, 0, 0)
+	makeToggle(snipeToggleCard, "Auto Snipe Pet", "Scan & beli pet cocok dari booth pemain (profil 1-5)",
+		function() return CFG.snipeEnabled end,
+		function(v)
+			CFG.snipeEnabled = v; persistState(); refreshSnipeStatus()
+			if v then ctx.startSnipe() else ctx.stopSnipe() end
+		end, 1)
+
+	-- Auto Server Hop toggle
+	local snipeHopCard = mk("Frame", { Size = UDim2.new(1, 0, 0, 60), BackgroundColor3 = C.row, LayoutOrder = 3 }, buyPage)
+	corner(snipeHopCard, 8); stroke(snipeHopCard); pad(snipeHopCard, 12, 12, 0, 0)
+	makeToggle(snipeHopCard, "Auto Server Hop", "Cari seller lintas server kalau ga ada target di sini",
+		function() return CFG.snipeHop end,
+		function(v) CFG.snipeHop = v; persistState() end, 1)
+
+	-- 5 profil snipe (accordion; urutan = prioritas)
+	for i = 1, NUM_SNIPE do
+		local prof = CFG.snipeProfiles[i]
+		local body = makeAccordion(buyPage, "Snipe " .. i, 3 + i)
+		makeDropdown(body, "Pet Types [Snipe " .. i .. "]", "Pilih pet (urutan profil = prioritas)", reg.PET_OPTIONS, prof.pets, function() persistState(); refreshSnipeStatus() end, 1)
+		makeDropdown(body, "Mutation [Snipe " .. i .. "]", "Kosong = semua mutasi", reg.MUT_OPTIONS, prof.muts, function() persistState() end, 2)
+		makeInput(body, "Max Price [Snipe " .. i .. "]", "0 = tanpa batas harga (Tokens)", function() return prof.maxPrice or 0 end, function(txt) local n = tonumber(txt); prof.maxPrice = (n and n >= 0) and math.floor(n) or 0; persistState(); refreshSnipeStatus() end, 3)
+	end
+	refreshSnipeStatus()
 
 	------------------------------------------------------------------ INVENTORY PAGE
 	local invPage = makePage("Inventory", "Inventory Tracker", "🎒", 5)

@@ -30,6 +30,11 @@ return function(ctx)
 	local SkinsReg        = require(RS.Data.TradeBoothSkinRegistry)
 
 	local Booths = RS.GameEvents.TradeEvents.Booths
+	-- TokenRAPs (buat sniper cari seller lintas server) — akses defensif biar ga bikin
+	-- seluruh hub error kalau path berubah.
+	local TradeEvents = RS.GameEvents:FindFirstChild("TradeEvents")
+	local TokenRAPs   = TradeEvents and TradeEvents:FindFirstChild("TokenRAPs")
+	local okTRU, TokenRAPUtil = pcall(function() return require(RS.Modules.TradeTokens.TokenRAPUtil) end)
 
 	ctx.deps = {
 		RR              = RR,
@@ -47,6 +52,12 @@ return function(ctx)
 		RemoveBooth     = Booths.RemoveBooth,
 		RemoveListing   = Booths.RemoveListing,
 		AddToHistory    = Booths.AddToHistory,
+		BuyListing      = Booths.BuyListing,
 		EquipSkin       = RS.GameEvents.TradeBoothSkinService.Equip,
+
+		-- sniper (auto-buy dari booth pemain lain + cari seller lintas server)
+		FindSellers       = TokenRAPs and TokenRAPs:FindFirstChild("FindSellers"),
+		TeleportToListing = TokenRAPs and TokenRAPs:FindFirstChild("TeleportToListing"),
+		TokenRAPUtil      = okTRU and TokenRAPUtil or nil,
 	}
 end

@@ -79,7 +79,8 @@ local MODULES = {
 	"ui/components.lua",      -- toggle/input/dropdown/accordion/tab
 	"ui/window.lua",          -- jendela utama + log + status
 	"modules/relocate.lua",   -- auto relocate sell (server-hop kalau booth idle)
-	"ui/pages.lua",           -- halaman Sell/Profile/Inventory/Misc
+	"modules/sniper.lua",     -- auto snipe / auto buy (tab Buy)
+	"ui/pages.lua",           -- halaman Sell/Buy/Inventory/Misc
 	"app.lua",                -- init akhir + supervisor loop
 }
 
