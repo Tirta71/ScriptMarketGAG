@@ -54,13 +54,13 @@ return function(ctx)
 		function() return CFG.autoSwitchPortal end,
 		function(v) CFG.autoSwitchPortal = v; persistState() end, 3)
 
-	-- Accordion: Unlist Utilities
-	local unlistBody = makeAccordion(sellPage, "Unlist Pets Utilities", 3)
+	-- Accordion: Unlist Utilities (di bawah Profile 3)
+	local unlistBody = makeAccordion(sellPage, "Unlist Pets Utilities", 20)
 	makeButton(unlistBody, "Unlist All Pets", C.red, ctx.unlistAll, 1)
 	makeButton(unlistBody, "Unclaim Booth", C.row, function() pcall(function() RemoveBooth:FireServer() end) log("Unclaim booth dikirim.") end, 2)
 
-	-- Accordion: Automation Relocate Sell (auto server-hop kalau booth idle)
-	local reloBody = makeAccordion(sellPage, "Automation Relocate Sell", 4)
+	-- Accordion: Automation Relocate Sell (di bawah Profile 3)
+	local reloBody = makeAccordion(sellPage, "Automation Relocate Sell", 21)
 	makeInput(reloBody, "Idle Timeout (Minutes)", "Move server if no buyers within this duration",
 		function() return CFG.relocateIdleMin or 20 end,
 		function(txt) local n = tonumber(txt); CFG.relocateIdleMin = (n and n >= 1) and math.floor(n) or 20; persistState() end, 1)
