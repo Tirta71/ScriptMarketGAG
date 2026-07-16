@@ -51,6 +51,25 @@ return function(ctx)
 	local equipBody = makeAccordion(sellPage, "Equip Pets Utilities", 3)
 	makeButton(equipBody, "Unequip All Pets", C.row, ctx.unequipAllPets, 1)
 
+	-- Accordion: Automation Relocate Sell (auto server-hop kalau booth idle)
+	local reloBody = makeAccordion(sellPage, "Automation Relocate Sell", 4)
+	makeInput(reloBody, "Idle Timeout (Minutes)", "Move server if no buyers within this duration",
+		function() return CFG.relocateIdleMin or 20 end,
+		function(txt) local n = tonumber(txt); CFG.relocateIdleMin = (n and n >= 1) and math.floor(n) or 20; persistState() end, 1)
+	makeInput(reloBody, "Min Player Threshold", "Relocate if server has fewer players (0 = off)",
+		function() return CFG.relocateMinPlayers or 0 end,
+		function(txt) local n = tonumber(txt); CFG.relocateMinPlayers = (n and n >= 0) and math.floor(n) or 0; persistState() end, 2)
+	makeInput(reloBody, "Preferred Lobby Size", "Find server closest to this player count",
+		function() return CFG.relocatePreferred or 20 end,
+		function(txt) local n = tonumber(txt); CFG.relocatePreferred = (n and n >= 1) and math.floor(n) or 20; persistState() end, 3)
+	makeToggle(reloBody, "Automation Relocate Sell", "Automatically move to busier server when booth is idle",
+		function() return CFG.relocateEnabled end,
+		function(v)
+			CFG.relocateEnabled = v; persistState()
+			if v then ctx.startRelocate() else ctx.stopRelocate() end
+		end, 4)
+	makeButton(reloBody, "Relocate Now", C.acc, function() ctx.relocateNow() end, 5)
+
 	------------------------------------------------------------------ LISTING PROFILE PAGES
 	for i = 1, NUM_PROFILES do
 		local prof = CFG.profiles[i]

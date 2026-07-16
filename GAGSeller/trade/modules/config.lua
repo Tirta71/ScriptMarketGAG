@@ -15,6 +15,10 @@ return function(ctx)
 		profiles         = {},
 		webhookUrl       = "",
 		webhookEnabled   = false,
+		relocateEnabled    = false,
+		relocateIdleMin    = 20,
+		relocateMinPlayers = 10,
+		relocatePreferred  = 20,
 	}
 	for i = 1, NUM_PROFILES do
 		CFG.profiles[i] = { listings = {} }
@@ -47,6 +51,10 @@ return function(ctx)
 			CFG.autoSell        = st.autoSell or false
 			CFG.webhookUrl      = st.webhookUrl or ""
 			CFG.webhookEnabled  = st.webhookEnabled or false
+			CFG.relocateEnabled    = st.relocateEnabled or false
+			if st.relocateIdleMin    ~= nil then CFG.relocateIdleMin    = tonumber(st.relocateIdleMin) or 20 end
+			if st.relocateMinPlayers ~= nil then CFG.relocateMinPlayers = tonumber(st.relocateMinPlayers) or 10 end
+			if st.relocatePreferred  ~= nil then CFG.relocatePreferred  = tonumber(st.relocatePreferred) or 20 end
 			if type(st.profiles) == "table" then
 				for i = 1, NUM_PROFILES do
 					local sp = st.profiles[i] or st.profiles[tostring(i)]
