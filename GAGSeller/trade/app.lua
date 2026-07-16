@@ -8,7 +8,7 @@ return function(ctx)
 
 	------------------------------------------------------------------ Default page
 	pages["Sell"].Visible = true
-	tabBtns["Sell"].btn.BackgroundTransparency = 0.9
+	tabBtns["Sell"].btn.BackgroundTransparency = 0.86
 	tabBtns["Sell"].btn.TextColor3 = C.txt
 	tabBtns["Sell"].line.Visible = true
 

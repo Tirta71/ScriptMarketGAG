@@ -41,8 +41,9 @@ return function(ctx)
 		mk("TextLabel", { Size = UDim2.new(1, 0, 0, 14), Position = UDim2.fromOffset(0, 20), BackgroundTransparency = 1, Text = desc or "", Font = Enum.Font.Gotham, TextSize = 9, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left }, txts)
 
 		local box = mk("TextBox", { Size = UDim2.fromOffset(110, 26), Position = UDim2.new(1, -112, 0.5, -13), BackgroundColor3 = C.panel, Text = tostring(getv()), Font = Enum.Font.GothamMedium, TextSize = 12, TextColor3 = C.acc, ClearTextOnFocus = false }, row)
-		corner(box, 6); stroke(box)
-		box.FocusLost:Connect(function() setv(box.Text); box.Text = tostring(getv()) end)
+		corner(box, 6); local bs = stroke(box)
+		box.Focused:Connect(function() game:GetService("TweenService"):Create(bs, TweenInfo.new(0.15), { Color = C.acc }):Play() end)
+		box.FocusLost:Connect(function() game:GetService("TweenService"):Create(bs, TweenInfo.new(0.15), { Color = C.stroke }):Play(); setv(box.Text); box.Text = tostring(getv()) end)
 		return box
 	end
 
@@ -183,11 +184,19 @@ return function(ctx)
 		return head
 	end
 
-	----------------------------------------------------------------- button
+	----------------------------------------------------------------- button (premium)
+	local TS = game:GetService("TweenService")
 	local function makeButton(parent, title, color, onClick, order)
-		local btn = mk("TextButton", { Size = UDim2.new(1, 0, 0, 36), BackgroundColor3 = color or C.acc, Text = title, Font = Enum.Font.GothamBold, TextSize = 13, TextColor3 = Color3.new(1, 1, 1), LayoutOrder = order }, parent)
-		corner(btn, 6); stroke(btn, C.stroke)
-		btn.MouseButton1Click:Connect(onClick)
+		local base = color or C.acc
+		local btn = mk("TextButton", { Size = UDim2.new(1, 0, 0, 38), BackgroundColor3 = base, Text = "", AutoButtonColor = false, LayoutOrder = order }, parent)
+		corner(btn, 8); stroke(btn, base:Lerp(Color3.new(1, 1, 1), 0.15), 1)
+		local grad = mk("UIGradient", { Rotation = 25, Color = ColorSequence.new(base:Lerp(Color3.new(1, 1, 1), 0.18), base:Lerp(Color3.new(0, 0, 0), 0.12)) }, btn)
+		mk("TextLabel", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = title, Font = Enum.Font.GothamBold, TextSize = 13, TextColor3 = Color3.new(1, 1, 1) }, btn)
+		btn.MouseEnter:Connect(function() TS:Create(grad, TweenInfo.new(0.3), { Rotation = 205 }):Play() end)
+		btn.MouseLeave:Connect(function() TS:Create(grad, TweenInfo.new(0.3), { Rotation = 25 }):Play() end)
+		btn.MouseButton1Down:Connect(function() TS:Create(btn, TweenInfo.new(0.08), { Size = UDim2.new(1, 0, 0, 36) }):Play() end)
+		btn.MouseButton1Up:Connect(function() TS:Create(btn, TweenInfo.new(0.12, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = UDim2.new(1, 0, 0, 38) }):Play() end)
+		if onClick then btn.MouseButton1Click:Connect(onClick) end
 		return btn
 	end
 
@@ -200,7 +209,11 @@ return function(ctx)
 
 		local head = mk("TextButton", { Size = UDim2.new(1, 0, 0, 44), BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 1, Text = "", AutoButtonColor = false, LayoutOrder = 1 }, container)
 		corner(head, 8)
-		pad(head, 12, 12, 0, 0)
+
+		-- accent bar kiri (muncul saat terbuka)
+		local accent = mk("Frame", { Size = UDim2.fromOffset(3, 0), Position = UDim2.new(0, 0, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundColor3 = C.acc, BorderSizePixel = 0 }, head)
+		corner(accent, 2)
+		pad(head, 14, 12, 0, 0)
 
 		local lbl = mk("TextLabel", { Size = UDim2.new(1, -30, 1, 0), BackgroundTransparency = 1, Text = title, Font = Enum.Font.GothamMedium, TextSize = 13, TextColor3 = C.txt, TextXAlignment = Enum.TextXAlignment.Left }, head)
 		local arrow = mk("TextLabel", { Size = UDim2.fromOffset(12, 12), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(1, -6, 0.5, 0), BackgroundTransparency = 1, Text = "v", Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Center }, head)
@@ -220,8 +233,12 @@ return function(ctx)
 		head.MouseButton1Click:Connect(function()
 			body.Visible = not body.Visible
 			line.Visible = body.Visible
-			local targetRotation = body.Visible and 180 or 0
+			local open = body.Visible
+			local targetRotation = open and 180 or 0
 			TS:Create(arrow, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Rotation = targetRotation }):Play()
+			TS:Create(arrow, TweenInfo.new(0.2), { TextColor3 = open and C.acc or C.sub }):Play()
+			TS:Create(lbl, TweenInfo.new(0.2), { TextColor3 = open and C.acc or C.txt }):Play()
+			TS:Create(accent, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.fromOffset(3, open and 22 or 0) }):Play()
 		end)
 		return body
 	end
@@ -234,15 +251,19 @@ return function(ctx)
 		local tabBtns         = ctx.ui.tabBtns
 
 		local btn = mk("TextButton", {
-			Size = UDim2.new(1, 0, 0, 36), BackgroundColor3 = Color3.fromRGB(0, 0, 0), BackgroundTransparency = 1,
+			Size = UDim2.new(1, 0, 0, 36), BackgroundColor3 = C.acc, BackgroundTransparency = 1,
 			Text = "     " .. iconLabel .. " | " .. name, Font = Enum.Font.GothamMedium, TextSize = 12, TextColor3 = C.sub,
 			LayoutOrder = order, AutoButtonColor = false, TextXAlignment = Enum.TextXAlignment.Left
 		}, tabButtonsFrame)
-		corner(btn, 6)
+		corner(btn, 8)
 
 		local line = mk("Frame", { Size = UDim2.new(0, 3, 0, 18), Position = UDim2.new(0, 4, 0.5, -9), BackgroundColor3 = C.acc, Visible = false }, btn)
 		corner(line, 2)
 		tabBtns[name] = { btn = btn, line = line }
+
+		-- hover halus buat tab non-aktif
+		btn.MouseEnter:Connect(function() if not line.Visible then TS:Create(btn, TweenInfo.new(0.18), { BackgroundTransparency = 0.94 }):Play() end end)
+		btn.MouseLeave:Connect(function() if not line.Visible then TS:Create(btn, TweenInfo.new(0.18), { BackgroundTransparency = 1 }):Play() end end)
 
 		local pg = mk("ScrollingFrame", {
 			Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Visible = false, ScrollBarThickness = 4,
@@ -257,9 +278,10 @@ return function(ctx)
 		btn.MouseButton1Click:Connect(function()
 			for n, p in pairs(pages) do p.Visible = (n == name) end
 			for n, b in pairs(tabBtns) do
-				b.btn.BackgroundTransparency = (n == name) and 0.9 or 1
-				b.btn.TextColor3 = (n == name) and C.txt or C.sub
-				b.line.Visible = (n == name)
+				local on = (n == name)
+				TS:Create(b.btn, TweenInfo.new(0.18), { BackgroundTransparency = on and 0.86 or 1 }):Play()
+				b.btn.TextColor3 = on and C.txt or C.sub
+				b.line.Visible = on
 			end
 		end)
 		return pg
