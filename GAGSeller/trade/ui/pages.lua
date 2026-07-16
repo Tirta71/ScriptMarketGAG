@@ -110,16 +110,26 @@ return function(ctx)
 	------------------------------------------------------------------ INVENTORY PAGE
 	local invPage = makePage("Inventory", "Inventory Tracker", "🎒", 5)
 
-	local countBox = mk("Frame", { Size = UDim2.new(1, 0, 0, 160), BackgroundColor3 = C.row, LayoutOrder = 1 }, invPage)
+	local countBox = mk("Frame", { Size = UDim2.new(1, 0, 0, 230), BackgroundColor3 = C.row, LayoutOrder = 1 }, invPage)
 	corner(countBox, 8); stroke(countBox)
 	pad(countBox, 12, 12, 12, 12)
 
 	local countLbl = mk("TextLabel", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = "", Font = Enum.Font.Code, TextSize = 12, TextColor3 = C.txt, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true }, countBox)
 
+	-- format angka dgn pemisah ribuan (1234567 -> 1.234.567)
+	local function fmt(n)
+		local s = tostring(math.floor(tonumber(n) or 0))
+		local k
+		while true do s, k = s:gsub("^(-?%d+)(%d%d%d)", "%1.%2"); if k == 0 then break end end
+		return s
+	end
+
 	local function renderInventory()
 		local summary, total = ctx.buildSummary()
 		local tok = ctx.getTokens()
-		countLbl.Text = ("📊 Ringkasan Inventory (%d target dicari):\n%s\n\n💰 Saldo Token: %s Tokens"):format(total, summary, tostring(tok))
+		local gross, net, cnt = ctx.estimateSales()
+		countLbl.Text = ("📊 Ringkasan Inventory (%d target dicari):\n%s\n\n💰 Saldo Token: %s\n\n🏷️ Estimasi Penjualan (%d pet cocok listing):\n   Kotor : %s Token\n   Bersih: %s Token (fee 2%%)"):format(
+			total, summary, fmt(tok), cnt, fmt(gross), fmt(net))
 	end
 	ctx.renderInventory = renderInventory
 

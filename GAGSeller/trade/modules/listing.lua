@@ -204,6 +204,61 @@ return function(ctx)
 		return total
 	end
 
+	----------------------------------------------------------------- estimasi penjualan
+	-- Cocokkan inventory ke tiap listing (type+mut+weight), cap per Max Listings, kali Price.
+	-- Anti double-count antar listing. Return: total kotor, bersih (fee 2%), jumlah pet.
+	local function estimateSales()
+		local ok, data = pcall(function() return DataService:GetData() end)
+		if not ok or not (data and data.PetsData and data.PetsData.PetInventory) then return 0, 0, 0 end
+		local pets  = data.PetsData.PetInventory.Data
+		local locks = (data.TradeData and data.TradeData.TradeLocks and data.TradeData.TradeLocks.Pet) or {}
+		local equippedSet = {}
+		if data.PetsData.EquippedPets then
+			for _, u in ipairs(data.PetsData.EquippedPets) do equippedSet[u] = true end
+		end
+
+		local function petMatches(petType, pd, sub)
+			if not (sub.pets[petType] or sub.pets[comboKey(petType, pd.HatchedFrom or "?")]) then return false end
+			local mut = mutDisplay(pd.MutationType)
+			local mutOK
+			if not next(sub.muts) then mutOK = (mut == "None") else mutOK = sub.muts[mut] == true end
+			if not mutOK then return false end
+			local w = weightOf(petType, pd)
+			local minW = (sub.minW or 0) > 0 and (sub.minW - 0.5) or 0
+			local maxW = (sub.maxW or 0) > 0 and (sub.maxW - 0.5) or 0
+			return (w >= minW) and (maxW <= 0 or w <= maxW)
+		end
+
+		local total, count, claimed = 0, 0, {}
+		for pi = 1, NUM_PROFILES do
+			local prof = CFG.profiles[pi]
+			if prof and type(prof.listings) == "table" then
+				for li = 1, NUM_LISTINGS do
+					local sub = prof.listings[li]
+					local cap = sub and sub.maxList
+					if sub and next(sub.pets) and (sub.price or 0) > 0 and cap and cap > 0 then
+						local n = 0
+						for uuid, v in pairs(pets) do
+							if n >= cap then break end
+							local pd = v.PetData
+							if v.PetType and pd and not pd.IsFavorite and not locks[uuid]
+								and not equippedSet[uuid] and not claimed[uuid] then
+								if petMatches(v.PetType, pd, sub) then
+									claimed[uuid] = true
+									n = n + 1
+									total = total + math.floor(sub.price)
+									count = count + 1
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+		return total, math.floor(total * 0.98), count
+	end
+	ctx.estimateSales = estimateSales
+
 	----------------------------------------------------------------- main loop
 	local function anyProfileActive()
 		for i = 1, NUM_PROFILES do
