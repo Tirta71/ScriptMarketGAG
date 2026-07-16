@@ -139,8 +139,8 @@ return function(ctx)
 
 	----------------------------------------------------------------- aksi tunggal (reusable)
 	-- Claim reward (TP ke Sam dulu). return true kalau di-fire.
+	-- ClaimReward TIDAK butuh dekat Sam (server ga cek jarak) -> ga usah TP.
 	function ctx.samClaimOnce()
-		teleportToSam(); task.wait(0.3)
 		setStatus("Summer: claim reward...")
 		pcall(function() SamRE:FireServer("ClaimReward") end)
 		task.wait(3)
