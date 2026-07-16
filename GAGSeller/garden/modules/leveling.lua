@@ -324,24 +324,37 @@ return function(ctx)
 		ctx.state.levelingStatus = "Idle"
 	end
 
-	function ctx.startLeveling() task.spawn(levelingLoop) end
+	function ctx.startLeveling()
+		if ctx.cancelClearGarden then ctx.cancelClearGarden() end -- batalkan clear tertunda
+		task.spawn(levelingLoop) -- loop set firstRun=true -> reset garden + equip team
+	end
+
+	-- Batalkan clearGarden yang mungkin lagi jalan (dipanggil saat fitur di-ENABLE lagi,
+	-- biar pet team yang baru dipasang ga ke-unequip balik oleh clear yang tertunda).
+	function ctx.cancelClearGarden()
+		ctx.state.clearGardenId = (ctx.state.clearGardenId or 0) + 1
+	end
 
 	-- Lepas SEMUA pet dari garden (dipakai stop leveling/mutation/cleanse, mirror elephant).
 	function ctx.clearGarden(label)
+		ctx.state.clearGardenId = (ctx.state.clearGardenId or 0) + 1
+		local myGen = ctx.state.clearGardenId
 		task.spawn(function()
 			if ctx.setStatus then ctx.setStatus((label or "Clear") .. ": lepas pet dari garden...") end
 			task.wait(0.3)
 			for _ = 1, 30 do
+				if ctx.state.clearGardenId ~= myGen then return end -- dibatalkan (fitur di-enable lagi)
 				local ok, d = pcall(function() return DataService:GetData() end)
 				local eq = ok and d and d.PetsData and d.PetsData.EquippedPets or {}
 				if #eq == 0 then break end
 				for _, uuid in ipairs(eq) do
+					if ctx.state.clearGardenId ~= myGen then return end
 					pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
 					task.wait(0.2)
 				end
 				task.wait(0.4)
 			end
-			if ctx.setStatus then ctx.setStatus((label or "Clear") .. ": garden kosong.") end
+			if ctx.state.clearGardenId == myGen and ctx.setStatus then ctx.setStatus((label or "Clear") .. ": garden kosong.") end
 		end)
 	end
 

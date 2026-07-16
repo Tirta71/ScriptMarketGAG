@@ -201,7 +201,10 @@ return function(ctx)
 		ctx.state.elephantStatus = "Idle"
 	end
 
-	function ctx.startElephant() task.spawn(elephantLoop) end
+	function ctx.startElephant()
+		if ctx.cancelClearGarden then ctx.cancelClearGarden() end -- batalkan clear tertunda dari fitur lain
+		task.spawn(elephantLoop)
+	end
 
 	-- Matikan: hentikan loop lalu CABUT SEMUA pet dari garden sampai kosong total.
 	function ctx.stopElephant()

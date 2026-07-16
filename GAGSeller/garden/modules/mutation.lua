@@ -458,7 +458,10 @@ return function(ctx)
 		ctx.state.mutationPhase = "Idle"
 	end
 
-	function ctx.startMutation() task.spawn(mutationLoop) end
+	function ctx.startMutation()
+		if ctx.cancelClearGarden then ctx.cancelClearGarden() end
+		task.spawn(mutationLoop)
+	end
 
 	function ctx.stopMutation()
 		ctx.state.mutationId = (ctx.state.mutationId or 0) + 1 -- matikan loop

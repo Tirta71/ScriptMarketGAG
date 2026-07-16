@@ -261,7 +261,10 @@ return function(ctx)
 		ctx.state.cleansePhase = "Idle"
 	end
 
-	function ctx.startCleanse() task.spawn(cleanseLoop) end
+	function ctx.startCleanse()
+		if ctx.cancelClearGarden then ctx.cancelClearGarden() end -- batalkan clear tertunda
+		task.spawn(cleanseLoop) -- loop set firstRun=true -> reset garden + equip team aura
+	end
 
 	function ctx.stopCleanse()
 		ctx.state.cleanseId = (ctx.state.cleanseId or 0) + 1 -- matikan loop
