@@ -209,10 +209,6 @@ return function(ctx)
 
 		local head = mk("TextButton", { Size = UDim2.new(1, 0, 0, 44), BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 1, Text = "", AutoButtonColor = false, LayoutOrder = 1 }, container)
 		corner(head, 8)
-
-		-- accent bar kiri (muncul saat terbuka)
-		local accent = mk("Frame", { Size = UDim2.fromOffset(3, 0), Position = UDim2.new(0, 0, 0.5, 0), AnchorPoint = Vector2.new(0, 0.5), BackgroundColor3 = C.acc, BorderSizePixel = 0 }, head)
-		corner(accent, 2)
 		pad(head, 14, 12, 0, 0)
 
 		local lbl = mk("TextLabel", { Size = UDim2.new(1, -30, 1, 0), BackgroundTransparency = 1, Text = title, Font = Enum.Font.GothamMedium, TextSize = 13, TextColor3 = C.txt, TextXAlignment = Enum.TextXAlignment.Left }, head)
@@ -238,7 +234,6 @@ return function(ctx)
 			TS:Create(arrow, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Rotation = targetRotation }):Play()
 			TS:Create(arrow, TweenInfo.new(0.2), { TextColor3 = open and C.acc or C.sub }):Play()
 			TS:Create(lbl, TweenInfo.new(0.2), { TextColor3 = open and C.acc or C.txt }):Play()
-			TS:Create(accent, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.fromOffset(3, open and 22 or 0) }):Play()
 		end)
 		return body
 	end
