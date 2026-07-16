@@ -31,6 +31,25 @@ return function(ctx)
 		table.sort(PET_OPTIONS)
 	end
 
+	----------------------------------------------------------------- PET_COMBO_OPTIONS (Pet - Egg)
+	-- Bedakan pet per egg (premium vs biasa). Dipakai snipe biar bisa target spesifik.
+	local PET_COMBO_OPTIONS = {}
+	do
+		local seen = {}
+		for eggName, egg in pairs(PetEggs) do
+			local items = egg.RarityData and egg.RarityData.Items
+			if items then
+				for petName in pairs(items) do
+					if not tostring(petName):match("^Egg/") then
+						local k = comboKey(petName, eggName)
+						if not seen[k] then seen[k] = true; PET_COMBO_OPTIONS[#PET_COMBO_OPTIONS + 1] = k end
+					end
+				end
+			end
+		end
+		table.sort(PET_COMBO_OPTIONS)
+	end
+
 	----------------------------------------------------------------- MUT_OPTIONS
 	local MUT_OPTIONS, seenMut = { "None" }, { None = true }
 	for _, name in pairs(EnumToMut) do
@@ -57,10 +76,11 @@ return function(ctx)
 	end
 
 	ctx.reg = {
-		comboKey     = comboKey,
-		mutDisplay   = mutDisplay,
-		PET_OPTIONS  = PET_OPTIONS,
-		MUT_OPTIONS  = MUT_OPTIONS,
-		SKIN_OPTIONS = SKIN_OPTIONS,
+		comboKey          = comboKey,
+		mutDisplay        = mutDisplay,
+		PET_OPTIONS       = PET_OPTIONS,
+		PET_COMBO_OPTIONS = PET_COMBO_OPTIONS,
+		MUT_OPTIONS       = MUT_OPTIONS,
+		SKIN_OPTIONS      = SKIN_OPTIONS,
 	}
 end

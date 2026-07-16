@@ -58,10 +58,11 @@ return function(ctx)
 					local p  = it and it.PetData
 					if p and it.PetType then
 						local disp = mutDisplay(p.MutationType)
+						local key  = comboKey(it.PetType, p.HatchedFrom or "?")
 						for pi = 1, NUM do
 							local prof = CFG.snipeProfiles[pi]
-							-- match by pet TYPE (dropdown = nama pet)
-							if prof and next(prof.pets) and prof.pets[it.PetType] then
+							-- match by kombinasi Pet - Egg (bedakan egg premium vs biasa)
+							if prof and next(prof.pets) and prof.pets[key] then
 								local mutOK   = (not next(prof.muts)) or prof.muts[disp]
 								local priceOK = (prof.maxPrice or 0) <= 0 or l.Price <= prof.maxPrice
 								if mutOK and priceOK then
@@ -101,7 +102,8 @@ return function(ctx)
 	local function snipeSelectedTypes()
 		local set, order = {}, {}
 		for pi = 1, NUM do
-			for pt in pairs(CFG.snipeProfiles[pi].pets) do
+			for petKey in pairs(CFG.snipeProfiles[pi].pets) do
+				local pt = (string.split(petKey, " - ")[1]) or petKey -- ambil nama pet dari kombo
 				if not set[pt] then set[pt] = true; order[#order + 1] = pt end
 			end
 		end
@@ -173,7 +175,8 @@ return function(ctx)
 
 		local searchTargets, seen = {}, {}
 		for pi = 1, NUM do
-			for pt in pairs(CFG.snipeProfiles[pi].pets) do
+			for petKey in pairs(CFG.snipeProfiles[pi].pets) do
+				local pt = (string.split(petKey, " - ")[1]) or petKey -- FindSellers butuh nama pet
 				if not seen[pt] then seen[pt] = true; searchTargets[#searchTargets + 1] = pt end
 			end
 		end

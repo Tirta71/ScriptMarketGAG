@@ -152,7 +152,7 @@ return function(ctx)
 	for i = 1, NUM_SNIPE do
 		local prof = CFG.snipeProfiles[i]
 		local body = makeAccordion(buyPage, "Snipe " .. i, 3 + i)
-		makeDropdown(body, "Pet Types [Snipe " .. i .. "]", "Pilih pet (urutan profil = prioritas)", reg.PET_OPTIONS, prof.pets, function() persistState(); refreshSnipeStatus() end, 1)
+		makeDropdown(body, "Pet Types [Snipe " .. i .. "]", "Pilih pet per egg (premium/biasa). Urutan profil = prioritas", reg.PET_COMBO_OPTIONS, prof.pets, function() persistState(); refreshSnipeStatus() end, 1)
 		makeDropdown(body, "Mutation [Snipe " .. i .. "]", "Kosong = semua mutasi", reg.MUT_OPTIONS, prof.muts, function() persistState() end, 2)
 		makeInput(body, "Max Price [Snipe " .. i .. "]", "0 = tanpa batas harga (Tokens)", function() return prof.maxPrice or 0 end, function(txt) local n = tonumber(txt); prof.maxPrice = (n and n >= 0) and math.floor(n) or 0; persistState(); refreshSnipeStatus() end, 3)
 	end
