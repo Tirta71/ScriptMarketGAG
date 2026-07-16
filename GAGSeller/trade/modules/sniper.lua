@@ -22,7 +22,10 @@ return function(ctx)
 	local NUM = ctx.NUM_SNIPE or 5
 	local function log(m) ctx.log(m) end
 	local function setStatus(s) ctx.setStatus(s) end
-	local function running() return ctx.state.snipeRunning == true end
+	-- running = toggle ON DAN GUI instance ini masih hidup. Cek ctx.alive() penting:
+	-- kalau hub ke-load 2x (auto-exec + queue_on_teleport), instance lama yang GUI-nya
+	-- di-destroy langsung berhenti -> ga ada dobel sniper.
+	local function running() return ctx.state.snipeRunning == true and ctx.alive() end
 
 	local ROUTER = "loadstring(game:HttpGet('https://raw.githubusercontent.com/Tirta71/ScriptMarketGAG/main/GAGSeller/init.lua'))()"
 
