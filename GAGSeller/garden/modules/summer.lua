@@ -190,7 +190,22 @@ return function(ctx)
 				task.wait(math.clamp(left, 5, 30))
 			else
 				local ok, why = ctx.samSubmitOnce()
-				if not ok then setStatus("Summer: " .. tostring(why)); task.wait(5) end
+				if ok then
+					-- Konfirmasi submit beneran kebaca server sebelum lanjut.
+					-- Anti double-feed: kalau replikasi telat, JANGAN submit pet kedua.
+					local confirmed = false
+					for _ = 1, 8 do
+						local s2 = getSamState()
+						if s2 and (s2.IsRunning or s2.SubmittedPet ~= nil or s2.RewardReady) then confirmed = true; break end
+						task.wait(1)
+					end
+					if not confirmed then
+						setStatus("Summer: submit belum kebaca, tunggu...")
+						task.wait(2)
+					end
+				else
+					setStatus("Summer: " .. tostring(why)); task.wait(5)
+				end
 			end
 		end
 	end

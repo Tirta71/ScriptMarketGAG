@@ -83,6 +83,13 @@ return function(ctx)
 		ctx.log("Auto-resume: Cleanse ON.")
 	end
 
+	-- auto-resume Summer Event (Sam The Clam) kalau sebelumnya aktif
+	if CFG.summerEventEnabled and ctx.startSummerEvent then
+		task.wait(2.5)
+		ctx.startSummerEvent()
+		ctx.log("Auto-resume: Summer Event ON.")
+	end
+
 	-- auto-resume Shop (buy seed/egg/gear)
 	if CFG.buySeedEnabled and ctx.startBuySeed then ctx.startBuySeed(); ctx.log("Auto-resume: Buy Seed ON.") end
 	if CFG.buyEggEnabled and ctx.startBuyEgg then ctx.startBuyEgg(); ctx.log("Auto-resume: Buy Egg ON.") end
