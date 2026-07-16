@@ -59,21 +59,18 @@ return function(ctx)
 		return { state = state, timer = timer, reward = reward, submitted = submitted }
 	end
 
-	-- daftar tipe pet unik dari INVENTORY buat dropdown.
-	-- Sekaligus auto-prune: tipe yang sudah TIDAK ADA di inventory dibuang dari pilihan
-	-- (biar ga nyangkut kepilih padahal pet-nya habis).
+	-- daftar tipe pet buat dropdown Summer.
+	-- TIDAK di-prune: pilihan tetap dipertahankan walau pet-nya lagi 0 di inventory,
+	-- biar loop bisa retry sampai pet muncul lagi. Tipe yang dipilih tapi lagi habis
+	-- tetap ditampilkan (ditandai "(0 di inventory)") biar keliatan masih kepilih.
 	function ctx.getSummerPetTypes(selectedSet)
 		local opts = ctx.getInventoryPetTypes and ctx.getInventoryPetTypes(selectedSet) or {}
-		-- PENTING: cuma prune kalau data inventory beneran ke-load (opts tidak kosong).
-		-- Kalau kosong bisa jadi data belum siap -> jangan buang pilihan valid.
-		if #opts > 0 then
-			local avail = {}
-			for _, o in ipairs(opts) do avail[o.value] = true end
-			local changed = false
-			for t in pairs(CFG.summerPetTypes or {}) do
-				if not avail[t] then CFG.summerPetTypes[t] = nil; changed = true end
+		local shown = {}
+		for _, o in ipairs(opts) do shown[o.value] = true end
+		for t in pairs(CFG.summerPetTypes or {}) do
+			if not shown[t] then
+				opts[#opts + 1] = { value = t, display = t .. " (0 di inventory)" }
 			end
-			if changed and ctx.persistState then ctx.persistState() end
 		end
 		return opts
 	end
