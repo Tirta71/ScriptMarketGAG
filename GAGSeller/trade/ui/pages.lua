@@ -75,17 +75,36 @@ return function(ctx)
 		local prof = CFG.profiles[i]
 		local profPage = makePage("Profile " .. i, "Listing Pets Profile " .. i, "📋", i + 1)
 
+		local clearers = {} -- reset tiap listing (dipakai tombol Clear All)
+
 		for j = 1, NUM_LISTINGS do
 			local sub = prof.listings[j]
 			local listBody = makeAccordion(profPage, "Listing " .. j, j)
 
-			makeDropdown(listBody, "Pet Types [Listing " .. j .. "]", "Select pet types to list", reg.PET_OPTIONS, sub.pets, function() persistState() end, 1)
-			makeDropdown(listBody, "Mutation [Listing " .. j .. "]", "Empty = non-mutated only, select = must have mutation", reg.MUT_OPTIONS, sub.muts, function() persistState() end, 2)
-			makeInput(listBody, "Min Weight [Listing " .. j .. "]", "Minimum weight filter (KG)", function() return sub.minW or 0 end, function(txt) local n = tonumber(txt); sub.minW = (n and n >= 0) and n or 0; persistState() end, 3)
-			makeInput(listBody, "Max Weight [Listing " .. j .. "]", "Maximum weight filter (KG)", function() return sub.maxW or 0 end, function(txt) local n = tonumber(txt); sub.maxW = (n and n >= 0) and n or 0; persistState() end, 4)
-			makeInput(listBody, "Max Listings [Listing " .. j .. "]", "Maximum number of listings for this profile", function() return sub.maxList or 0 end, function(txt) local n = tonumber(txt); sub.maxList = (n and n >= 0) and math.floor(n) or 0; persistState() end, 5)
-			makeInput(listBody, "Price [Listing " .. j .. "]", "Price per listing (Tokens)", function() return sub.price or 100 end, function(txt) local n = tonumber(txt); sub.price = (n and n >= 0) and math.floor(n) or 0; persistState() end, 6)
+			local petRefresh = makeDropdown(listBody, "Pet Types [Listing " .. j .. "]", "Select pet types to list", reg.PET_OPTIONS, sub.pets, function() persistState() end, 1)
+			local mutRefresh = makeDropdown(listBody, "Mutation [Listing " .. j .. "]", "Empty = non-mutated only, select = must have mutation", reg.MUT_OPTIONS, sub.muts, function() persistState() end, 2)
+			local minWBox = makeInput(listBody, "Min Weight [Listing " .. j .. "]", "Minimum weight filter (KG)", function() return sub.minW or 0 end, function(txt) local n = tonumber(txt); sub.minW = (n and n >= 0) and n or 0; persistState() end, 3)
+			local maxWBox = makeInput(listBody, "Max Weight [Listing " .. j .. "]", "Maximum weight filter (KG)", function() return sub.maxW or 0 end, function(txt) local n = tonumber(txt); sub.maxW = (n and n >= 0) and n or 0; persistState() end, 4)
+			local maxListBox = makeInput(listBody, "Max Listings [Listing " .. j .. "]", "Maximum number of listings for this profile", function() return sub.maxList or 0 end, function(txt) local n = tonumber(txt); sub.maxList = (n and n >= 0) and math.floor(n) or 0; persistState() end, 5)
+			local priceBox = makeInput(listBody, "Price [Listing " .. j .. "]", "Price per listing (Tokens)", function() return sub.price or 100 end, function(txt) local n = tonumber(txt); sub.price = (n and n >= 0) and math.floor(n) or 0; persistState() end, 6)
+
+			clearers[#clearers + 1] = function()
+				for k in pairs(sub.pets) do sub.pets[k] = nil end
+				for k in pairs(sub.muts) do sub.muts[k] = nil end
+				sub.minW, sub.maxW, sub.maxList, sub.price = 0, 0, 0, 100
+				petRefresh(); mutRefresh()
+				minWBox.Text = tostring(sub.minW)
+				maxWBox.Text = tostring(sub.maxW)
+				maxListBox.Text = tostring(sub.maxList)
+				priceBox.Text = tostring(sub.price)
+			end
 		end
+
+		makeButton(profPage, "Clear All (Profile " .. i .. ")", C.red, function()
+			for _, clr in ipairs(clearers) do clr() end
+			persistState()
+			log(("Profile %d dibersihkan."):format(i))
+		end, NUM_LISTINGS + 1)
 	end
 
 	------------------------------------------------------------------ INVENTORY PAGE

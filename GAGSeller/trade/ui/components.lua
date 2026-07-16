@@ -79,6 +79,7 @@ return function(ctx)
 
 		local built = false
 		local optBtns = {}
+		local rends = {} -- render checkmark tiap opsi (buat refresh dari luar, mis. Clear All)
 		-- Selected-first: yang dipilih (✓) di paling atas.
 		local function reorder()
 			local i = 0
@@ -103,6 +104,7 @@ return function(ctx)
 				end)
 				rend()
 				optBtns[opt] = ob
+				rends[#rends + 1] = rend
 			end
 			reorder()
 		end
@@ -117,7 +119,14 @@ return function(ctx)
 			if listFrame.Visible then reorder() end
 		end)
 		updateSummary()
-		return updateSummary
+		-- refresh: sinkronin tampilan (checkmark + summary) dengan isi selSet terkini.
+		-- Dipakai Clear All: setelah selSet dikosongkan, panggil ini biar centang ilang.
+		local function refresh()
+			for _, r in ipairs(rends) do r() end
+			updateSummary()
+			if built then reorder() end
+		end
+		return refresh
 	end
 
 	----------------------------------------------------------------- single dropdown
