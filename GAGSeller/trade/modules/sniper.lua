@@ -150,14 +150,14 @@ return function(ctx)
 
 	------------------------------------------------------------------ server hop (cari seller)
 	local HOP_FILE = "AllegiaanHub_snipehops.json"
-	local HOP_TTL  = 120
+	local function revisitTTL() return math.max(5, math.floor(tonumber(CFG.snipeRevisitSec) or 120)) end
 	local visited  = {}
 	do
 		if type(isfile) == "function" and isfile(HOP_FILE) then
 			local ok, d = pcall(function() return HttpService:JSONDecode(readfile(HOP_FILE)) end)
 			if ok and type(d) == "table" then
-				local now = os.time()
-				for job, ts in pairs(d) do if type(ts) == "number" and (now - ts) < HOP_TTL then visited[job] = ts end end
+				local now, ttl = os.time(), revisitTTL()
+				for job, ts in pairs(d) do if type(ts) == "number" and (now - ts) < ttl then visited[job] = ts end end
 			end
 		end
 	end
@@ -168,9 +168,9 @@ return function(ctx)
 	-- Prune TTL secara real-time (bukan cuma saat load) -> "semua visited" self-heal
 	-- setelah 2 menit walau ga reload, jadi server lama bisa dikunjungi lagi.
 	local function pruneVisited()
-		local now = os.time()
+		local now, ttl = os.time(), revisitTTL()
 		for job, ts in pairs(visited) do
-			if type(ts) ~= "number" or (now - ts) >= HOP_TTL then visited[job] = nil end
+			if type(ts) ~= "number" or (now - ts) >= ttl then visited[job] = nil end
 		end
 	end
 
