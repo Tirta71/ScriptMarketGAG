@@ -31,22 +31,6 @@ return function(ctx)
 	end)
 
 	----------------------------------------------------------------- helpers
-	-- Cari RootPart Sam The Clam & TP karakter ke dekatnya (biar remote lolos cek jarak server).
-	local function teleportToSam()
-		local sam = workspace:FindFirstChild("Interaction")
-		sam = sam and sam:FindFirstChild("UpdateItems")
-		sam = sam and sam:FindFirstChild("Sam The Clam")
-		local mdl = sam and sam:FindFirstChild("Sam the Clam")
-		local root = mdl and (mdl:FindFirstChild("RootPart") or mdl.PrimaryPart or mdl:FindFirstChildWhichIsA("BasePart"))
-		local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-		if root and hrp then
-			-- berdiri ~8 stud di depan Sam
-			pcall(function() hrp.CFrame = CFrame.new(root.Position + Vector3.new(0, 3, -8)) end)
-			return true
-		end
-		return false
-	end
-
 	local function getSamState()
 		local ok, d = pcall(function() return DataService:GetData() end)
 		if not ok or not d then return nil end
@@ -154,7 +138,8 @@ return function(ctx)
 		if not pick then return false, why or "no pet" end
 		local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
 		if not hum then return false, "no humanoid" end
-		teleportToSam(); task.wait(0.3)
+		-- Submit TIDAK butuh dekat Sam (server ga cek jarak, sudah dites live).
+		-- Yang wajib cuma megang pet-nya (EquipTool).
 		pcall(function() hum:EquipTool(pick.tool) end)
 		task.wait(0.5)
 		local held = LP.Character and LP.Character:FindFirstChildWhichIsA("Tool")
