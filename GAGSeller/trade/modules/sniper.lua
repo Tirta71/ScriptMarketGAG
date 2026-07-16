@@ -174,25 +174,42 @@ return function(ctx)
 		end
 	end
 
-	-- Fallback: server publik dengan pemain >= minPop, belum divisit, ada slot -> acak.
-	local function getBusyServer(minPop)
+	-- Ambil BANYAK server publik (paginate) biar kolam kandidat besar -> ga muter server itu2.
+	local function fetchAllServers()
 		local reqFn = (syn and syn.request) or (http and http.request) or http_request or request
 		if not reqFn then return nil end
-		local url = ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100"):format(game.PlaceId)
-		local ok, res = pcall(reqFn, { Url = url, Method = "GET" })
-		if not ok or not res or not res.Body then return nil end
-		local ok2, data = pcall(function() return HttpService:JSONDecode(res.Body) end)
-		if not ok2 or type(data) ~= "table" or type(data.data) ~= "table" then return nil end
-		local cand = {}
-		for _, s in ipairs(data.data) do
+		local all, cursor, tries = {}, nil, 0
+		repeat
+			local url = ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100"):format(game.PlaceId)
+			if cursor then url = url .. "&cursor=" .. cursor end
+			local ok, res = pcall(reqFn, { Url = url, Method = "GET" })
+			if not ok or not res or not res.Body then break end
+			local ok2, data = pcall(function() return HttpService:JSONDecode(res.Body) end)
+			if not ok2 or type(data) ~= "table" or type(data.data) ~= "table" then break end
+			for _, s in ipairs(data.data) do all[#all + 1] = s end
+			cursor = data.nextPageCursor
+			tries = tries + 1
+		until not cursor or tries >= 10 or #all >= 400
+		return all
+	end
+
+	-- Pilih server acak: prioritas pemain >= minPop; kalau ga ada, ambil APA PUN yang
+	-- belum divisit & ada slot (biar selalu gerak, ga nyangkut/ngulang server sama).
+	local function getBusyServer(minPop)
+		local servers = fetchAllServers()
+		if not servers then return nil end
+		local busy, any = {}, {}
+		for _, s in ipairs(servers) do
 			local playing = tonumber(s.playing) or 0
 			local maxp = tonumber(s.maxPlayers) or 30
-			if s.id ~= game.JobId and not visited[s.id] and playing >= minPop and playing < maxp then
-				cand[#cand + 1] = s.id
+			if s.id ~= game.JobId and not visited[s.id] and playing < maxp then
+				any[#any + 1] = s.id
+				if playing >= minPop then busy[#busy + 1] = s.id end
 			end
 		end
-		if #cand == 0 then return nil end
-		return cand[math.random(1, #cand)]
+		local pool = (#busy > 0) and busy or any
+		if #pool == 0 then return nil end
+		return pool[math.random(1, #pool)]
 	end
 
 	local function queueResume()
