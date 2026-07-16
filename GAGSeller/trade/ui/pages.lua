@@ -148,10 +148,17 @@ return function(ctx)
 		function() return CFG.snipeHop end,
 		function(v) CFG.snipeHop = v; persistState() end, 1)
 
+	-- Min players untuk fallback hop (kalau seller ga ketemu -> pindah server ramai)
+	local snipeMinPopCard = mk("Frame", { Size = UDim2.new(1, 0, 0, 46), BackgroundColor3 = C.row, LayoutOrder = 4 }, buyPage)
+	corner(snipeMinPopCard, 8); stroke(snipeMinPopCard)
+	makeInput(snipeMinPopCard, "Min Players (Hop Ramai)", "Seller ga ketemu -> hop ke server dgn pemain >= ini",
+		function() return CFG.snipeMinPop or 25 end,
+		function(txt) local n = tonumber(txt); CFG.snipeMinPop = (n and n >= 1) and math.floor(n) or 25; persistState() end, 1)
+
 	-- 5 profil snipe (accordion; urutan = prioritas)
 	for i = 1, NUM_SNIPE do
 		local prof = CFG.snipeProfiles[i]
-		local body = makeAccordion(buyPage, "Snipe " .. i, 3 + i)
+		local body = makeAccordion(buyPage, "Snipe " .. i, 5 + i)
 		makeDropdown(body, "Pet Types [Snipe " .. i .. "]", "Pilih pet per egg (premium/biasa). Urutan profil = prioritas", reg.PET_COMBO_OPTIONS, prof.pets, function() persistState(); refreshSnipeStatus() end, 1)
 		makeDropdown(body, "Mutation [Snipe " .. i .. "]", "Kosong = semua mutasi", reg.MUT_OPTIONS, prof.muts, function() persistState() end, 2)
 		makeInput(body, "Max Price [Snipe " .. i .. "]", "0 = tanpa batas harga (Tokens)", function() return prof.maxPrice or 0 end, function(txt) local n = tonumber(txt); prof.maxPrice = (n and n >= 0) and math.floor(n) or 0; persistState(); refreshSnipeStatus() end, 3)

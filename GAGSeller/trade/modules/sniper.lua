@@ -165,6 +165,36 @@ return function(ctx)
 	local function markVisited(job) if job and job ~= "" then visited[job] = os.time(); saveVisited() end end
 	markVisited(game.JobId)
 
+	-- Prune TTL secara real-time (bukan cuma saat load) -> "semua visited" self-heal
+	-- setelah 2 menit walau ga reload, jadi server lama bisa dikunjungi lagi.
+	local function pruneVisited()
+		local now = os.time()
+		for job, ts in pairs(visited) do
+			if type(ts) ~= "number" or (now - ts) >= HOP_TTL then visited[job] = nil end
+		end
+	end
+
+	-- Fallback: server publik dengan pemain >= minPop, belum divisit, ada slot -> acak.
+	local function getBusyServer(minPop)
+		local reqFn = (syn and syn.request) or (http and http.request) or http_request or request
+		if not reqFn then return nil end
+		local url = ("https://games.roblox.com/v1/games/%d/servers/Public?sortOrder=Desc&limit=100"):format(game.PlaceId)
+		local ok, res = pcall(reqFn, { Url = url, Method = "GET" })
+		if not ok or not res or not res.Body then return nil end
+		local ok2, data = pcall(function() return HttpService:JSONDecode(res.Body) end)
+		if not ok2 or type(data) ~= "table" or type(data.data) ~= "table" then return nil end
+		local cand = {}
+		for _, s in ipairs(data.data) do
+			local playing = tonumber(s.playing) or 0
+			local maxp = tonumber(s.maxPlayers) or 30
+			if s.id ~= game.JobId and not visited[s.id] and playing >= minPop and playing < maxp then
+				cand[#cand + 1] = s.id
+			end
+		end
+		if #cand == 0 then return nil end
+		return cand[math.random(1, #cand)]
+	end
+
 	local function queueResume()
 		local q = queue_on_teleport or queueonteleport or (syn and syn.queue_on_teleport)
 		if q then pcall(function() q(ROUTER) end) end
@@ -195,6 +225,7 @@ return function(ctx)
 
 		local function attempt()
 			while running() do
+				pruneVisited() -- TTL real-time: server lama kadaluarsa walau ga reload
 				for i = #searchTargets, 2, -1 do
 					local j = math.random(1, i); searchTargets[i], searchTargets[j] = searchTargets[j], searchTargets[i]
 				end
@@ -228,8 +259,22 @@ return function(ctx)
 					end
 				end
 				if not running() then return end
-				setStatus("Snipe: ga ada seller baru, tunggu 3s...")
-				task.wait(3)
+				-- Fallback: seller ga ketemu di mana-mana -> pindah ke server RAMAI (>= minPop)
+				-- buat cari listing baru. Terus gerak, ga diam nyangkut.
+				local minPop = math.max(1, math.floor(tonumber(CFG.snipeMinPop) or 25))
+				local busy = getBusyServer(minPop)
+				if busy then
+					setStatus(("Snipe: ga ada seller, hop server ramai (>=%d)..."):format(minPop))
+					markVisited(busy)
+					pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, busy, LP) end)
+					local t0 = os.clock()
+					repeat task.wait(1) until (not running()) or (os.clock() - t0) >= 8
+					if not running() then return end
+					log("Snipe: hop server ramai gagal, ulang...")
+				else
+					setStatus("Snipe: ga ada server ramai baru, tunggu 3s...")
+					task.wait(3)
+				end
 			end
 		end
 

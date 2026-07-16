@@ -23,6 +23,7 @@ return function(ctx)
 		-- sniper / auto-buy
 		snipeEnabled       = false,
 		snipeHop           = true,
+		snipeMinPop        = 25,   -- fallback: hop ke server dgn pemain >= ini kalau seller ga ketemu
 		snipeProfiles      = {},
 	}
 	for i = 1, NUM_SNIPE do
@@ -65,6 +66,7 @@ return function(ctx)
 			if st.relocatePreferred  ~= nil then CFG.relocatePreferred  = tonumber(st.relocatePreferred) or 20 end
 			CFG.snipeEnabled = st.snipeEnabled or false
 			if st.snipeHop ~= nil then CFG.snipeHop = st.snipeHop end
+			if st.snipeMinPop ~= nil then CFG.snipeMinPop = tonumber(st.snipeMinPop) or 25 end
 			if type(st.snipeProfiles) == "table" then
 				for i = 1, NUM_SNIPE do
 					local sp = st.snipeProfiles[i] or st.snipeProfiles[tostring(i)]
