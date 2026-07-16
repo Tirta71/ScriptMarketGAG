@@ -83,7 +83,6 @@ local MODULES = {
 	"modules/mutation.lua",
 	"modules/cleanse.lua",
 	"modules/summer.lua",
-	"modules/samloop.lua",
 	"ui/components.lua",
 	"ui/pet_monitor.lua",
 	"ui/window.lua",

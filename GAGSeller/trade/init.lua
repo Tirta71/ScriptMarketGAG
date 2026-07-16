@@ -78,7 +78,6 @@ local MODULES = {
 	"modules/listing.lua",    -- listPass / mainLoop / util
 	"ui/components.lua",      -- toggle/input/dropdown/accordion/tab
 	"ui/window.lua",          -- jendela utama + log + status
-	"modules/samloop.lua",    -- full-loop Sam The Clam (server-hop)
 	"modules/relocate.lua",   -- auto relocate sell (server-hop kalau booth idle)
 	"ui/pages.lua",           -- halaman Sell/Profile/Inventory/Misc
 	"app.lua",                -- init akhir + supervisor loop
