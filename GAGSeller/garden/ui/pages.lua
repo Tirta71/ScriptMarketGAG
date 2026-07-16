@@ -106,8 +106,8 @@ return function(ctx)
 		-- Settings (dalam accordion yang sama)
 		makeMultiDropdownDyn(acc, "V1 Pet Team", "Select elephant pet team (tetap di garden)",
 			function() return ctx.inventoryPetOptions(CFG.elephantTeamUuids) end, CFG.elephantTeamUuids, function() persist() end, 2)
-		makeMultiDropdownDyn(acc, "V1 Target Pet Types", "Select pet types to auto-elephant",
-			function() return ctx.getInventoryPetTypes(CFG.elephantPetTypes) end, CFG.elephantPetTypes, function() persist() end, 3)
+		makeMultiDropdown(acc, "V1 Target Pet Types", "Select pet types to auto-elephant (semua pet di game)",
+			reg.PET_OPTIONS, CFG.elephantPetTypes, function() persist() end, 3)
 		makeInput(acc, "Target Weight (KG)", "Berat max sebelum diganti (mis. 5.5)",
 			function() return tostring(CFG.elephantTargetWeight) end,
 			function(txt) CFG.elephantTargetWeight = tonumber(txt) or 5.5; persist() end, 4)
@@ -178,9 +178,9 @@ return function(ctx)
 		makeMultiDropdownDyn(settingsAcc, "Leveling Pet Team", "Select pets to keep in garden while leveling",
 			function() return ctx.inventoryPetOptions(CFG.levelingTeamUuids) end, CFG.levelingTeamUuids, function() persist() end, 1)
 
-		-- Leveling Pet Types (Multi-dropdown Pet Types)
-		makeMultiDropdownDyn(settingsAcc, "Leveling Pet Types", "Select pet types to auto-level",
-			function() return ctx.getInventoryPetTypes(CFG.levelingPetTypes) end, CFG.levelingPetTypes, function() persist() end, 2)
+		-- Leveling Pet Types (semua pet di game, bukan cuma yang di inventory)
+		makeMultiDropdown(settingsAcc, "Leveling Pet Types", "Select pet types to auto-level (semua pet di game)",
+			reg.PET_OPTIONS, CFG.levelingPetTypes, function() persist() end, 2)
 
 		-- Target Level (Input)
 		makeInput(settingsAcc, "Target Level", "Target level to reach before un-equipping",
