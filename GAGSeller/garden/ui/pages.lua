@@ -337,8 +337,8 @@ return function(ctx)
 
 		makeMultiDropdownDyn(cleanseAcc, "Pet Team for Mutation", "Pet aura pemberi mutasi (tetap di garden)",
 			function() return ctx.inventoryPetOptions(CFG.cleanseTeamUuids) end, CFG.cleanseTeamUuids, function() persist() end, 2)
-		makeMultiDropdownDyn(cleanseAcc, "Pet Types for Mutation", "Tipe pet target yang mau dimutasi",
-			function() return ctx.getInventoryPetTypes(CFG.cleansePetTypes) end, CFG.cleansePetTypes, function() persist() end, 3)
+		makeMultiDropdown(cleanseAcc, "Pet Types for Mutation", "Tipe pet target yang mau dimutasi (semua pet di game)",
+			reg.PET_OPTIONS, CFG.cleansePetTypes, function() persist() end, 3)
 		makeMultiDropdown(cleanseAcc, "Mutations to Keep", "Mutasi ini disimpan (won't be cleansed)",
 			ctx.reg.MUT_OPTIONS or {"None"}, CFG.cleanseKeepMutations, function() persist() end, 4)
 		makeInput(cleanseAcc, "Max Pets in Garden", "Max pet target di garden barengan",
