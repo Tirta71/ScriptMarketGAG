@@ -13,6 +13,10 @@ return function(ctx)
 	tabBtns["Sell"].line.Visible = true
 
 	log("AllegiaanHub GAG Seller v1.2.5 dimuat.")
+	pcall(function()
+		local Players = ctx.Services.Players or game:GetService("Players")
+		log(("Masuk server: %d/%d pemain."):format(#Players:GetPlayers(), Players.MaxPlayers))
+	end)
 	ctx.renderInventory()
 
 	------------------------------------------------------------------ Anti-AFK
