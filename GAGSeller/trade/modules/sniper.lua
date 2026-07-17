@@ -201,7 +201,7 @@ return function(ctx)
 			for _, s in ipairs(data.data) do all[#all + 1] = { id = s.id, playing = s.playing } end
 			cursor = data.nextPageCursor
 			tries = tries + 1
-		until not cursor or tries >= 3 or #all >= 200
+		until not cursor or tries >= 5 or #all >= 400
 		if #all > 0 then
 			pcall(function() writefile(SLIST_FILE, HttpService:JSONEncode({ time = os.time(), servers = all })) end)
 			return all
