@@ -196,7 +196,7 @@ return function(ctx)
 	-- Pilih server acak: prioritas pemain >= minPop; kalau ga ada, ambil APA PUN yang
 	-- belum divisit & ada slot (biar selalu gerak, ga nyangkut/ngulang server sama).
 	-- SLOT_BUFFER: minimal slot kosong biar ga keburu penuh pas teleport (kurangi 771 "penuh").
-	local SLOT_BUFFER = 2
+	local SLOT_BUFFER = 1 -- cuma buang server BENER-BENER penuh (30/30); terima 29/30 (771 udah dihandle)
 	-- Fetch server list SEKALI, balik daftar kandidat (acak). Dipakai buat retry banyak
 	-- server tanpa re-fetch tiap kali (hindari rate-limit API).
 	local function getBusyServerList(minPop, n)
@@ -341,8 +341,16 @@ return function(ctx)
 				end
 				if not running() then return end
 				if not hopped then
-					setStatus("Snipe: ga ada server ramai baru, tunggu 3s...")
-					task.wait(3)
+					if CFG.snipeHopPlayer then
+						-- pool kosong (semua kevisit/penuh) -> matchmaking biar ga stall 3s.
+						setStatus("Snipe: server habis/kevisit, teleport matchmaking...")
+						pcall(function() TeleportService:Teleport(game.PlaceId, LP) end)
+						local t0 = os.clock()
+						repeat task.wait(0.5) until (not running()) or (os.clock() - t0) >= 8
+					else
+						setStatus("Snipe: hop mati, tunggu 3s...")
+						task.wait(3)
+					end
 				end
 			end
 		end
