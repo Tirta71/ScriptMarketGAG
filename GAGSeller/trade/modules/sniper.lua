@@ -197,11 +197,11 @@ return function(ctx)
 			if not ok or not res or not res.Body then break end
 			local ok2, data = pcall(function() return HttpService:JSONDecode(res.Body) end)
 			if not ok2 or type(data) ~= "table" or type(data.data) ~= "table" then break end
-			-- simpan ringkas (id/playing/maxPlayers) biar file kecil
-			for _, s in ipairs(data.data) do all[#all + 1] = { id = s.id, playing = s.playing, maxPlayers = s.maxPlayers } end
+			-- simpan super-ringkas: cuma id+playing (maxPlayers default 30 di getBusyServerList)
+			for _, s in ipairs(data.data) do all[#all + 1] = { id = s.id, playing = s.playing } end
 			cursor = data.nextPageCursor
 			tries = tries + 1
-		until not cursor or tries >= 10 or #all >= 400
+		until not cursor or tries >= 3 or #all >= 200
 		if #all > 0 then
 			pcall(function() writefile(SLIST_FILE, HttpService:JSONEncode({ time = os.time(), servers = all })) end)
 			return all
