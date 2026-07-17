@@ -240,6 +240,34 @@ return function(ctx)
 			return nil
 		end
 
+		-- Deteksi teleport gagal (mis. 771 = server ga tersedia) biar cepat coba server lain.
+		local tpFailed, failStreak = false, 0
+		local conn = TeleportService.TeleportInitFailed:Connect(function(plr, _, msg)
+			if plr == LP then tpFailed = true; log("Snipe: teleport gagal (" .. tostring(msg) .. "), coba server lain") end
+		end)
+
+		-- Teleport ke instance yg sudah divetting. Kalau gagal, balik cepat (ga nunggu 8s)
+		-- biar loop lanjut cari server lain. Gagal terus -> pakai matchmaking (ga kena 771).
+		local function hopTo(jobId)
+			tpFailed = false
+			markVisited(jobId)
+			task.wait(0.35) -- flush writefile dulu (emulator lambat) sebelum teleport
+			pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, jobId, LP) end)
+			local t0 = os.clock()
+			repeat task.wait(0.4) until (not running()) or tpFailed or (os.clock() - t0) >= 6
+			if tpFailed then
+				failStreak = failStreak + 1
+				if failStreak >= 3 then -- join instance gagal terus -> matchmaking biasa (ga 771)
+					failStreak = 0
+					setStatus("Snipe: join gagal terus, teleport matchmaking...")
+					pcall(function() TeleportService:Teleport(game.PlaceId, LP) end)
+					local t2 = os.clock()
+					repeat task.wait(0.5) until (not running()) or (os.clock() - t2) >= 8
+				end
+			end
+			return not tpFailed
+		end
+
 		local function attempt()
 			while running() do
 				pruneVisited() -- TTL real-time: server lama kadaluarsa walau ga reload
@@ -263,18 +291,8 @@ return function(ctx)
 								-- sudah dikunjungi dalam TTL -> skip
 							elseif targetJobId then
 								setStatus(("Snipe: seller ketemu! TP (%s)..."):format(petType))
-								markVisited(targetJobId)
-								task.wait(0.35) -- flush writefile dulu (emulator lambat) sebelum teleport
-								-- Teleport SENDIRI ke JobId yg sudah divetting (bukan TeleportToListing
-								-- yg routing-nya ga kekontrol) -> ga bakal nyasar ke server yg masih CD.
-								local tpOk = pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, targetJobId, LP) end)
-								if not tpOk then -- fallback: pakai teleport resmi game kalau join instance gagal
-									pcall(function() TeleportToListing:InvokeServer(tpData, true) end)
-								end
-								local t0 = os.clock()
-								repeat task.wait(1) until (not running()) or (os.clock() - t0) >= 8
+								hopTo(targetJobId) -- sukses -> game unload; gagal -> lanjut cari lain
 								if not running() then return end
-								log(("Snipe: TP ke %s gagal, cari lain..."):format(petType))
 							end
 						end
 						if not running() then return end
@@ -288,13 +306,8 @@ return function(ctx)
 				local busy = getBusyServer(minPop)
 				if busy then
 					setStatus(("Snipe: ga ada seller, hop server ramai (>=%d)..."):format(minPop))
-					markVisited(busy)
-					task.wait(0.35) -- flush writefile dulu (emulator lambat) sebelum teleport
-					pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, busy, LP) end)
-					local t0 = os.clock()
-					repeat task.wait(1) until (not running()) or (os.clock() - t0) >= 8
+					hopTo(busy) -- sukses -> game unload; gagal -> lanjut cari server lain
 					if not running() then return end
-					log("Snipe: hop server ramai gagal, ulang...")
 				else
 					setStatus("Snipe: ga ada server ramai baru, tunggu 3s...")
 					task.wait(3)
@@ -302,10 +315,6 @@ return function(ctx)
 			end
 		end
 
-		local conn
-		conn = TeleportService.TeleportInitFailed:Connect(function(plr, _, msg)
-			if plr == LP then log("Snipe: teleport gagal: " .. tostring(msg)) end
-		end)
 		attempt()
 		if conn then conn:Disconnect() end
 		hopInProgress = false
