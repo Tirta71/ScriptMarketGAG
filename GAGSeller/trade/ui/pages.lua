@@ -141,26 +141,20 @@ return function(ctx)
 			if v then ctx.startSnipe() else ctx.stopSnipe() end
 		end, 1)
 
-	-- Auto Server Hop toggle
-	local snipeHopCard = mk("Frame", { Size = UDim2.new(1, 0, 0, 60), BackgroundColor3 = C.row, LayoutOrder = 3 }, buyPage)
-	corner(snipeHopCard, 8); stroke(snipeHopCard); pad(snipeHopCard, 12, 12, 0, 0)
-	makeToggle(snipeHopCard, "Auto Server Hop", "Cari seller lintas server kalau ga ada target di sini",
+	-- Accordion: Hop Server (semua pengaturan hop + enable)
+	local hopAcc = makeAccordion(buyPage, "Hop Server", 3)
+	makeToggle(hopAcc, "Auto Server Hop", "Nyalakan hop antar-server (seller + server ramai)",
 		function() return CFG.snipeHop end,
 		function(v) CFG.snipeHop = v; persistState() end, 1)
-
-	-- Min players untuk fallback hop (kalau seller ga ketemu -> pindah server ramai)
-	local snipeMinPopCard = mk("Frame", { Size = UDim2.new(1, 0, 0, 60), BackgroundColor3 = C.row, LayoutOrder = 4 }, buyPage)
-	corner(snipeMinPopCard, 8); stroke(snipeMinPopCard); pad(snipeMinPopCard, 12, 12, 0, 0)
-	makeInput(snipeMinPopCard, "Min Players (Hop Ramai)", "Seller ga ketemu -> hop ke server dgn pemain >= ini",
+	makeToggle(hopAcc, "Hop Semua Server", "Hop ke server mana pun by jumlah player (abaikan Min Players), tetap hormati CD",
+		function() return CFG.snipeHopAll end,
+		function(v) CFG.snipeHopAll = v; persistState() end, 2)
+	makeInput(hopAcc, "Min Players (Hop Ramai)", "Kalau Hop Semua OFF: hop ke server dgn pemain >= ini",
 		function() return CFG.snipeMinPop or 25 end,
-		function(txt) local n = tonumber(txt); CFG.snipeMinPop = (n and n >= 1) and math.floor(n) or 25; persistState() end, 1)
-
-	-- Cooldown revisit: jeda sebelum boleh balik ke server yang sama
-	local snipeRevisitCard = mk("Frame", { Size = UDim2.new(1, 0, 0, 60), BackgroundColor3 = C.row, LayoutOrder = 5 }, buyPage)
-	corner(snipeRevisitCard, 8); stroke(snipeRevisitCard); pad(snipeRevisitCard, 12, 12, 0, 0)
-	makeInput(snipeRevisitCard, "Revisit Cooldown (detik)", "Jeda sebelum boleh balik ke server yang sama",
+		function(txt) local n = tonumber(txt); CFG.snipeMinPop = (n and n >= 1) and math.floor(n) or 25; persistState() end, 3)
+	makeInput(hopAcc, "Revisit Cooldown (detik)", "Jeda sebelum boleh balik ke server yang sama",
 		function() return CFG.snipeRevisitSec or 120 end,
-		function(txt) local n = tonumber(txt); CFG.snipeRevisitSec = (n and n >= 5) and math.floor(n) or 120; persistState() end, 1)
+		function(txt) local n = tonumber(txt); CFG.snipeRevisitSec = (n and n >= 5) and math.floor(n) or 120; persistState() end, 4)
 
 	-- 5 profil snipe (accordion; urutan = prioritas)
 	for i = 1, NUM_SNIPE do
