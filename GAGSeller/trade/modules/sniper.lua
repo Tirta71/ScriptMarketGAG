@@ -291,7 +291,10 @@ return function(ctx)
 				end
 				if #searchTargets > 0 then
 					setStatus("Snipe: cari seller online...")
-					for _, petType in ipairs(searchTargets) do
+					-- Batasi FindSellers max 3 pet/hop biar ga lama (pet di-acak tiap putaran,
+					-- jadi lama-lama semua kebagian). Sisanya langsung fallback busy hop.
+					for idx, petType in ipairs(searchTargets) do
+						if idx > 3 then break end
 						if not running() then return end
 						setStatus(("Snipe: cari seller %s"):format(petType))
 						local itemData = buildItemData(petType)
@@ -377,7 +380,7 @@ return function(ctx)
 					task.wait(3)
 				elseif CFG.snipeHop then
 					setStatus("Snipe: ga ada target, hop...")
-					task.wait(2); serverHop(); break
+					task.wait(0.5); serverHop(); break -- pre-hop dipangkas 2s -> 0.5s
 				else
 					task.wait(3)
 				end
