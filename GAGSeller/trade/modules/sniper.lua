@@ -197,22 +197,26 @@ return function(ctx)
 	-- belum divisit & ada slot (biar selalu gerak, ga nyangkut/ngulang server sama).
 	-- SLOT_BUFFER: minimal slot kosong biar ga keburu penuh pas teleport (kurangi 771 "penuh").
 	local SLOT_BUFFER = 2
-	local function getBusyServer(minPop)
+	-- Fetch server list SEKALI, balik daftar kandidat (acak). Dipakai buat retry banyak
+	-- server tanpa re-fetch tiap kali (hindari rate-limit API).
+	local function getBusyServerList(minPop, n)
 		local servers = fetchAllServers()
-		if not servers then return nil end
+		if not servers then return {} end
 		local busy, any = {}, {}
 		for _, s in ipairs(servers) do
 			local playing = tonumber(s.playing) or 0
 			local maxp = tonumber(s.maxPlayers) or 30
-			-- butuh ruang >= SLOT_BUFFER biar aman dari penuh dadakan
 			if s.id ~= game.JobId and not visited[s.id] and playing <= (maxp - SLOT_BUFFER) then
 				any[#any + 1] = s.id
 				if playing >= minPop then busy[#busy + 1] = s.id end
 			end
 		end
 		local pool = (#busy > 0) and busy or any
-		if #pool == 0 then return nil end
-		return pool[math.random(1, #pool)]
+		-- acak (Fisher-Yates) lalu ambil n teratas
+		for i = #pool, 2, -1 do local j = math.random(1, i); pool[i], pool[j] = pool[j], pool[i] end
+		local out = {}
+		for i = 1, math.min(n or 5, #pool) do out[i] = pool[i] end
+		return out
 	end
 
 	local function queueResume()
@@ -325,14 +329,13 @@ return function(ctx)
 				local hopped = false
 				if CFG.snipeHopPlayer then
 					local minPop = math.max(1, math.floor(tonumber(CFG.snipeMinPop) or 25))
-					-- Coba beberapa server berturut-turut: kalau satu gagal (full/771),
-					-- LANGSUNG coba server lain (ga usah balik ngulang FindSellers). Sukses -> unload.
-					for _ = 1, 5 do
+					-- Fetch daftar server SEKALI (hindari rate-limit), coba kandidat satu-satu:
+					-- gagal (full/771) -> langsung server berikutnya. Sukses -> game unload.
+					local candidates = getBusyServerList(minPop, 5)
+					for _, busy in ipairs(candidates) do
 						if not running() then return end
-						local busy = getBusyServer(minPop)
-						if not busy then break end
 						setStatus(("Snipe: hop by player (>=%d)..."):format(minPop))
-						hopTo(busy) -- kalau sukses game unload; gagal (~0.5s) -> lanjut server lain
+						hopTo(busy) -- sukses -> unload; gagal (~0.5s) -> kandidat berikutnya
 						hopped = true
 					end
 				end
