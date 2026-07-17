@@ -141,20 +141,23 @@ return function(ctx)
 			if v then ctx.startSnipe() else ctx.stopSnipe() end
 		end, 1)
 
-	-- Accordion: Hop Server (semua pengaturan hop + enable)
+	-- Accordion: Hop Server (1 enable + filter metode hop)
 	local hopAcc = makeAccordion(buyPage, "Hop Server", 3)
-	makeToggle(hopAcc, "Auto Server Hop", "Nyalakan hop antar-server (seller + server ramai)",
+	makeToggle(hopAcc, "Auto Server Hop", "Enable hop antar-server (master)",
 		function() return CFG.snipeHop end,
 		function(v) CFG.snipeHop = v; persistState() end, 1)
-	makeToggle(hopAcc, "Hop Semua Server", "Hop ke server mana pun by jumlah player (abaikan Min Players), tetap hormati CD",
-		function() return CFG.snipeHopAll end,
-		function(v) CFG.snipeHopAll = v; persistState() end, 2)
-	makeInput(hopAcc, "Min Players (Hop Ramai)", "Kalau Hop Semua OFF: hop ke server dgn pemain >= ini",
+	makeToggle(hopAcc, "Filter: By Index (Find Seller)", "Cari seller lintas server via index game",
+		function() return CFG.snipeHopIndex end,
+		function(v) CFG.snipeHopIndex = v; persistState() end, 2)
+	makeToggle(hopAcc, "Filter: By Player (Min Players)", "Hop ke server berdasarkan jumlah player",
+		function() return CFG.snipeHopPlayer end,
+		function(v) CFG.snipeHopPlayer = v; persistState() end, 3)
+	makeInput(hopAcc, "Min Players", "By Player: hop ke server dgn pemain >= ini (1 = semua server)",
 		function() return CFG.snipeMinPop or 25 end,
-		function(txt) local n = tonumber(txt); CFG.snipeMinPop = (n and n >= 1) and math.floor(n) or 25; persistState() end, 3)
+		function(txt) local n = tonumber(txt); CFG.snipeMinPop = (n and n >= 1) and math.floor(n) or 25; persistState() end, 4)
 	makeInput(hopAcc, "Revisit Cooldown (detik)", "Jeda sebelum boleh balik ke server yang sama",
 		function() return CFG.snipeRevisitSec or 120 end,
-		function(txt) local n = tonumber(txt); CFG.snipeRevisitSec = (n and n >= 5) and math.floor(n) or 120; persistState() end, 4)
+		function(txt) local n = tonumber(txt); CFG.snipeRevisitSec = (n and n >= 5) and math.floor(n) or 120; persistState() end, 5)
 
 	-- 5 profil snipe (accordion; urutan = prioritas)
 	for i = 1, NUM_SNIPE do

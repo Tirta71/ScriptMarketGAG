@@ -22,9 +22,10 @@ return function(ctx)
 		relocatePreferred  = 20,
 		-- sniper / auto-buy
 		snipeEnabled       = false,
-		snipeHop           = true,
-		snipeHopAll        = false, -- hop ke SEMUA server (abaikan Min Players), tetap hormati CD
-		snipeMinPop        = 25,   -- fallback: hop ke server dgn pemain >= ini kalau seller ga ketemu
+		snipeHop           = true,  -- master enable hop
+		snipeHopIndex      = true,  -- filter: hop by index (FindSellers / cari seller)
+		snipeHopPlayer     = true,  -- filter: hop by player (server berdasarkan Min Players)
+		snipeMinPop        = 25,   -- hop by player: server dgn pemain >= ini (set 1 = semua server)
 		snipeRevisitSec    = 120,  -- jeda sebelum boleh balik ke server yang sama (detik)
 		snipeProfiles      = {},
 	}
@@ -68,7 +69,8 @@ return function(ctx)
 			if st.relocatePreferred  ~= nil then CFG.relocatePreferred  = tonumber(st.relocatePreferred) or 20 end
 			CFG.snipeEnabled = st.snipeEnabled or false
 			if st.snipeHop ~= nil then CFG.snipeHop = st.snipeHop end
-			CFG.snipeHopAll = st.snipeHopAll or false
+			if st.snipeHopIndex ~= nil then CFG.snipeHopIndex = st.snipeHopIndex end
+			if st.snipeHopPlayer ~= nil then CFG.snipeHopPlayer = st.snipeHopPlayer end
 			if st.snipeMinPop ~= nil then CFG.snipeMinPop = tonumber(st.snipeMinPop) or 25 end
 			if st.snipeRevisitSec ~= nil then CFG.snipeRevisitSec = tonumber(st.snipeRevisitSec) or 120 end
 			if type(st.snipeProfiles) == "table" then

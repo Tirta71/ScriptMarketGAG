@@ -289,7 +289,8 @@ return function(ctx)
 				for i = #searchTargets, 2, -1 do
 					local j = math.random(1, i); searchTargets[i], searchTargets[j] = searchTargets[j], searchTargets[i]
 				end
-				if #searchTargets > 0 then
+				-- FILTER 1: Hop by Index (FindSellers / cari seller lintas server)
+				if CFG.snipeHopIndex and #searchTargets > 0 then
 					setStatus("Snipe: cari seller online...")
 					-- GAME batasi FindSellers ~5 detik/panggilan ("Please wait Xs before finding
 					-- another seller"). Jadi panggil CUMA 1 pet/hop (di-acak, semua kebagian lintas
@@ -319,21 +320,21 @@ return function(ctx)
 					end
 				end
 				if not running() then return end
-				-- Fallback: seller ga ketemu di mana-mana -> pindah ke server RAMAI (>= minPop)
-				-- buat cari listing baru. Terus gerak, ga diam nyangkut.
-				-- Hop All ON -> minPop 1 (semua server >=1 pemain, abaikan Min Players).
-				-- OFF -> hop server ramai (>= Min Players). Dua-duanya tetap hormati revisit CD.
-				local minPop = CFG.snipeHopAll and 1 or math.max(1, math.floor(tonumber(CFG.snipeMinPop) or 25))
-				-- Coba beberapa server berturut-turut: kalau satu gagal (full/771),
-				-- LANGSUNG coba server lain (ga usah balik ngulang FindSellers). Sukses -> unload.
+				-- FILTER 2: Hop by Player (server berdasarkan Min Players; set 1 = semua server).
+				-- Tetap hormati revisit CD (getBusyServer exclude visited).
 				local hopped = false
-				for _ = 1, 5 do
-					if not running() then return end
-					local busy = getBusyServer(minPop)
-					if not busy then break end
-					setStatus(CFG.snipeHopAll and "Snipe: hop semua server..." or ("Snipe: hop server ramai (>=%d)..."):format(minPop))
-					hopTo(busy) -- kalau sukses game unload; gagal (~0.5s) -> lanjut server lain
-					hopped = true
+				if CFG.snipeHopPlayer then
+					local minPop = math.max(1, math.floor(tonumber(CFG.snipeMinPop) or 25))
+					-- Coba beberapa server berturut-turut: kalau satu gagal (full/771),
+					-- LANGSUNG coba server lain (ga usah balik ngulang FindSellers). Sukses -> unload.
+					for _ = 1, 5 do
+						if not running() then return end
+						local busy = getBusyServer(minPop)
+						if not busy then break end
+						setStatus(("Snipe: hop by player (>=%d)..."):format(minPop))
+						hopTo(busy) -- kalau sukses game unload; gagal (~0.5s) -> lanjut server lain
+						hopped = true
+					end
 				end
 				if not running() then return end
 				if not hopped then
