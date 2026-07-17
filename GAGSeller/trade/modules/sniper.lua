@@ -249,8 +249,20 @@ return function(ctx)
 			if plr == LP then tpFailed = true; log("Snipe: teleport gagal (" .. tostring(msg) .. "), coba server lain") end
 		end)
 
-		-- Teleport ke instance yg sudah divetting. Kalau gagal, balik cepat (ga nunggu 8s)
-		-- biar loop lanjut cari server lain. Gagal terus -> pakai matchmaking (ga kena 771).
+		-- Seller hop: pakai teleport resmi game (robust, jarang 771). Cek visited udah di caller.
+		-- Landing kadang beda dari jobId (revisit CD harmless), tapi ga bikin dialog 771.
+		local function hopViaListing(tpData, jobId)
+			tpFailed = false
+			if jobId then markVisited(jobId) end
+			task.wait(0.35) -- flush writefile sebelum teleport
+			pcall(function() TeleportToListing:InvokeServer(tpData, true) end)
+			local t0 = os.clock()
+			repeat task.wait(0.4) until (not running()) or tpFailed or (os.clock() - t0) >= 6
+			return not tpFailed
+		end
+
+		-- Busy hop: teleport ke instance spesifik (kontrol populasi). Gagal cepat -> coba lain.
+		-- Gagal terus -> matchmaking (ga kena 771).
 		local function hopTo(jobId)
 			tpFailed = false
 			markVisited(jobId)
@@ -294,7 +306,7 @@ return function(ctx)
 								-- sudah dikunjungi dalam TTL -> skip
 							elseif targetJobId then
 								setStatus(("Snipe: seller ketemu! TP (%s)..."):format(petType))
-								hopTo(targetJobId) -- sukses -> game unload; gagal -> lanjut cari lain
+								hopViaListing(tpData, targetJobId) -- taksi game (robust); sukses -> unload
 								if not running() then return end
 							end
 						end
