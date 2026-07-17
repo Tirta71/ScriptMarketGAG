@@ -195,6 +195,8 @@ return function(ctx)
 
 	-- Pilih server acak: prioritas pemain >= minPop; kalau ga ada, ambil APA PUN yang
 	-- belum divisit & ada slot (biar selalu gerak, ga nyangkut/ngulang server sama).
+	-- SLOT_BUFFER: minimal slot kosong biar ga keburu penuh pas teleport (kurangi 771 "penuh").
+	local SLOT_BUFFER = 2
 	local function getBusyServer(minPop)
 		local servers = fetchAllServers()
 		if not servers then return nil end
@@ -202,7 +204,8 @@ return function(ctx)
 		for _, s in ipairs(servers) do
 			local playing = tonumber(s.playing) or 0
 			local maxp = tonumber(s.maxPlayers) or 30
-			if s.id ~= game.JobId and not visited[s.id] and playing < maxp then
+			-- butuh ruang >= SLOT_BUFFER biar aman dari penuh dadakan
+			if s.id ~= game.JobId and not visited[s.id] and playing <= (maxp - SLOT_BUFFER) then
 				any[#any + 1] = s.id
 				if playing >= minPop then busy[#busy + 1] = s.id end
 			end
