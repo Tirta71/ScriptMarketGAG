@@ -257,7 +257,7 @@ return function(ctx)
 			task.wait(0.35) -- flush writefile sebelum teleport
 			pcall(function() TeleportToListing:InvokeServer(tpData, true) end)
 			local t0 = os.clock()
-			repeat task.wait(0.4) until (not running()) or tpFailed or (os.clock() - t0) >= 6
+			repeat task.wait(0.25) until (not running()) or tpFailed or (os.clock() - t0) >= 4
 			return not tpFailed
 		end
 
@@ -269,7 +269,7 @@ return function(ctx)
 			task.wait(0.35) -- flush writefile dulu (emulator lambat) sebelum teleport
 			pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, jobId, LP) end)
 			local t0 = os.clock()
-			repeat task.wait(0.4) until (not running()) or tpFailed or (os.clock() - t0) >= 6
+			repeat task.wait(0.25) until (not running()) or tpFailed or (os.clock() - t0) >= 4
 			if tpFailed then
 				failStreak = failStreak + 1
 				if failStreak >= 3 then -- join instance gagal terus -> matchmaking biasa (ga 771)
