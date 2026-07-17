@@ -264,6 +264,7 @@ return function(ctx)
 							elseif targetJobId then
 								setStatus(("Snipe: seller ketemu! TP (%s)..."):format(petType))
 								markVisited(targetJobId)
+								task.wait(0.35) -- flush writefile dulu (emulator lambat) sebelum teleport
 								pcall(function() TeleportToListing:InvokeServer(tpData, true) end)
 								local t0 = os.clock()
 								repeat task.wait(1) until (not running()) or (os.clock() - t0) >= 8
@@ -283,6 +284,7 @@ return function(ctx)
 				if busy then
 					setStatus(("Snipe: ga ada seller, hop server ramai (>=%d)..."):format(minPop))
 					markVisited(busy)
+					task.wait(0.35) -- flush writefile dulu (emulator lambat) sebelum teleport
 					pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, busy, LP) end)
 					local t0 = os.clock()
 					repeat task.wait(1) until (not running()) or (os.clock() - t0) >= 8
