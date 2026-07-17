@@ -291,10 +291,11 @@ return function(ctx)
 				end
 				if #searchTargets > 0 then
 					setStatus("Snipe: cari seller online...")
-					-- Batasi FindSellers max 3 pet/hop biar ga lama (pet di-acak tiap putaran,
-					-- jadi lama-lama semua kebagian). Sisanya langsung fallback busy hop.
+					-- GAME batasi FindSellers ~5 detik/panggilan ("Please wait Xs before finding
+					-- another seller"). Jadi panggil CUMA 1 pet/hop (di-acak, semua kebagian lintas
+					-- hop). Sisanya andalkan scan booth lokal + busy hop (ga ada cooldown).
 					for idx, petType in ipairs(searchTargets) do
-						if idx > 3 then break end
+						if idx > 1 then break end
 						if not running() then return end
 						setStatus(("Snipe: cari seller %s"):format(petType))
 						local itemData = buildItemData(petType)
@@ -314,7 +315,7 @@ return function(ctx)
 							end
 						end
 						if not running() then return end
-						task.wait(1.5) -- anti rate-limit FindSellers
+						-- cuma 1 FindSellers/hop -> ga perlu jeda anti rate-limit besar
 					end
 				end
 				if not running() then return end
