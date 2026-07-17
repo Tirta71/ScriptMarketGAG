@@ -174,8 +174,19 @@ return function(ctx)
 		end
 	end
 
-	-- Ambil BANYAK server publik (paginate) biar kolam kandidat besar -> ga muter server itu2.
+	-- Ambil BANYAK server publik (paginate) + CACHE ke file (TTL 45s) biar ga fetch tiap
+	-- hop -> request ke games.roblox.com turun drastis -> ga kena rate-limit 429.
+	local SLIST_FILE, SLIST_TTL = "AllegiaanHub_serverlist.json", 45
 	local function fetchAllServers()
+		-- 1. pakai cache kalau masih fresh (< TTL)
+		if type(isfile) == "function" and isfile(SLIST_FILE) then
+			local ok, c = pcall(function() return HttpService:JSONDecode(readfile(SLIST_FILE)) end)
+			if ok and type(c) == "table" and type(c.servers) == "table"
+				and (os.time() - (tonumber(c.time) or 0)) < SLIST_TTL and #c.servers > 0 then
+				return c.servers
+			end
+		end
+		-- 2. fetch fresh (paginate)
 		local reqFn = (syn and syn.request) or (http and http.request) or http_request or request
 		if not reqFn then return nil end
 		local all, cursor, tries = {}, nil, 0
@@ -186,11 +197,16 @@ return function(ctx)
 			if not ok or not res or not res.Body then break end
 			local ok2, data = pcall(function() return HttpService:JSONDecode(res.Body) end)
 			if not ok2 or type(data) ~= "table" or type(data.data) ~= "table" then break end
-			for _, s in ipairs(data.data) do all[#all + 1] = s end
+			-- simpan ringkas (id/playing/maxPlayers) biar file kecil
+			for _, s in ipairs(data.data) do all[#all + 1] = { id = s.id, playing = s.playing, maxPlayers = s.maxPlayers } end
 			cursor = data.nextPageCursor
 			tries = tries + 1
 		until not cursor or tries >= 10 or #all >= 400
-		return all
+		if #all > 0 then
+			pcall(function() writefile(SLIST_FILE, HttpService:JSONEncode({ time = os.time(), servers = all })) end)
+			return all
+		end
+		return nil
 	end
 
 	-- Pilih server acak: prioritas pemain >= minPop; kalau ga ada, ambil APA PUN yang
