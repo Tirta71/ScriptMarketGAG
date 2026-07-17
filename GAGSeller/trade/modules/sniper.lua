@@ -265,7 +265,12 @@ return function(ctx)
 								setStatus(("Snipe: seller ketemu! TP (%s)..."):format(petType))
 								markVisited(targetJobId)
 								task.wait(0.35) -- flush writefile dulu (emulator lambat) sebelum teleport
-								pcall(function() TeleportToListing:InvokeServer(tpData, true) end)
+								-- Teleport SENDIRI ke JobId yg sudah divetting (bukan TeleportToListing
+								-- yg routing-nya ga kekontrol) -> ga bakal nyasar ke server yg masih CD.
+								local tpOk = pcall(function() TeleportService:TeleportToPlaceInstance(game.PlaceId, targetJobId, LP) end)
+								if not tpOk then -- fallback: pakai teleport resmi game kalau join instance gagal
+									pcall(function() TeleportToListing:InvokeServer(tpData, true) end)
+								end
 								local t0 = os.clock()
 								repeat task.wait(1) until (not running()) or (os.clock() - t0) >= 8
 								if not running() then return end
