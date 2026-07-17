@@ -321,12 +321,19 @@ return function(ctx)
 				-- Fallback: seller ga ketemu di mana-mana -> pindah ke server RAMAI (>= minPop)
 				-- buat cari listing baru. Terus gerak, ga diam nyangkut.
 				local minPop = math.max(1, math.floor(tonumber(CFG.snipeMinPop) or 25))
-				local busy = getBusyServer(minPop)
-				if busy then
-					setStatus(("Snipe: ga ada seller, hop server ramai (>=%d)..."):format(minPop))
-					hopTo(busy) -- sukses -> game unload; gagal -> lanjut cari server lain
+				-- Coba beberapa server ramai berturut-turut: kalau satu gagal (full/771),
+				-- LANGSUNG coba server lain (ga usah balik ngulang FindSellers). Sukses -> unload.
+				local hopped = false
+				for _ = 1, 5 do
 					if not running() then return end
-				else
+					local busy = getBusyServer(minPop)
+					if not busy then break end
+					setStatus(("Snipe: hop server ramai (>=%d)..."):format(minPop))
+					hopTo(busy) -- kalau sukses game unload; gagal (~0.5s) -> lanjut server lain
+					hopped = true
+				end
+				if not running() then return end
+				if not hopped then
 					setStatus("Snipe: ga ada server ramai baru, tunggu 3s...")
 					task.wait(3)
 				end
