@@ -163,7 +163,12 @@ return function(ctx)
 	end
 	local function saveVisited() pcall(function() writefile(HOP_FILE, HttpService:JSONEncode(visited)) end) end
 	local function markVisited(job) if job and job ~= "" then visited[job] = os.time(); saveVisited() end end
-	markVisited(game.JobId)
+	-- Kalau kita SALAH MENDARAT di server yg udah divisit (taksi/matchmaking bawa balik),
+	-- JANGAN reset timestamp -> CD tetap dihitung dari kunjungan PERTAMA. Landing pertama
+	-- (belum ada di visited) baru dicatat.
+	local reLanded = visited[game.JobId] ~= nil
+	if not reLanded then markVisited(game.JobId) end
+	ctx.state.snipeReLanded = reLanded
 
 	-- Prune TTL secara real-time (bukan cuma saat load) -> "semua visited" self-heal
 	-- setelah 2 menit walau ga reload, jadi server lama bisa dikunjungi lagi.
