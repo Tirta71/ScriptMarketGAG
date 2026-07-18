@@ -13,6 +13,30 @@ return function(ctx)
 		autoUnfavorite = false,
 		tradeEnabled  = false,   -- Enable Automation Trade
 
+		-- ===== Auto Hatch + Auto Sell =====
+		hatchEnabled    = false,
+		autoSellEnabled = false,
+		-- teams (set uuid pet)
+		hatchCoreTeam   = {},  -- team default/idle
+		hatchHatchTeam  = {},  -- team saat hatch (recovery + speed)
+		hatchBrontoTeam = {},  -- team bronto (hatch speed)
+		hatchSellTeam   = {},  -- team saat jual (boost harga)
+		-- egg config
+		hatchEggName    = "Rare Egg", -- egg yg di-place & di-hatch
+		hatchMaxPlaced  = 9,          -- target egg ke-place di garden
+		-- sell config (filter = DIJUAL; sisanya difavoritin biar aman)
+		sellPetTypes       = {},   -- set tipe pet yg dijual
+		sellWeightThreshold = 4,   -- jual kalau BaseWeight < ini
+		sellAgeThreshold    = 3,   -- jual kalau Age/Level < ini
+		sellSpecialTypes    = {},  -- pet spesial (jual by weight)
+		sellSpecialWeight   = 10,  -- 0=off
+		sellMode   = "Cycle",      -- Cycle | Backpack
+		sellStyle  = "All at Once",
+		sellEveryNCycles = 1,
+		sellWhenReach    = 100,    -- jual kalau backpack pet >= ini
+		sellTeamDelay    = 5,      -- detik tunggu abis swap team sebelum jual
+		autoBoostBeforeSell = false,
+
 		-- Automation Accept
 		acceptGifts   = false,
 		acceptTrades  = false,
@@ -142,6 +166,27 @@ return function(ctx)
 			CFG.totalTrades    = tonumber(st.totalTrades) or 14
 			CFG.autoUnfavorite = st.autoUnfavorite or false
 			CFG.tradeEnabled   = st.tradeEnabled or false
+			-- Auto Hatch + Auto Sell
+			CFG.hatchEnabled    = st.hatchEnabled or false
+			CFG.autoSellEnabled = st.autoSellEnabled or false
+			local function tbl(v) return (type(v) == "table") and v or {} end
+			CFG.hatchCoreTeam   = tbl(st.hatchCoreTeam)
+			CFG.hatchHatchTeam  = tbl(st.hatchHatchTeam)
+			CFG.hatchBrontoTeam = tbl(st.hatchBrontoTeam)
+			CFG.hatchSellTeam   = tbl(st.hatchSellTeam)
+			CFG.hatchEggName    = st.hatchEggName or "Rare Egg"
+			CFG.hatchMaxPlaced  = tonumber(st.hatchMaxPlaced) or 9
+			CFG.sellPetTypes    = tbl(st.sellPetTypes)
+			CFG.sellWeightThreshold = tonumber(st.sellWeightThreshold) or 4
+			CFG.sellAgeThreshold    = tonumber(st.sellAgeThreshold) or 3
+			CFG.sellSpecialTypes    = tbl(st.sellSpecialTypes)
+			CFG.sellSpecialWeight   = tonumber(st.sellSpecialWeight) or 10
+			CFG.sellMode   = st.sellMode or "Cycle"
+			CFG.sellStyle  = st.sellStyle or "All at Once"
+			CFG.sellEveryNCycles = tonumber(st.sellEveryNCycles) or 1
+			CFG.sellWhenReach    = tonumber(st.sellWhenReach) or 100
+			CFG.sellTeamDelay    = tonumber(st.sellTeamDelay) or 5
+			CFG.autoBoostBeforeSell = st.autoBoostBeforeSell or false
 			CFG.acceptGifts    = st.acceptGifts or false
 			CFG.acceptTrades   = st.acceptTrades or false
 			CFG.autoFavorite   = st.autoFavorite or false

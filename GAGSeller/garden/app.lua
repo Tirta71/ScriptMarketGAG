@@ -68,6 +68,13 @@ return function(ctx)
 		ctx.log("Auto-resume: Leveling V2 ON.")
 	end
 
+	-- auto-resume Auto Hatch kalau sebelumnya aktif
+	if CFG.hatchEnabled and ctx.startHatch then
+		task.wait(2.0)
+		ctx.startHatch()
+		ctx.log("Auto-resume: Auto Hatch ON.")
+	end
+
 	-- auto-resume Growth kalau sebelumnya aktif
 	if CFG.growthEnabled and ctx.startGrowth then
 		task.wait(2.0)

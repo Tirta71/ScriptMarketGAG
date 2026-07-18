@@ -22,6 +22,7 @@ return function(ctx)
 		{ "Pet", "Pet", "🐾" },
 		{ "Elephant", "Elephant", "🐘" },
 		{ "Growth", "Growth", "🌱" },
+		{ "Hatch", "Hatch", "🥚" },
 		{ "Leveling", "Leveling", "⚡" },
 		{ "Mutation", "Mutation", "🧪" },
 		{ "Event", "Event", "☀️" },
@@ -121,6 +122,86 @@ return function(ctx)
 				function() return capStep((CFG.growthFlow or {})[i]) end,
 				function(code) CFG.growthFlow = CFG.growthFlow or {}; CFG.growthFlow[i] = code; persist() end, i)
 		end
+	end
+
+	------------------------------------------------------------------ HATCH (auto hatch + auto sell)
+	do
+		local hatchPage = pageRef["Hatch"]
+
+		-- Status & Control
+		local hCtrl = makeAccordion(hatchPage, "Status & Control", 1, false)
+		local hLbl = mk("TextLabel", { Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, Text = "Loading...", Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = C.txt, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, LineHeight = 1.35, RichText = true, LayoutOrder = 0 }, hCtrl)
+		mk("Frame", { Size = UDim2.new(1, 0, 0, 12), BackgroundTransparency = 1, LayoutOrder = 1 }, hCtrl)
+		task.spawn(function()
+			while ctx.alive() do
+				local ok, s = pcall(function() return ctx.getHatchSummary() end)
+				if ok and s then
+					local col = s.status == "RUNNING" and "#5acc78" or "#dc5050"
+					hLbl.Text = string.format(
+						"Status: <font color=\"%s\"><b>%s</b></font>  |  <font color=\"#f5c82d\">%s</font>\n" ..
+						"Core Team: <font color=\"#8c929e\">%s</font>\nHatch Team: <font color=\"#8c929e\">%s</font>\n" ..
+						"Bronto Team: <font color=\"#8c929e\">%s</font>\nSell Team: <font color=\"#8c929e\">%s</font>\n\n" ..
+						"Backpack pet: <font color=\"#8c929e\">%d</font>\nEgg ready: <font color=\"#8c929e\">%d</font>\n" ..
+						"Eggs hatched: <font color=\"#8c929e\">%d</font>\nSell cycle: <font color=\"#8c929e\">%d</font>",
+						col, s.status, s.phase, s.core, s.hatch, s.bronto, s.sell, s.backpack, s.ready, s.eggsHatched, s.sellCycles)
+				end
+				task.wait(1.0)
+			end
+		end)
+		makeToggle(hCtrl, "Auto Hatch", "Start/Stop auto hatching (equip Hatch team + hatch egg ready)",
+			function() return CFG.hatchEnabled end,
+			function(v) CFG.hatchEnabled = v; persist(); if v then ctx.startHatch() else ctx.stopHatch() end end, 2)
+		makeToggle(hCtrl, "Auto Sell", "Auto jual pet pas backpack penuh (filter + favorite proteksi)",
+			function() return CFG.autoSellEnabled end, function(v) CFG.autoSellEnabled = v; persist() end, 3)
+
+		-- Teams
+		local hTeam = makeAccordion(hatchPage, "Teams (Core / Hatch / Bronto / Sell)", 2, true)
+		makeMultiDropdownDyn(hTeam, "Core Team", "Team default/idle",
+			function() return ctx.inventoryPetOptions(CFG.hatchCoreTeam) end, CFG.hatchCoreTeam, function() persist() end, 1)
+		makeMultiDropdownDyn(hTeam, "Hatch Team", "Team saat hatch (recovery + speed)",
+			function() return ctx.inventoryPetOptions(CFG.hatchHatchTeam) end, CFG.hatchHatchTeam, function() persist() end, 2)
+		makeMultiDropdownDyn(hTeam, "Bronto Team", "Team hatch-speed (bronto)",
+			function() return ctx.inventoryPetOptions(CFG.hatchBrontoTeam) end, CFG.hatchBrontoTeam, function() persist() end, 3)
+		makeMultiDropdownDyn(hTeam, "Sell Team", "Team saat jual (boost harga)",
+			function() return ctx.inventoryPetOptions(CFG.hatchSellTeam) end, CFG.hatchSellTeam, function() persist() end, 4)
+
+		-- Egg Configuration
+		local hEgg = makeAccordion(hatchPage, "Egg Configuration", 3, true)
+		makeInput(hEgg, "Egg Name", "Egg yg di-place & di-hatch (mis. Rare Egg)",
+			function() return tostring(CFG.hatchEggName) end, function(t) CFG.hatchEggName = t; persist() end, 1)
+		makeInput(hEgg, "Max Placed", "Target egg ke-place di garden",
+			function() return tostring(CFG.hatchMaxPlaced) end, function(t) CFG.hatchMaxPlaced = tonumber(t) or 9; persist() end, 2)
+
+		-- Sell Configuration
+		local hSell = makeAccordion(hatchPage, "Sell Configuration", 4, true)
+		makeMultiDropdown(hSell, "Pets to Sell", "Tipe pet yg DIJUAL (sisanya difavoritin biar aman)",
+			reg.PET_OPTIONS, CFG.sellPetTypes, function() persist() end, 1)
+		makeInput(hSell, "Sell Weight Threshold", "Jual kalau base weight < ini",
+			function() return tostring(CFG.sellWeightThreshold) end, function(t) CFG.sellWeightThreshold = tonumber(t) or 4; persist() end, 2)
+		makeInput(hSell, "Sell Age Threshold", "Jual kalau age < ini",
+			function() return tostring(CFG.sellAgeThreshold) end, function(t) CFG.sellAgeThreshold = tonumber(t) or 3; persist() end, 3)
+		makeMultiDropdown(hSell, "Special Pets to Sell", "Pet spesial (jual by weight)",
+			reg.PET_OPTIONS, CFG.sellSpecialTypes, function() persist() end, 4)
+		makeInput(hSell, "Special Pet Weight Threshold", "Jual pet spesial dgn weight < ini (0=off)",
+			function() return tostring(CFG.sellSpecialWeight) end, function(t) CFG.sellSpecialWeight = tonumber(t) or 10; persist() end, 5)
+		local SELLMODE = { { name = "Cycle", display = "Cycle" }, { name = "Backpack", display = "Backpack" } }
+		makeSingleDropdown(hSell, "Sell Mode", "Kapan trigger jual",
+			function() return SELLMODE end, function() return CFG.sellMode or "Cycle" end,
+			function(code) CFG.sellMode = code; persist() end, 6)
+		local SELLSTYLE = { { name = "All at Once", display = "All at Once" }, { name = "One by One", display = "One by One" } }
+		makeSingleDropdown(hSell, "Sell Style", "All at Once = jual semua matched sekaligus",
+			function() return SELLSTYLE end, function() return CFG.sellStyle or "All at Once" end,
+			function(code) CFG.sellStyle = code; persist() end, 7)
+		makeInput(hSell, "Sell Every N Cycles", "Jual tiap N cycle hatch",
+			function() return tostring(CFG.sellEveryNCycles) end, function(t) CFG.sellEveryNCycles = tonumber(t) or 1; persist() end, 8)
+		makeInput(hSell, "Sell When Pets Reach", "Jual kalau backpack pet >= ini",
+			function() return tostring(CFG.sellWhenReach) end, function(t) CFG.sellWhenReach = tonumber(t) or 100; persist() end, 9)
+		makeInput(hSell, "Sell Team Delay (sec)", "Tunggu abis swap team sebelum jual",
+			function() return tostring(CFG.sellTeamDelay) end, function(t) CFG.sellTeamDelay = tonumber(t) or 5; persist() end, 10)
+		makeToggle(hSell, "Auto Boost Before Sell", "Boost pet aktif pakai toy sebelum jual",
+			function() return CFG.autoBoostBeforeSell end, function(v) CFG.autoBoostBeforeSell = v; persist() end, 11)
+		makeButton(hSell, "Sell Now (manual)", "Jalankan sell sekali sekarang",
+			function() task.spawn(function() pcall(ctx.hatchDoSell) end) end, 12)
 	end
 
 	------------------------------------------------------------------ SHOP
