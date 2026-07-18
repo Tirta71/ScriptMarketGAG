@@ -204,6 +204,7 @@ return function(ctx)
 	function ctx.startElephant()
 		if ctx.cancelClearGarden then ctx.cancelClearGarden() end -- batalkan clear tertunda dari fitur lain
 		ctx.state.elephantCfgOverride = nil -- webhook elephant pakai config standalone (bukan Growth)
+		ctx.state.elephantWebhookPost = nil -- standalone: edit pesan (bukan POST tiap selesai)
 		task.spawn(elephantLoop)
 	end
 

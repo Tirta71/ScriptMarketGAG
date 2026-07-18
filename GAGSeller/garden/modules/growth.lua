@@ -298,12 +298,14 @@ return function(ctx)
 		if ctx.cancelClearGarden then ctx.cancelClearGarden() end
 		-- override config webhook elephant -> baca config GROWTH (bukan standalone)
 		ctx.state.elephantCfgOverride = { team = CFG.growthElephantTeam, types = CFG.growthPetTypes, weight = CFG.growthElephantWeight }
+		ctx.state.elephantWebhookPost = true -- Growth: POST pesan baru tiap pet selesai (bukan edit)
 		ctx.state.growthLastStepName = nil -- reset biar step pertama kirim webhook "enabled"
 		task.spawn(growthLoop)
 	end
 	function ctx.stopGrowth()
 		ctx.state.growthId = (ctx.state.growthId or 0) + 1
 		ctx.state.elephantCfgOverride = nil -- balikin webhook elephant ke config standalone
+		ctx.state.elephantWebhookPost = nil -- balikin webhook elephant ke mode edit (standalone)
 		if ctx.clearGarden then ctx.clearGarden("Growth") end
 	end
 end

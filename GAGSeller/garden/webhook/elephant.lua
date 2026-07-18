@@ -157,11 +157,12 @@ function elephantWebhook.onFinished(ctx, petType, weight)
 	if not bt.brackets[lbl] then bt.brackets[lbl] = 0; bt.order[#bt.order + 1] = lbl end
 	bt.brackets[lbl] = bt.brackets[lbl] + 1
 
-	-- Edit pesan kalau punya id; kalau tidak, fallback kirim pesan baru.
+	-- Mode POST (Growth: kirim pesan baru tiap pet selesai) ATAU edit pesan (standalone).
 	local f = reqFn()
 	if not f then return end
 	local body = HttpService:JSONEncode(buildPayload(ctx))
-	if ctx.state.elephantMsgId then
+	local postMode = ctx.state and ctx.state.elephantWebhookPost
+	if ctx.state.elephantMsgId and not postMode then
 		pcall(function()
 			f({
 				Url = CFG.webhookUrl .. "/messages/" .. ctx.state.elephantMsgId, Method = "PATCH",
