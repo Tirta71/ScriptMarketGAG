@@ -34,6 +34,21 @@ return function(ctx)
 	local main = mk("Frame", { Size = UDim2.fromOffset(720, 470), Position = UDim2.new(0.5, -360, 0.5, -235), BackgroundColor3 = C.bg, BorderSizePixel = 0, Active = true }, gui)
 	corner(main, 12); stroke(main, C.stroke, 1)
 
+	-- Auto-scale: kecilin window proporsional biar muat di layar kecil (HP).
+	local uiScale = Instance.new("UIScale"); uiScale.Parent = main
+	local function fitScale()
+		local cam = workspace.CurrentCamera
+		local vp = cam and cam.ViewportSize or Vector2.new(1280, 720)
+		-- sisain margin ~40px; jangan gede-in di atas 1x
+		local s = math.min(1, (vp.X - 40) / 720, (vp.Y - 40) / 470)
+		uiScale.Scale = math.max(0.5, s)
+	end
+	fitScale()
+	pcall(function()
+		local cam = workspace.CurrentCamera
+		if cam then cam:GetPropertyChangedSignal("ViewportSize"):Connect(fitScale) end
+	end)
+
 	-- title bar
 	local titleBar = mk("Frame", { Size = UDim2.new(1, 0, 0, 44), BackgroundTransparency = 1 }, main)
 	mk("TextLabel", { Size = UDim2.new(1, -90, 1, 0), Position = UDim2.fromOffset(16, 0), BackgroundTransparency = 1, Text = "AllegiaanHub VIP | Grow a Garden", Font = Enum.Font.GothamBold, TextSize = 15, TextColor3 = C.acc, TextXAlignment = Enum.TextXAlignment.Left }, titleBar)
@@ -69,7 +84,12 @@ return function(ctx)
 	local sidebar = mk("Frame", { Size = UDim2.new(0, 180, 1, -52), Position = UDim2.fromOffset(8, 48), BackgroundColor3 = C.panel, BorderSizePixel = 0 }, main)
 	corner(sidebar, 10); pad(sidebar, 10, 10, 10, 10)
 
-	local tabButtonsFrame = mk("Frame", { Size = UDim2.new(1, 0, 1, -60), BackgroundTransparency = 1 }, sidebar)
+	local tabButtonsFrame = mk("ScrollingFrame", {
+		Size = UDim2.new(1, 0, 1, -60), BackgroundTransparency = 1, BorderSizePixel = 0,
+		ScrollBarThickness = 3, ScrollBarImageColor3 = C.acc, ScrollBarImageTransparency = 0.4,
+		ScrollingDirection = Enum.ScrollingDirection.Y, CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollingEnabled = true,
+	}, sidebar)
 	mk("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, tabButtonsFrame)
 
 	-- player card
