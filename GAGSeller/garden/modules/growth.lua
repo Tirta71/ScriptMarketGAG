@@ -215,6 +215,21 @@ return function(ctx)
 						end
 						table.insert(active, uuid)
 					else
+						-- pet SELESAI step ini -> kirim webhook (template per-step)
+						local pt = v.PetType
+						if step == "elephant" and ctx.webhookElephant and ctx.webhookElephant.onFinished then
+							pcall(function() ctx.webhookElephant.onFinished(ctx, pt, pd.BaseWeight or 0) end)
+						elseif step == "mutation" and ctx.webhookMutation and ctx.webhookMutation.sendClaimed then
+							pcall(function() ctx.webhookMutation.sendClaimed(ctx, pt, mutOf(pd), true) end)
+						elseif step == "leveling" and stepDone("leveling", pd)
+							and ctx.webhookLeveling and ctx.webhookLeveling.sendFinished then
+							-- CUMA Phase 2 (reached final). Phase 1 (P1Target) ga kirim.
+							local remains = 0
+							for _, iv in pairs(inv) do
+								if types[iv.PetType] and not stepDone("leveling", iv.PetData) then remains = remains + 1 end
+							end
+							pcall(function() ctx.webhookLeveling.sendFinished(ctx, pt, mutOf(pd), pd.Level or 0, 0, remains) end)
+						end
 						pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
 						localEq[uuid] = nil
 						task.wait(0.1)
