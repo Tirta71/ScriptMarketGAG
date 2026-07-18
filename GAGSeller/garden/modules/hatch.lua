@@ -186,6 +186,22 @@ return function(ctx)
 		return n
 	end
 
+	-- Daftar egg di backpack + jumlah (buat dropdown Egg Configuration).
+	function ctx.getEggBackpackOptions()
+		local out = {}
+		local bp = LP:FindFirstChildOfClass("Backpack")
+		if bp then for _, t in ipairs(bp:GetChildren()) do
+			if t:IsA("Tool") and tostring(t.Name):find("Egg") and not t:GetAttribute("PET_UUID") then
+				local nm = tostring(t.Name)
+				local base, cnt = nm:match("^(.-)%s*x(%d+)$")
+				base = base or nm
+				out[#out + 1] = { name = base, display = cnt and (base .. " x" .. cnt) or base }
+			end
+		end end
+		table.sort(out, function(a, b) return a.name < b.name end)
+		return out
+	end
+
 	----------------------------------------------------------------- STATUS
 	ctx.state.hatchStatus = "Idle"
 	function ctx.getHatchSummary()
@@ -232,7 +248,7 @@ return function(ctx)
 			if not CFG.hatchEnabled then break end
 			pcall(function() EggRemote:FireServer("HatchPet", e) end)
 			ctx.state.hatchEggsHatched = (ctx.state.hatchEggsHatched or 0) + 1
-			task.wait(0.2)
+			task.wait(CFG.hatchSpeed or 0.2)
 		end
 		ctx.state.hatchStatus = ("Hatched %d ready egg"):format(#eggs)
 	end

@@ -24,6 +24,7 @@ return function(ctx)
 		-- egg config
 		hatchEggName    = "Rare Egg", -- egg yg di-place & di-hatch
 		hatchMaxPlaced  = 9,          -- target egg ke-place di garden
+		hatchSpeed      = 0.2,        -- delay per hatch (detik); kecil = cepat
 		-- sell config (filter = DIJUAL; sisanya difavoritin biar aman)
 		sellPetTypes       = {},   -- set tipe pet yg dijual
 		sellWeightThreshold = 4,   -- jual kalau BaseWeight < ini
@@ -176,6 +177,7 @@ return function(ctx)
 			CFG.hatchSellTeam   = tbl(st.hatchSellTeam)
 			CFG.hatchEggName    = st.hatchEggName or "Rare Egg"
 			CFG.hatchMaxPlaced  = tonumber(st.hatchMaxPlaced) or 9
+			CFG.hatchSpeed      = tonumber(st.hatchSpeed) or 0.2
 			CFG.sellPetTypes    = tbl(st.sellPetTypes)
 			CFG.sellWeightThreshold = tonumber(st.sellWeightThreshold) or 4
 			CFG.sellAgeThreshold    = tonumber(st.sellAgeThreshold) or 3

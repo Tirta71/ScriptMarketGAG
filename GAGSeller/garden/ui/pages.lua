@@ -156,21 +156,25 @@ return function(ctx)
 
 		-- Teams
 		local hTeam = makeAccordion(hatchPage, "Teams (Core / Hatch / Bronto / Sell)", 2, true)
-		makeMultiDropdownDyn(hTeam, "Core Team", "Team default/idle",
+		makeMultiDropdownDyn(hTeam, "Core Team", "Percepat egg (incubation speed)",
 			function() return ctx.inventoryPetOptions(CFG.hatchCoreTeam) end, CFG.hatchCoreTeam, function() persist() end, 1)
-		makeMultiDropdownDyn(hTeam, "Hatch Team", "Team saat hatch (recovery + speed)",
+		makeMultiDropdownDyn(hTeam, "Hatch Team", "Hatch egg ready (Koi = balikin egg)",
 			function() return ctx.inventoryPetOptions(CFG.hatchHatchTeam) end, CFG.hatchHatchTeam, function() persist() end, 2)
-		makeMultiDropdownDyn(hTeam, "Bronto Team", "Team hatch-speed (bronto)",
+		makeMultiDropdownDyn(hTeam, "Bronto Team", "+30% berat pet pas hatch (Brontosaurus)",
 			function() return ctx.inventoryPetOptions(CFG.hatchBrontoTeam) end, CFG.hatchBrontoTeam, function() persist() end, 3)
-		makeMultiDropdownDyn(hTeam, "Sell Team", "Team saat jual (boost harga)",
+		makeMultiDropdownDyn(hTeam, "Sell Team", "Jual + balikin pet jadi egg (Seal the Deal)",
 			function() return ctx.inventoryPetOptions(CFG.hatchSellTeam) end, CFG.hatchSellTeam, function() persist() end, 4)
 
 		-- Egg Configuration
 		local hEgg = makeAccordion(hatchPage, "Egg Configuration", 3, true)
-		makeInput(hEgg, "Egg Name", "Egg yg di-place & di-hatch (mis. Rare Egg)",
-			function() return tostring(CFG.hatchEggName) end, function(t) CFG.hatchEggName = t; persist() end, 1)
-		makeInput(hEgg, "Max Placed", "Target egg ke-place di garden",
+		makeSingleDropdown(hEgg, "Egg to Hatch", "Egg dari backpack yg di-place & di-hatch (+ jumlah)",
+			function() return ctx.getEggBackpackOptions() end,
+			function() return tostring(CFG.hatchEggName or "") end,
+			function(code) CFG.hatchEggName = code; persist() end, 1)
+		makeInput(hEgg, "Max Placed", "Maksimal egg ke-place di garden",
 			function() return tostring(CFG.hatchMaxPlaced) end, function(t) CFG.hatchMaxPlaced = tonumber(t) or 9; persist() end, 2)
+		makeInput(hEgg, "Hatch Speed (delay/hatch, sec)", "Jeda per hatch; makin kecil makin cepat (mis. 0.1)",
+			function() return tostring(CFG.hatchSpeed) end, function(t) CFG.hatchSpeed = math.max(0.05, tonumber(t) or 0.2); persist() end, 3)
 
 		-- Sell Configuration
 		local hSell = makeAccordion(hatchPage, "Sell Configuration", 4, true)
