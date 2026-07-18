@@ -1,6 +1,5 @@
---[[ esp.lua — label melayang (BillboardGui) di dunia 3D di atas tiap pet & egg.
-     Pet: nama (+mutasi, warna by rarity) + berat KG.
-     Egg: nama egg + ISI-nya (pet yang bakal menetas + berat pasti) dari
+--[[ esp.lua — label melayang (BillboardGui) di dunia 3D di atas tiap egg.
+     Egg: nama egg + ISI-nya (pet yang bakal menetas + berat) dari
           SaveSlots.AllSlots.<slot>.SavedObjects.<uuid>.Data (Type/BaseWeight),
           fallback sisa waktu hatch / READY.
      Toggle: CFG.espEnabled. ]]
@@ -8,13 +7,6 @@ return function(ctx)
 	local RS = game:GetService("ReplicatedStorage")
 	local LP = ctx.LP
 	local DataService = ctx.deps.DataService
-	local mutDisplay = (ctx.reg and ctx.reg.mutDisplay) or function(x) return x end
-	local PetList; pcall(function() PetList = require(RS.Data.PetRegistry.PetList) end)
-
-	local RARITY_HEX = {
-		Common = "#E1E1E1", Uncommon = "#78EB78", Rare = "#5AAAFF", Legendary = "#F5D250",
-		Mythical = "#D278FF", Divine = "#FF963C", Prismatic = "#FF6EB4",
-	}
 
 	-- Game nampilin berat = BaseWeight * 1.1 (bukan raw BaseWeight).
 	local WEIGHT_MULT = 1.1
@@ -113,33 +105,6 @@ return function(ctx)
 
 	local function update()
 		local seen = {}
-
-		-- ===== PET (equipped) =====
-		local ok, d = pcall(function() return DataService:GetData() end)
-		local inv = ok and d and d.PetsData and d.PetsData.PetInventory and d.PetsData.PetInventory.Data or {}
-		local pp = workspace:FindFirstChild("PetsPhysical")
-		if pp then
-			for _, mover in ipairs(pp:GetChildren()) do
-				for _, m in ipairs(mover:GetChildren()) do
-					if m:IsA("Model") then
-						local v = inv[m.Name]
-						local adornee = v and partOf(m)
-						if v and adornee then
-							local key = "pet_" .. m.Name
-							seen[key] = true
-							local rec = acquire(key, adornee, 2.5)
-							local pd = v.PetData or {}
-							local mut = pd.MutationType
-							local mutStr = (mut and mut ~= "" and mut ~= "None" and mut ~= "Normal") and (mutDisplay(mut) .. " ") or ""
-							local def = PetList and PetList[v.PetType]
-							local hex = (def and RARITY_HEX[def.Rarity]) or "#F5DC5A"
-							rec.lbl.Text = ("<font color='%s'>%s%s</font>\n<font color='#78C8FF'>%.2f KG</font>")
-								:format(hex, mutStr, v.PetType, (pd.BaseWeight or 0) * WEIGHT_MULT)
-						end
-					end
-				end
-			end
-		end
 
 		-- ===== EGG (nama + isi: pet + berat) =====
 		local farm; pcall(function() farm = require(RS.Modules.GetFarm)(LP) end)
