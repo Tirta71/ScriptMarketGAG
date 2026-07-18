@@ -171,11 +171,10 @@ return function(ctx)
 			ctx.state.growthLastStepName = step
 			if step == "elephant" and ctx.webhookElephant and ctx.webhookElephant.sendEnabled then
 				pcall(function() ctx.webhookElephant.sendEnabled(ctx) end)
-			elseif step == "mutation" and ctx.webhookMutation and ctx.webhookMutation.sendEnabled then
-				pcall(function() ctx.webhookMutation.sendEnabled(ctx, CFG.growthPetTypes, CFG.growthMutationTargets, 0, {}, {}, {}) end)
 			elseif step == "leveling" and ctx.webhookLeveling and ctx.webhookLeveling.sendEnabled then
 				pcall(function() ctx.webhookLeveling.sendEnabled(ctx, {}, {}) end)
 			end
+			-- mutation (aura/cleanse) ga punya sendEnabled -> notif cuma per pet dapat mutasi
 		end
 
 		local localEq = {}
@@ -231,8 +230,13 @@ return function(ctx)
 						local pt = v.PetType
 						if step == "elephant" and ctx.webhookElephant and ctx.webhookElephant.onFinished then
 							pcall(function() ctx.webhookElephant.onFinished(ctx, pt, pd.BaseWeight or 0) end)
-						elseif step == "mutation" and ctx.webhookMutation and ctx.webhookMutation.sendClaimed then
-							pcall(function() ctx.webhookMutation.sendClaimed(ctx, pt, mutOf(pd), true) end)
+						elseif step == "mutation" and ctx.webhookCleanse and ctx.webhookCleanse.sendObtained then
+							-- aura/cleanse webhook (bukan mutasi mesin)
+							local remainsM = 0
+							for _, iv in pairs(inv) do
+								if types[iv.PetType] and not stepDone("mutation", iv.PetData) then remainsM = remainsM + 1 end
+							end
+							pcall(function() ctx.webhookCleanse.sendObtained(ctx, pt, mutOf(pd), pd.Level or 0, remainsM) end)
 						elseif step == "leveling" and stepDone("leveling", pd)
 							and ctx.webhookLeveling and ctx.webhookLeveling.sendFinished then
 							-- CUMA Phase 2 (reached final). Phase 1 (P1Target) ga kirim.
