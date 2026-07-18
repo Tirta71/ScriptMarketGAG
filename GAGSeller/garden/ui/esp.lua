@@ -1,6 +1,8 @@
 --[[ esp.lua — label melayang (BillboardGui) di dunia 3D di atas tiap pet & egg.
      Pet: nama (+mutasi, warna by rarity) + berat KG.
-     Egg: nama egg + sisa waktu hatch (TimeToHatch) / READY.
+     Egg: nama egg + ISI-nya (pet yang bakal menetas + berat pasti) dari
+          SaveSlots.AllSlots.<slot>.SavedObjects.<uuid>.Data (Type/BaseWeight),
+          fallback sisa waktu hatch / READY.
      Toggle: CFG.espEnabled. ]]
 return function(ctx)
 	local RS = game:GetService("ReplicatedStorage")
@@ -9,15 +11,14 @@ return function(ctx)
 	local mutDisplay = (ctx.reg and ctx.reg.mutDisplay) or function(x) return x end
 	local PetList; pcall(function() PetList = require(RS.Data.PetRegistry.PetList) end)
 
-	local RARITY_COLOR = {
-		Common = Color3.fromRGB(225, 225, 225), Uncommon = Color3.fromRGB(120, 235, 120),
-		Rare = Color3.fromRGB(90, 170, 255), Legendary = Color3.fromRGB(245, 210, 80),
-		Mythical = Color3.fromRGB(210, 120, 255), Divine = Color3.fromRGB(255, 150, 60),
-		Prismatic = Color3.fromRGB(255, 110, 180),
+	local RARITY_HEX = {
+		Common = "#E1E1E1", Uncommon = "#78EB78", Rare = "#5AAAFF", Legendary = "#F5D250",
+		Mythical = "#D278FF", Divine = "#FF963C", Prismatic = "#FF6EB4",
 	}
 
 	local bbFolder
-	local billboards = {} -- key -> { gui, name, sub }
+	local billboards = {} -- key -> { gui, lbl }
+	local eggSlotKey  -- cache slot aktif yg nyimpen SavedObjects
 
 	local function ensureFolder()
 		if bbFolder and bbFolder.Parent then return bbFolder end
@@ -38,7 +39,7 @@ return function(ctx)
 		local bb = Instance.new("BillboardGui")
 		bb.Name = "esp_" .. key
 		bb.Adornee = adornee
-		bb.Size = UDim2.fromOffset(230, 46)
+		bb.Size = UDim2.fromOffset(240, 58)
 		bb.StudsOffset = Vector3.new(0, offset or 2.5, 0)
 		bb.AlwaysOnTop = true
 		bb.MaxDistance = 600
@@ -46,44 +47,23 @@ return function(ctx)
 		bb.ClipsDescendants = false
 		bb.Parent = ensureFolder()
 
-		local name = Instance.new("TextLabel")
-		name.BackgroundTransparency = 1
-		name.Size = UDim2.new(1, 0, 0.55, 0)
-		name.Font = Enum.Font.GothamBold
-		name.TextSize = 15
-		name.TextColor3 = Color3.fromRGB(245, 220, 90)
-		name.TextStrokeTransparency = 0.25
-		name.TextStrokeColor3 = Color3.new(0, 0, 0)
-		name.Parent = bb
+		local lbl = Instance.new("TextLabel")
+		lbl.BackgroundTransparency = 1
+		lbl.Size = UDim2.new(1, 0, 1, 0)
+		lbl.Font = Enum.Font.GothamBold
+		lbl.TextSize = 14
+		lbl.RichText = true
+		lbl.TextColor3 = Color3.new(1, 1, 1)
+		lbl.TextStrokeTransparency = 0.2
+		lbl.TextStrokeColor3 = Color3.new(0, 0, 0)
+		lbl.TextYAlignment = Enum.TextYAlignment.Bottom
+		lbl.Parent = bb
 
-		local sub = Instance.new("TextLabel")
-		sub.BackgroundTransparency = 1
-		sub.Position = UDim2.new(0, 0, 0.55, 0)
-		sub.Size = UDim2.new(1, 0, 0.45, 0)
-		sub.Font = Enum.Font.GothamBold
-		sub.TextSize = 13
-		sub.TextColor3 = Color3.fromRGB(235, 235, 235)
-		sub.TextStrokeTransparency = 0.25
-		sub.TextStrokeColor3 = Color3.new(0, 0, 0)
-		sub.Parent = bb
-
-		local rec = { gui = bb, name = name, sub = sub }
+		local rec = { gui = bb, lbl = lbl }
 		billboards[key] = rec
 		return rec
 	end
 
-	local function fmtTime(sec)
-		sec = math.max(0, math.floor(sec))
-		local m = math.floor(sec / 60)
-		local s = sec % 60
-		if m >= 60 then
-			local h = math.floor(m / 60); m = m % 60
-			return string.format("%dh %dm", h, m)
-		end
-		return string.format("%dm %02ds", m, s)
-	end
-
-	-- ambil/bikin billboard buat adornee tertentu (recreate kalau adornee ganti)
 	local function acquire(key, adornee, offset)
 		local rec = billboards[key]
 		if (not rec) or rec.gui.Adornee ~= adornee or not rec.gui.Parent then
@@ -93,13 +73,37 @@ return function(ctx)
 		return rec
 	end
 
-	-- nama egg: attribute EggName, fallback ke child Model (persist walau ready)
-	local function eggNameOf(e)
+	local function fmtTime(sec)
+		sec = math.max(0, math.floor(sec))
+		local m = math.floor(sec / 60)
+		local s = sec % 60
+		if m >= 60 then local h = math.floor(m / 60); m = m % 60; return string.format("%dh %dm", h, m) end
+		return string.format("%dm %02ds", m, s)
+	end
+
+	-- Data isi egg (pet yg bakal menetas + berat) dari SavedObjects by uuid.
+	local function eggDataOf(uuid)
+		if not uuid then return nil end
+		local ok, d = pcall(function() return DataService:GetData() end)
+		local slots = ok and d and d.SaveSlots and d.SaveSlots.AllSlots
+		if not slots then return nil end
+		-- coba slot yg di-cache dulu
+		local s = eggSlotKey and slots[eggSlotKey]
+		if s and s.SavedObjects and s.SavedObjects[uuid] then return s.SavedObjects[uuid].Data end
+		-- scan semua slot
+		for sn, slot in pairs(slots) do
+			if type(slot) == "table" and slot.SavedObjects and slot.SavedObjects[uuid] then
+				eggSlotKey = sn
+				return slot.SavedObjects[uuid].Data
+			end
+		end
+		return nil
+	end
+
+	local function eggNameFallback(e)
 		local n = e:GetAttribute("EggName")
 		if not n or n == "" then
-			for _, c in ipairs(e:GetChildren()) do
-				if c:IsA("Model") then n = c.Name; break end
-			end
+			for _, c in ipairs(e:GetChildren()) do if c:IsA("Model") then n = c.Name; break end end
 		end
 		return n or "Egg"
 	end
@@ -124,43 +128,46 @@ return function(ctx)
 							local pd = v.PetData or {}
 							local mut = pd.MutationType
 							local mutStr = (mut and mut ~= "" and mut ~= "None" and mut ~= "Normal") and (mutDisplay(mut) .. " ") or ""
-							rec.name.Text = mutStr .. v.PetType
 							local def = PetList and PetList[v.PetType]
-							rec.name.TextColor3 = (def and RARITY_COLOR[def.Rarity]) or Color3.fromRGB(245, 220, 90)
-							rec.sub.Text = string.format("%.2f KG", pd.BaseWeight or 0)
-							rec.sub.TextColor3 = Color3.fromRGB(120, 200, 255)
+							local hex = (def and RARITY_HEX[def.Rarity]) or "#F5DC5A"
+							rec.lbl.Text = ("<font color='%s'>%s%s</font>\n<font color='#78C8FF'>%.2f KG</font>")
+								:format(hex, mutStr, v.PetType, pd.BaseWeight or 0)
 						end
 					end
 				end
 			end
 		end
 
-		-- ===== EGG =====
+		-- ===== EGG (nama + isi: pet + berat) =====
 		local farm; pcall(function() farm = require(RS.Modules.GetFarm)(LP) end)
 		if farm then
 			for _, e in ipairs(farm:GetDescendants()) do
 				if e:IsA("Model") and e.Name == "PetEgg" and e:GetAttribute("OWNER") == LP.Name then
 					local adornee = e:FindFirstChild("PetEgg") or partOf(e)
 					if adornee then
-						local key = "egg_" .. tostring(e:GetAttribute("OBJECT_UUID") or e:GetDebugId())
+						local uuid = e:GetAttribute("OBJECT_UUID")
+						local key = "egg_" .. tostring(uuid or e:GetDebugId())
 						seen[key] = true
 						local rec = acquire(key, adornee, 3)
-						rec.name.Text = eggNameOf(e)
-						rec.name.TextColor3 = Color3.fromRGB(120, 235, 120)
-						local t = tonumber(e:GetAttribute("TimeToHatch")) or 0
-						if t <= 0 then
-							rec.sub.Text = "READY"
-							rec.sub.TextColor3 = Color3.fromRGB(120, 235, 120)
-						else
-							rec.sub.Text = "\u{23F1} " .. fmtTime(t)
-							rec.sub.TextColor3 = Color3.fromRGB(255, 180, 80)
+						local data = eggDataOf(uuid)
+						local lines = { ("<font color='#00E676'>%s</font>"):format(eggNameFallback(e)) }
+						if data and data.Type then
+							lines[#lines + 1] = ("<font color='#FFEB3B'>%s</font>"):format(tostring(data.Type))
+							local w = tonumber(data.BaseWeight)
+							if w then lines[#lines + 1] = ("<font color='#7CF0FF'>%.2f KG</font>"):format(w) end
 						end
+						local t = tonumber(e:GetAttribute("TimeToHatch")) or (data and tonumber(data.TimeToHatch)) or 0
+						if t > 0 then
+							lines[#lines + 1] = ("<font color='#FFB450'>\u{23F1} %s</font>"):format(fmtTime(t))
+						elseif not (data and data.Type) then
+							lines[#lines + 1] = "<font color='#00E676'>READY</font>"
+						end
+						rec.lbl.Text = table.concat(lines, "\n")
 					end
 				end
 			end
 		end
 
-		-- cleanup billboard yg targetnya udah ilang
 		for key, rec in pairs(billboards) do
 			if not seen[key] then rec.gui:Destroy(); billboards[key] = nil end
 		end
