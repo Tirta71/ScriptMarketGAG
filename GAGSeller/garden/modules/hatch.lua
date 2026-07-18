@@ -283,20 +283,35 @@ return function(ctx)
 			ready = #readyEggs(),
 			placed = placedEggCount(),
 			maxPlaced = CFG.hatchMaxPlaced or 9,
+			sellMode = CFG.sellMode or "Cycle",
+			cycleProg = math.floor((ctx.state.hatchEggsHatched or 0) / math.max(1, CFG.hatchMaxPlaced or 9)) - (ctx.state.hatchLastSellCycle or 0),
+			cycleTarget = CFG.sellEveryNCycles or 1,
 		}
 	end
 
 	----------------------------------------------------------------- LOOP
 	local function tick()
 		local bpc = backpackPetCount()
-		-- 1) SELL: backpack penuh -> Sell Team -> jual (Seal balikin egg)
-		if CFG.autoSellEnabled and bpc >= (CFG.sellWhenReach or 100) then
+		local maxP = CFG.hatchMaxPlaced or 9
+		-- cycle = tiap maxPlaced egg ke-hatch dihitung 1 cycle
+		local cycle = math.floor((ctx.state.hatchEggsHatched or 0) / math.max(1, maxP))
+		-- 1) SELL trigger: mode "Cycle" (tiap N cycle) atau "Backpack" (pas penuh)
+		local sellNow = false
+		if CFG.autoSellEnabled then
+			if CFG.sellMode == "Cycle" then
+				sellNow = (cycle - (ctx.state.hatchLastSellCycle or 0)) >= (CFG.sellEveryNCycles or 1)
+			else
+				sellNow = bpc >= (CFG.sellWhenReach or 100)
+			end
+		end
+		if sellNow then
 			ctx.state.hatchPhase = "Selling Pets"
 			if next(CFG.hatchSellTeam or {}) and not teamMatches(CFG.hatchSellTeam) then
 				equipTeam(CFG.hatchSellTeam, "Sell Team")
 				task.wait(CFG.sellTeamDelay or 5)
 			end
 			doSell()
+			ctx.state.hatchLastSellCycle = cycle
 			return
 		end
 		-- 2) HATCH: ada egg READY -> Hatch Team + Bronto (Koi recovery + +30% berat)
@@ -315,7 +330,6 @@ return function(ctx)
 		end
 		-- 3) PLACE: egg di garden kurang -> Core Team (speed) + place egg baru
 		local placed = placedEggCount()
-		local maxP = CFG.hatchMaxPlaced or 9
 		if placed < maxP then
 			ctx.state.hatchPhase = ("Placing Eggs (%d/%d)"):format(placed, maxP)
 			if next(CFG.hatchCoreTeam or {}) then equipTeam(CFG.hatchCoreTeam, "Core Team") end

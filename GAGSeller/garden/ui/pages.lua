@@ -142,8 +142,8 @@ return function(ctx)
 						"Core Team: <font color=\"#8c929e\">%s</font>\nHatch Team: <font color=\"#8c929e\">%s</font>\n" ..
 						"Bronto Team: <font color=\"#8c929e\">%s</font>\nSell Team: <font color=\"#8c929e\">%s</font>\n\n" ..
 						"Backpack pet: <font color=\"#8c929e\">%d</font>\nEgg placed: <font color=\"#8c929e\">%d/%d</font>  |  ready: <font color=\"#8c929e\">%d</font>\n" ..
-						"Eggs hatched: <font color=\"#8c929e\">%d</font>\nSell cycle: <font color=\"#8c929e\">%d</font>",
-						col, s.status, s.phase, s.core, s.hatch, s.bronto, s.sell, s.backpack, s.placed, s.maxPlaced, s.ready, s.eggsHatched, s.sellCycles)
+						"Eggs hatched: <font color=\"#8c929e\">%d</font>\nSell cycle (%s): <font color=\"#8c929e\">%d/%d</font>  |  sold: <font color=\"#8c929e\">%d</font>",
+						col, s.status, s.phase, s.core, s.hatch, s.bronto, s.sell, s.backpack, s.placed, s.maxPlaced, s.ready, s.eggsHatched, s.sellMode, s.cycleProg, s.cycleTarget, s.sellCycles)
 				end
 				task.wait(1.0)
 			end
