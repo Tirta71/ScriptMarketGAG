@@ -62,6 +62,13 @@ return function(ctx)
 		ctx.log("Auto-resume: Leveling V2 ON.")
 	end
 
+	-- auto-resume Growth kalau sebelumnya aktif
+	if CFG.growthEnabled and ctx.startGrowth then
+		task.wait(2.0)
+		ctx.startGrowth()
+		ctx.log("Auto-resume: Growth ON.")
+	end
+
 	-- auto-resume Mutation kalau sebelumnya aktif
 	if CFG.mutationEnabled and ctx.startMutation then
 		task.wait(2.5)

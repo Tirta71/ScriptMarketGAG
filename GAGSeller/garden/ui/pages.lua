@@ -40,8 +40,82 @@ return function(ctx)
 		corner(box, 8); stroke(box); pad(box, 14, 14, 12, 12)
 		mk("TextLabel", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = "Fitur untuk tab ini belum tersedia.", Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top }, box)
 	end
-	for _, name in ipairs({ "Growth" }) do
-		placeholder(pageRef[name])
+	------------------------------------------------------------------ GROWTH (pipeline batch per-step)
+	do
+		local growthPage = pageRef["Growth"]
+		local FLOW_OPTS = { { name = "elephant", display = "Elephant" }, { name = "mutation", display = "Mutation" }, { name = "leveling", display = "Leveling" } }
+		local function capStep(s) for _, o in ipairs(FLOW_OPTS) do if o.name == s then return o.display end end return "Select" end
+
+		-- Growth Control (status + target + enable)
+		local gCtrl = makeAccordion(growthPage, "Growth Control", 1, true)
+		local gLbl = mk("TextLabel", { Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, Text = "Loading...", Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = C.txt, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, LineHeight = 1.35, RichText = true, LayoutOrder = 0 }, gCtrl)
+		mk("Frame", { Size = UDim2.new(1, 0, 0, 12), BackgroundTransparency = 1, LayoutOrder = 1 }, gCtrl)
+		task.spawn(function()
+			while ctx.alive() do
+				local ok, s = pcall(function() return ctx.getGrowthSummary() end)
+				if ok and s then
+					local col = s.status == "ACTIVE" and "#5acc78" or "#dc5050"
+					local steps = ""
+					for _, st in ipairs({ "elephant", "mutation", "leveling" }) do
+						local ps = s.perStep[st]
+						if ps then steps = steps .. ("%s: <font color=\"#8c929e\">%d/%d</font>\n"):format(st, ps.done, ps.total) end
+					end
+					gLbl.Text = string.format(
+						"Status: <font color=\"%s\"><b>%s</b></font>  |  <font color=\"#f5c82d\">%s</font>\n" ..
+						"Flow: <font color=\"#8c929e\">%s</font>\nTarget: <font color=\"#8c929e\">%s</font>\n\n%s",
+						col, s.status, s.step, s.flow, s.types, steps)
+				end
+				task.wait(1.5)
+			end
+		end)
+		makeMultiDropdown(gCtrl, "Growth Target Pet Types", "Pet yang diproses lewat semua step (semua pet game)",
+			reg.PET_OPTIONS, CFG.growthPetTypes, function() persist() end, 2)
+		makeToggle(gCtrl, "Enable Growth", "Jalankan pipeline (batch per-step sesuai flow)",
+			function() return CFG.growthEnabled end,
+			function(v) CFG.growthEnabled = v; persist(); if v then ctx.startGrowth() else ctx.stopGrowth() end end, 3)
+
+		-- Configuration Auto Elephant
+		local gEle = makeAccordion(growthPage, "Configuration Auto Elephant", 2, true)
+		makeMultiDropdownDyn(gEle, "Elephant Pet Team", "Team aura buat grow weight",
+			function() return ctx.inventoryPetOptions(CFG.growthElephantTeam) end, CFG.growthElephantTeam, function() persist() end, 1)
+		makeInput(gEle, "Target Weight (KG)", "Berat target sebelum lanjut step berikutnya (mis. 5.5)",
+			function() return tostring(CFG.growthElephantWeight) end, function(t) CFG.growthElephantWeight = tonumber(t) or 5.5; persist() end, 2)
+		makeInput(gEle, "Max Target Pets", "Max pet target di garden (step Elephant)",
+			function() return tostring(CFG.growthElephantMax) end, function(t) CFG.growthElephantMax = tonumber(t) or 2; persist() end, 3)
+
+		-- Configuration Auto Mutation
+		local gMut = makeAccordion(growthPage, "Configuration Auto Mutation", 3, true)
+		makeMultiDropdownDyn(gMut, "Mutation Pet Team", "Team aura pemberi mutasi",
+			function() return ctx.inventoryPetOptions(CFG.growthMutationTeam) end, CFG.growthMutationTeam, function() persist() end, 1)
+		makeMultiDropdown(gMut, "Target Mutations", "Mutasi yang diinginkan (mutasi salah -> auto cleanse)",
+			reg.MUT_OPTIONS, CFG.growthMutationTargets, function() persist() end, 2)
+		makeInput(gMut, "Max Target Pets", "Max pet target di garden (step Mutation)",
+			function() return tostring(CFG.growthMutationMax) end, function(t) CFG.growthMutationMax = tonumber(t) or 2; persist() end, 3)
+
+		-- Configuration Auto Leveling (2 phase)
+		local gLev = makeAccordion(growthPage, "Configuration Auto Leveling", 4, true)
+		makeMultiDropdownDyn(gLev, "Leveling Phase 1 Pet Team", "Team for Phase 1 (Age 1 to Phase 1 Target)",
+			function() return ctx.inventoryPetOptions(CFG.growthLevP1Team) end, CFG.growthLevP1Team, function() persist() end, 1)
+		makeInput(gLev, "Leveling Phase 1 Target", "End of Phase 1 / start of Phase 2 (default 40)",
+			function() return tostring(CFG.growthLevP1Target) end, function(t) CFG.growthLevP1Target = tonumber(t) or 40; persist() end, 2)
+		makeInput(gLev, "Leveling Phase 1 Max Pets", "Max target pets in garden during Phase 1",
+			function() return tostring(CFG.growthLevP1Max) end, function(t) CFG.growthLevP1Max = tonumber(t) or 3; persist() end, 3)
+		makeMultiDropdownDyn(gLev, "Leveling Phase 2 Pet Team", "Team for Phase 2 (Phase 1 Target to Final Target)",
+			function() return ctx.inventoryPetOptions(CFG.growthLevP2Team) end, CFG.growthLevP2Team, function() persist() end, 4)
+		makeInput(gLev, "Leveling Phase 2 Target", "Final target level (default 500 = max age)",
+			function() return tostring(CFG.growthLevP2Target) end, function(t) CFG.growthLevP2Target = tonumber(t) or 500; persist() end, 5)
+		makeInput(gLev, "Leveling Phase 2 Max Pets", "Max target pets in garden during Phase 2",
+			function() return tostring(CFG.growthLevP2Max) end, function(t) CFG.growthLevP2Max = tonumber(t) or 1; persist() end, 6)
+
+		-- Configuration Flow (Step 1/2/3)
+		local gFlow = makeAccordion(growthPage, "Configuration Flow", 5, true)
+		local stepDesc = { "First step in growth flow", "Second step in growth flow", "Third step in growth flow" }
+		for i = 1, 3 do
+			makeSingleDropdown(gFlow, "Step " .. i, stepDesc[i],
+				function() return FLOW_OPTS end,
+				function() return capStep((CFG.growthFlow or {})[i]) end,
+				function(code) CFG.growthFlow = CFG.growthFlow or {}; CFG.growthFlow[i] = code; persist() end, i)
+		end
 	end
 
 	------------------------------------------------------------------ SHOP

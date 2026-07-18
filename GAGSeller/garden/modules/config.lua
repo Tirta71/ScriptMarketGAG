@@ -47,6 +47,26 @@ return function(ctx)
 		levelingV2P2Max    = 1,
 		levelingV2Enabled  = false,
 
+		-- Growth (pipeline: Elephant -> Mutation -> Leveling, batch per-step, config TERPISAH)
+		growthEnabled      = false,
+		growthPetTypes     = {},                                   -- target pet types (dipakai semua step)
+		growthFlow         = { "elephant", "mutation", "leveling" }, -- urutan Step 1/2/3
+		-- step Elephant
+		growthElephantTeam   = {},
+		growthElephantWeight = 5.5,
+		growthElephantMax    = 2,
+		-- step Mutation (aura)
+		growthMutationTeam    = {},
+		growthMutationTargets = {},   -- target mutasi (mis. Ember/Nightmare/Rainbow)
+		growthMutationMax     = 2,
+		-- step Leveling (2 phase)
+		growthLevP1Team   = {},
+		growthLevP1Target = 40,
+		growthLevP1Max    = 3,
+		growthLevP2Team   = {},
+		growthLevP2Target = 500,
+		growthLevP2Max    = 1,
+
 		-- Automation Mutation
 		mutationExpTeam       = {},
 		mutationBoostTeam     = {},
@@ -148,6 +168,23 @@ return function(ctx)
 			CFG.levelingV2P2Target = tonumber(st.levelingV2P2Target) or 500
 			CFG.levelingV2P2Max    = tonumber(st.levelingV2P2Max) or 1
 			CFG.levelingV2Enabled  = st.levelingV2Enabled or false
+
+			-- Growth
+			CFG.growthEnabled  = st.growthEnabled or false
+			CFG.growthPetTypes = (type(st.growthPetTypes) == "table") and st.growthPetTypes or {}
+			CFG.growthFlow     = (type(st.growthFlow) == "table") and st.growthFlow or { "elephant", "mutation", "leveling" }
+			CFG.growthElephantTeam   = (type(st.growthElephantTeam) == "table") and st.growthElephantTeam or {}
+			CFG.growthElephantWeight = tonumber(st.growthElephantWeight) or 5.5
+			CFG.growthElephantMax    = tonumber(st.growthElephantMax) or 2
+			CFG.growthMutationTeam    = (type(st.growthMutationTeam) == "table") and st.growthMutationTeam or {}
+			CFG.growthMutationTargets = (type(st.growthMutationTargets) == "table") and st.growthMutationTargets or {}
+			CFG.growthMutationMax     = tonumber(st.growthMutationMax) or 2
+			CFG.growthLevP1Team   = (type(st.growthLevP1Team) == "table") and st.growthLevP1Team or {}
+			CFG.growthLevP1Target = tonumber(st.growthLevP1Target) or 40
+			CFG.growthLevP1Max    = tonumber(st.growthLevP1Max) or 3
+			CFG.growthLevP2Team   = (type(st.growthLevP2Team) == "table") and st.growthLevP2Team or {}
+			CFG.growthLevP2Target = tonumber(st.growthLevP2Target) or 500
+			CFG.growthLevP2Max    = tonumber(st.growthLevP2Max) or 1
 
 			-- Automation Mutation
 			CFG.mutationExpTeam       = (type(st.mutationExpTeam) == "table") and st.mutationExpTeam or {}
