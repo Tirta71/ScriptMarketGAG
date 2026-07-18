@@ -47,6 +47,14 @@ return function(ctx)
 					end
 				end
 			end
+			-- Ice Golem-exclusive dari Mutation Machine (via passive Cold Gears): ada di
+			-- PetMutationRegistry tapi bukan di MachineMutationTypes/Level500 -> tambah manual.
+			for _, n in ipairs({ "ChristmasRally", "JollyDecorator", "MerryNursery", "GiantGolem" }) do
+				local pmr = MutReg.PetMutationRegistry
+				if type(pmr) == "table" and pmr[n] and not seen[n] then
+					seen[n] = true; names[#names + 1] = n
+				end
+			end
 		end
 		if #names > 0 then
 			table.sort(names)
