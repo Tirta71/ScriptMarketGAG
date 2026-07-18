@@ -92,31 +92,33 @@ return function(ctx)
 		local phaseMin    = (phase == 1) and 0 or p1Target  -- batas bawah level utk phase ini
 		local maxPets     = (phase == 1) and p1Max or p2Max
 
-		local localEq, localEqCount = {}, 0
-		for _, uuid in ipairs(eq) do localEq[uuid] = true; localEqCount = localEqCount + 1 end
-
-		-- A. First run: cabut semua
-		if ctx.state.levelingV2FirstRun then
-			ctx.state.levelingV2FirstRun = false
-			for _, uuid in ipairs(eq) do
-				pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
-				localEq[uuid] = nil; localEqCount = localEqCount - 1
-				task.wait(0.2)
-			end
+		-- Deteksi TRANSISI phase -> picu pembersihan garden TOTAL.
+		if ctx.state.levelingV2LastPhase ~= nil and ctx.state.levelingV2LastPhase ~= phase then
+			ctx.state.levelingV2Clearing = true
 		end
+		ctx.state.levelingV2LastPhase = phase
 
-		-- B. Cabut team phase LAIN kalau ke-equip (biar team bersih per-phase)
-		for uuid in pairs(otherTeam) do
-			if localEq[uuid] and not team[uuid] then
-				pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
-				localEq[uuid] = nil; localEqCount = localEqCount - 1
-				task.wait(0.2)
+		local localEq = {}
+		for _, uuid in ipairs(eq) do localEq[uuid] = true end
+
+		-- A. First run / TRANSISI phase: bersihin garden TOTAL & pastikan BENAR-BENAR kosong
+		-- dulu (verified) sebelum pasang team phase baru. Cegah sisa pet phase 1 nyangkut.
+		if ctx.state.levelingV2FirstRun or ctx.state.levelingV2Clearing then
+			if #eq > 0 then
+				ctx.state.levelingV2Status = ("Phase %d: bersihin garden dulu (%d pet)..."):format(phase, #eq)
+				for _, uuid in ipairs(eq) do
+					pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
+					task.wait(0.2)
+				end
+				return -- cek ulang cycle berikutnya sampai garden BENAR-BENAR kosong
 			end
+			-- garden udah kosong -> pembersihan selesai, lanjut pasang team
+			ctx.state.levelingV2FirstRun = false
+			ctx.state.levelingV2Clearing = false
 		end
 
 		-- C. Pasang team phase ini + PASTIKAN LENGKAP dulu sebelum proses target pet.
-		-- Kalau ada anggota team yang belum ke-equip (cek dari data asli), equip lalu RETURN;
-		-- cycle berikutnya dicek ulang. Baru lanjut kalau team 100% terpasang.
+		-- Cek dari data equipped asli; kalau belum lengkap, equip lalu RETURN (recheck).
 		local teamComplete = true
 		for uuid in pairs(team) do
 			if not localEq[uuid] then
@@ -124,7 +126,6 @@ return function(ctx)
 				local pos = getPos(uuid)
 				if pos then
 					pcall(function() PetsService:FireServer("EquipPet", uuid, CFrame.new(pos)) end)
-					localEqCount = localEqCount + 1
 					task.wait(0.25)
 				end
 			end
@@ -143,7 +144,7 @@ return function(ctx)
 					local lvl = (v.PetData or {}).Level or 0
 					if lvl >= phaseTarget then
 						pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
-						localEq[uuid] = nil; localEqCount = localEqCount - 1
+						localEq[uuid] = nil
 						task.wait(0.2)
 					else
 						table.insert(active, uuid)
@@ -167,7 +168,7 @@ return function(ctx)
 				local pos = getPos(pool[i].uuid)
 				if pos then
 					pcall(function() PetsService:FireServer("EquipPet", pool[i].uuid, CFrame.new(pos)) end)
-					localEq[pool[i].uuid] = true; localEqCount = localEqCount + 1
+					localEq[pool[i].uuid] = true
 					table.insert(active, pool[i].uuid)
 					task.wait(0.25)
 				end
@@ -183,6 +184,7 @@ return function(ctx)
 		local myId = ctx.state.levelingV2Id
 		ctx.elevate()
 		ctx.state.levelingV2FirstRun = true
+		ctx.state.levelingV2LastPhase = nil -- reset biar ga false-trigger transisi di cycle pertama
 		while CFG.levelingV2Enabled and ctx.alive() and ctx.state.levelingV2Id == myId do
 			pcall(checkV2)
 			task.wait(3)
