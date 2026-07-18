@@ -19,14 +19,21 @@ local function reqFn()
 	return (syn and syn.request) or (http and http.request) or http_request or request
 end
 
+-- Sumber config: override Growth (ctx.state.elephantCfgOverride) kalau ada, else CFG standalone.
+local function ecfg(ctx)
+	local o = ctx.state and ctx.state.elephantCfgOverride
+	if o then return o.team or {}, o.types or {}, o.weight or 5.5 end
+	local CFG = ctx.CFG
+	return CFG.elephantTeamUuids or {}, CFG.elephantPetTypes or {}, CFG.elephantTargetWeight or 5.5
+end
+
 -- Hitung pet target yang belum max (Remains Queue), live dari data.
 local function remainsQueue(ctx)
 	local CFG = ctx.CFG
 	local ok, d = pcall(function() return ctx.deps.DataService:GetData() end)
 	if not ok or not d or not d.PetsData then return 0 end
 	local inv = d.PetsData.PetInventory and d.PetsData.PetInventory.Data or {}
-	local tt = CFG.elephantPetTypes or {}
-	local tw = CFG.elephantTargetWeight or 5.5
+	local _, tt, tw = ecfg(ctx)
 	local n = 0
 	for _, v in pairs(inv) do
 		if v.PetType and tt[v.PetType] and ((v.PetData or {}).BaseWeight or 0) < tw then n = n + 1 end
@@ -85,7 +92,7 @@ function elephantWebhook.sendEnabled(ctx)
 	-- base info (team + target types)
 	local ok, d = pcall(function() return ctx.deps.DataService:GetData() end)
 	local inv = ok and d and d.PetsData and d.PetsData.PetInventory and d.PetsData.PetInventory.Data or {}
-	local teamSet = CFG.elephantTeamUuids or {}
+	local teamSet, typesSet = ecfg(ctx)
 	local teamCount, teamOrder = {}, {}
 	for uuid in pairs(teamSet) do
 		local v = inv[uuid]
@@ -103,7 +110,7 @@ function elephantWebhook.sendEnabled(ctx)
 	for _, disp in ipairs(teamOrder) do teamParts[#teamParts + 1] = teamCount[disp] .. " " .. disp end
 
 	local typesList = {}
-	for t in pairs(CFG.elephantPetTypes or {}) do typesList[#typesList + 1] = t end
+	for t in pairs(typesSet) do typesList[#typesList + 1] = t end
 	table.sort(typesList)
 
 	ctx.state.elephantBase = {

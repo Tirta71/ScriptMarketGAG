@@ -166,6 +166,18 @@ return function(ctx)
 		end
 		ctx.state.growthStep = stepLabel
 
+		-- Kirim webhook "enabled" SEKALI pas MASUK step baru (mis. enable -> elephant duluan).
+		if ctx.state.growthLastStepName ~= step then
+			ctx.state.growthLastStepName = step
+			if step == "elephant" and ctx.webhookElephant and ctx.webhookElephant.sendEnabled then
+				pcall(function() ctx.webhookElephant.sendEnabled(ctx) end)
+			elseif step == "mutation" and ctx.webhookMutation and ctx.webhookMutation.sendEnabled then
+				pcall(function() ctx.webhookMutation.sendEnabled(ctx, CFG.growthPetTypes, CFG.growthMutationTargets, 0, {}, {}, {}) end)
+			elseif step == "leveling" and ctx.webhookLeveling and ctx.webhookLeveling.sendEnabled then
+				pcall(function() ctx.webhookLeveling.sendEnabled(ctx, {}, {}) end)
+			end
+		end
+
 		local localEq = {}
 		for _, uuid in ipairs(eq) do localEq[uuid] = true end
 
@@ -280,10 +292,14 @@ return function(ctx)
 
 	function ctx.startGrowth()
 		if ctx.cancelClearGarden then ctx.cancelClearGarden() end
+		-- override config webhook elephant -> baca config GROWTH (bukan standalone)
+		ctx.state.elephantCfgOverride = { team = CFG.growthElephantTeam, types = CFG.growthPetTypes, weight = CFG.growthElephantWeight }
+		ctx.state.growthLastStepName = nil -- reset biar step pertama kirim webhook "enabled"
 		task.spawn(growthLoop)
 	end
 	function ctx.stopGrowth()
 		ctx.state.growthId = (ctx.state.growthId or 0) + 1
+		ctx.state.elephantCfgOverride = nil -- balikin webhook elephant ke config standalone
 		if ctx.clearGarden then ctx.clearGarden("Growth") end
 	end
 end
