@@ -62,8 +62,13 @@ return function(ctx)
 					end
 					gLbl.Text = string.format(
 						"Status: <font color=\"%s\"><b>%s</b></font>  |  <font color=\"#f5c82d\">%s</font>\n" ..
-						"Flow: <font color=\"#8c929e\">%s</font>\nTarget: <font color=\"#8c929e\">%s</font>\n\n%s",
-						col, s.status, s.step, s.flow, s.types, steps)
+						"Flow: <font color=\"#8c929e\">%s</font>\nTarget: <font color=\"#8c929e\">%s</font>\n\n%s\n" ..
+						"Team Elephant: <font color=\"#8c929e\">%s</font>\n" ..
+						"Team Mutation: <font color=\"#8c929e\">%s</font>\n" ..
+						"Team Leveling P1: <font color=\"#8c929e\">%s</font>\n" ..
+						"Team Leveling P2: <font color=\"#8c929e\">%s</font>",
+						col, s.status, s.step, s.flow, s.types, steps,
+						s.teamElephant or "-", s.teamMutation or "-", s.teamLevP1 or "-", s.teamLevP2 or "-")
 				end
 				task.wait(1.5)
 			end

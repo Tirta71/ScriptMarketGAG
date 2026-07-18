@@ -17,9 +17,11 @@ local function formatDuration(sec)
 end
 
 -- Webhook saat leveling di-enable
-function levelingWebhook.sendEnabled(ctx, queueList, teamList)
+function levelingWebhook.sendEnabled(ctx, queueList, teamList, targetAge)
 	local CFG = ctx.CFG
 	if not CFG.webhookUrl or CFG.webhookUrl == "" then return end
+	queueList = queueList or {}
+	teamList = teamList or {}
 
 	local petLines = {}
 	for _, p in ipairs(queueList) do
@@ -51,7 +53,7 @@ function levelingWebhook.sendEnabled(ctx, queueList, teamList)
 							"> Target Age: `%s`\n" ..
 							"> Queue Count: `%d`",
 							teamText,
-							tostring(CFG.levelingTargetLevel or 500),
+							tostring(targetAge or CFG.levelingTargetLevel or 500),
 							#queueList
 						),
 						inline = false

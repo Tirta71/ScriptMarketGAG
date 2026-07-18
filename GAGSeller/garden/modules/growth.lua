@@ -101,12 +101,25 @@ return function(ctx)
 			end
 		end
 		local function nm(t) local o = {}; for k in pairs(t or {}) do o[#o + 1] = k end; return #o > 0 and table.concat(o, ", ") or "-" end
+		-- nama pet dari set uuid team (lookup PetType di inventory)
+		local function teamNm(teamSet)
+			local o = {}
+			for uuid in pairs(teamSet or {}) do
+				local v = inv[uuid]
+				o[#o + 1] = (v and v.PetType) or "?"
+			end
+			return #o > 0 and table.concat(o, ", ") or "-"
+		end
 		return {
 			status = CFG.growthEnabled and "ACTIVE" or "STOPPED",
 			step = ctx.state.growthStep or "-",
 			flow = (#flow > 0) and table.concat(flow, " -> ") or "-",
 			types = nm(types),
 			perStep = perStep,
+			teamElephant = teamNm(CFG.growthElephantTeam),
+			teamMutation = teamNm(CFG.growthMutationTeam),
+			teamLevP1 = teamNm(CFG.growthLevP1Team),
+			teamLevP2 = teamNm(CFG.growthLevP2Team),
 		}
 	end
 
@@ -172,7 +185,18 @@ return function(ctx)
 			if step == "elephant" and ctx.webhookElephant and ctx.webhookElephant.sendEnabled then
 				pcall(function() ctx.webhookElephant.sendEnabled(ctx) end)
 			elseif step == "leveling" and ctx.webhookLeveling and ctx.webhookLeveling.sendEnabled then
-				pcall(function() ctx.webhookLeveling.sendEnabled(ctx, {}, {}) end)
+				-- team P2 (nama pet) + antrean pet yg belum kelar leveling + target GROWTH (bukan standalone)
+				local teamList = {}
+				for uuid in pairs(CFG.growthLevP2Team or {}) do
+					local v = inv[uuid]; teamList[#teamList + 1] = (v and v.PetType) or "?"
+				end
+				local queueList = {}
+				for _, v in pairs(inv) do
+					if types[v.PetType] and not stepDone("leveling", v.PetData) then
+						queueList[#queueList + 1] = { type = v.PetType, level = (v.PetData or {}).Level or 0 }
+					end
+				end
+				pcall(function() ctx.webhookLeveling.sendEnabled(ctx, queueList, teamList, CFG.growthLevP2Target) end)
 			end
 			-- mutation (aura/cleanse) ga punya sendEnabled -> notif cuma per pet dapat mutasi
 		end
