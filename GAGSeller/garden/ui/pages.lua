@@ -590,13 +590,6 @@ return function(ctx)
 		end, 5)
 	ctx.state.pnpMonitorBtnRender = pnpMonitorBtnRender
 
-	makeToggle(pnp, "Enable ESP Label", "Label melayang di atas pet (nama+berat) & egg (nama+waktu hatch)",
-		function() return CFG.espEnabled end,
-		function(v)
-			CFG.espEnabled = v; persist()
-			if v then ctx.startEsp() else ctx.stopEsp() end
-		end, 6)
-
 	-- Accordion: Automation Boost Pet
 	local boostAcc = makeAccordion(pet, "Automation Boost Pet", 2, false)
 	makeMultiDropdownDyn(boostAcc, "Select Pets to Boost", "Pilih pet yang mau di-boost (aktif di garden)",
@@ -700,8 +693,17 @@ return function(ctx)
 	------------------------------------------------------------------ MISC (log & webhooks)
 	local misc = pageRef["Misc"]
 
+	-- ESP Label Accordion
+	local espAcc = makeAccordion(misc, "ESP Label (Pet & Egg)", 1, false)
+	makeToggle(espAcc, "Enable ESP Label", "Label melayang di atas pet (nama+berat) & egg (nama+waktu hatch)",
+		function() return CFG.espEnabled end,
+		function(v)
+			CFG.espEnabled = v; persist()
+			if v then ctx.startEsp() else ctx.stopEsp() end
+		end, 1)
+
 	-- Webhook Settings Accordion
-	local whAcc = makeAccordion(misc, "Discord Webhook Settings", 1, true)
+	local whAcc = makeAccordion(misc, "Discord Webhook Settings", 2, true)
 
 	-- Discord Webhook URL Input
 	makeInput(whAcc, "Discord Webhook URL", "Webhook URL for automation updates (Leveling, Mutation & Elephant)",
@@ -747,7 +749,7 @@ return function(ctx)
 			end)
 		end, 2)
 
-	local logCard = mk("Frame", { Size = UDim2.new(1, 0, 0, 220), BackgroundColor3 = C.row, LayoutOrder = 2 }, misc)
+	local logCard = mk("Frame", { Size = UDim2.new(1, 0, 0, 220), BackgroundColor3 = C.row, LayoutOrder = 3 }, misc)
 	corner(logCard, 8); stroke(logCard); pad(logCard, 12, 12, 10, 10)
 	mk("TextLabel", { Size = UDim2.new(1, 0, 0, 20), BackgroundTransparency = 1, Text = "Console Log", Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = C.txt, TextXAlignment = Enum.TextXAlignment.Left }, logCard)
 	local logBox = mk("TextLabel", { Size = UDim2.new(1, 0, 1, -26), Position = UDim2.fromOffset(0, 24), BackgroundColor3 = C.panel, Text = "", Font = Enum.Font.Code, TextSize = 11, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true }, logCard)
