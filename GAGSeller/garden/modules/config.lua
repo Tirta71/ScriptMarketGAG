@@ -37,6 +37,16 @@ return function(ctx)
 		levelingMaxPets     = 2,
 		levelingEnabled     = false,
 
+		-- Automation Leveling V2 (2 phase)
+		levelingV2PetTypes = {},
+		levelingV2P1Team   = {},
+		levelingV2P1Target = 40,
+		levelingV2P1Max    = 3,
+		levelingV2P2Team   = {},
+		levelingV2P2Target = 500,
+		levelingV2P2Max    = 1,
+		levelingV2Enabled  = false,
+
 		-- Automation Mutation
 		mutationExpTeam       = {},
 		mutationBoostTeam     = {},
@@ -128,6 +138,16 @@ return function(ctx)
 			CFG.levelingTargetLevel = tonumber(st.levelingTargetLevel) or 500
 			CFG.levelingMaxPets     = tonumber(st.levelingMaxPets) or 2
 			CFG.levelingEnabled     = st.levelingEnabled or false
+
+			-- Leveling V2
+			CFG.levelingV2PetTypes = (type(st.levelingV2PetTypes) == "table") and st.levelingV2PetTypes or {}
+			CFG.levelingV2P1Team   = (type(st.levelingV2P1Team) == "table") and st.levelingV2P1Team or {}
+			CFG.levelingV2P1Target = tonumber(st.levelingV2P1Target) or 40
+			CFG.levelingV2P1Max    = tonumber(st.levelingV2P1Max) or 3
+			CFG.levelingV2P2Team   = (type(st.levelingV2P2Team) == "table") and st.levelingV2P2Team or {}
+			CFG.levelingV2P2Target = tonumber(st.levelingV2P2Target) or 500
+			CFG.levelingV2P2Max    = tonumber(st.levelingV2P2Max) or 1
+			CFG.levelingV2Enabled  = st.levelingV2Enabled or false
 
 			-- Automation Mutation
 			CFG.mutationExpTeam       = (type(st.mutationExpTeam) == "table") and st.mutationExpTeam or {}

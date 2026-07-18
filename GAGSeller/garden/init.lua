@@ -79,6 +79,7 @@ local MODULES = {
 	"modules/boostpet.lua",
 	"modules/shop.lua",
 	"modules/leveling.lua",
+	"modules/leveling_v2.lua",
 	"modules/elephant.lua",
 	"modules/mutation.lua",
 	"modules/cleanse.lua",

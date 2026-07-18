@@ -199,6 +199,65 @@ return function(ctx)
 				CFG.levelingEnabled = v; persist()
 				if v then ctx.startLeveling() else ctx.stopLeveling() end
 			end, 6)
+
+		---------------------------------------------------------- Automation Leveling V2 (2 phase)
+		local lv2 = makeAccordion(levelingPage, "Automation Leveling V2", 2, true)
+
+		local lv2Lbl = mk("TextLabel", {
+			Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1,
+			Text = "Loading...", Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = C.txt,
+			TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, LineHeight = 1.35, RichText = true, LayoutOrder = 0
+		}, lv2)
+		mk("Frame", { Size = UDim2.new(1, 0, 0, 12), BackgroundTransparency = 1, LayoutOrder = 1 }, lv2)
+		task.spawn(function()
+			while ctx.alive() do
+				local ok, s = pcall(function() return ctx.getLevelingV2Summary() end)
+				if ok and s then
+					local col = s.status == "ACTIVE" and "#5acc78" or "#dc5050"
+					lv2Lbl.Text = string.format(
+						"Automation Status: <font color=\"%s\"><b>%s</b></font>  |  <font color=\"#f5c82d\">%s</font>\n\n" ..
+						"<b>Target Types:</b> <font color=\"#8c929e\">%s</font>\n\n" ..
+						"<b>Phase 1</b> (→%s): team <font color=\"#8c929e\">%d</font> | antre <font color=\"#f5c82d\">%d</font> pet\n" ..
+						"<b>Phase 2</b> (→%s): team <font color=\"#8c929e\">%d</font> | antre <font color=\"#f5c82d\">%d</font> pet",
+						col, s.status, s.phase, s.types,
+						tostring(s.p1target), s.p1team, s.p1queue,
+						tostring(s.p2target), s.p2team, s.p2queue)
+				end
+				task.wait(1.5)
+			end
+		end)
+
+		-- Target Pet Types (semua pet di game)
+		makeMultiDropdown(lv2, "Leveling Target Pet Types", "Pet types to level up (semua pet di game)",
+			reg.PET_OPTIONS, CFG.levelingV2PetTypes, function() persist() end, 2)
+
+		-- Phase 1
+		makeMultiDropdownDyn(lv2, "Leveling Phase 1 Pet Team", "Team for Phase 1 (Age 1 to Phase 1 Target)",
+			function() return ctx.inventoryPetOptions(CFG.levelingV2P1Team) end, CFG.levelingV2P1Team, function() persist() end, 3)
+		makeInput(lv2, "Leveling Phase 1 Target", "End of Phase 1 / start of Phase 2 (default 40)",
+			function() return tostring(CFG.levelingV2P1Target) end,
+			function(txt) CFG.levelingV2P1Target = tonumber(txt) or 40; persist() end, 4)
+		makeInput(lv2, "Leveling Phase 1 Max Pets", "Max target pets in garden during Phase 1",
+			function() return tostring(CFG.levelingV2P1Max) end,
+			function(txt) CFG.levelingV2P1Max = tonumber(txt) or 3; persist() end, 5)
+
+		-- Phase 2
+		makeMultiDropdownDyn(lv2, "Leveling Phase 2 Pet Team", "Team for Phase 2 (Phase 1 Target to Final Target)",
+			function() return ctx.inventoryPetOptions(CFG.levelingV2P2Team) end, CFG.levelingV2P2Team, function() persist() end, 6)
+		makeInput(lv2, "Leveling Phase 2 Target", "Final target level (default 500 = max age)",
+			function() return tostring(CFG.levelingV2P2Target) end,
+			function(txt) CFG.levelingV2P2Target = tonumber(txt) or 500; persist() end, 7)
+		makeInput(lv2, "Leveling Phase 2 Max Pets", "Max target pets in garden during Phase 2",
+			function() return tostring(CFG.levelingV2P2Max) end,
+			function(txt) CFG.levelingV2P2Max = tonumber(txt) or 1; persist() end, 8)
+
+		-- Enable
+		makeToggle(lv2, "Enable Automation Leveling V2", "Level pet 2 tahap (Phase 1 team -> Phase 2 team)",
+			function() return CFG.levelingV2Enabled end,
+			function(v)
+				CFG.levelingV2Enabled = v; persist()
+				if v then ctx.startLevelingV2() else ctx.stopLevelingV2() end
+			end, 9)
 	end
 
 	------------------------------------------------------------------ MUTATION
