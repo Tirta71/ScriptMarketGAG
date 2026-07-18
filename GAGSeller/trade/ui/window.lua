@@ -46,11 +46,26 @@ return function(ctx)
 
 	----------------------------------------------------------------- Main Jendela
 	local main = mk("Frame", {
-		Size = UDim2.fromOffset(650, 450), Position = UDim2.new(0.5, -325, 0.5, -225),
+		Size = UDim2.fromOffset(650, 450), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
 		BackgroundColor3 = C.bg, BackgroundTransparency = 0.1, BorderSizePixel = 0, Active = true,
 	}, gui)
 	corner(main, 10)
 	stroke(main, C.stroke, 1)
+
+	-- Auto-scale: kecilin window proporsional biar muat di layar kecil (HP).
+	local uiScale = Instance.new("UIScale"); uiScale.Parent = main
+	local function fitScale()
+		local cam = workspace.CurrentCamera
+		local vp = cam and cam.ViewportSize or Vector2.new(1280, 720)
+		local w, h = main.Size.X.Offset, main.Size.Y.Offset
+		local s = math.min(1, (vp.X - 40) / w, (vp.Y - 40) / h)
+		uiScale.Scale = math.max(0.4, s)
+	end
+	fitScale()
+	pcall(function()
+		local cam = workspace.CurrentCamera
+		if cam then cam:GetPropertyChangedSignal("ViewportSize"):Connect(fitScale) end
+	end)
 
 	-- Title bar & Dragger (satu container: judul + tombol min/close)
 	local titleBar = mk("Frame", {
@@ -97,8 +112,11 @@ return function(ctx)
 	corner(sidebar, 10)
 	pad(sidebar, 10, 10, 8, 10)
 
-	local tabButtonsFrame = mk("Frame", {
-		Size = UDim2.new(1, 0, 1, -52), Position = UDim2.fromOffset(0, 0), BackgroundTransparency = 1
+	local tabButtonsFrame = mk("ScrollingFrame", {
+		Size = UDim2.new(1, 0, 1, -52), Position = UDim2.fromOffset(0, 0), BackgroundTransparency = 1, BorderSizePixel = 0,
+		ScrollBarThickness = 3, ScrollBarImageColor3 = C.acc, ScrollBarImageTransparency = 0.4,
+		ScrollingDirection = Enum.ScrollingDirection.Y, CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollingEnabled = true,
 	}, sidebar)
 	mk("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, tabButtonsFrame)
 
@@ -135,6 +153,35 @@ return function(ctx)
 	local content = mk("Frame", {
 		Size = UDim2.new(1, -172, 1, -66), Position = UDim2.fromOffset(166, 44), BackgroundTransparency = 1
 	}, main)
+
+	-- Resize grip (pojok kanan-bawah). Drag buat ubah ukuran window.
+	local grip = mk("TextButton", {
+		Size = UDim2.fromOffset(20, 20), Position = UDim2.new(1, -22, 1, -22), BackgroundTransparency = 1,
+		Text = "◢", Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = C.sub, AutoButtonColor = false, Active = true, ZIndex = 20,
+	}, main)
+	grip.MouseEnter:Connect(function() grip.TextColor3 = C.acc end)
+	grip.MouseLeave:Connect(function() grip.TextColor3 = C.sub end)
+	do
+		local rz, ds, ss
+		grip.InputBegan:Connect(function(i)
+			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+				rz = true; ds = i.Position; ss = Vector2.new(main.Size.X.Offset, main.Size.Y.Offset)
+			end
+		end)
+		UserInputService.InputChanged:Connect(function(i)
+			if rz and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
+				local scale = uiScale.Scale > 0 and uiScale.Scale or 1
+				local d = i.Position - ds
+				local w = math.clamp(ss.X + d.X / scale, 440, 1600)
+				local h = math.clamp(ss.Y + d.Y / scale, 300, 1000)
+				main.Size = UDim2.fromOffset(w, h)
+				fitScale()
+			end
+		end)
+		UserInputService.InputEnded:Connect(function(i)
+			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then rz = false end
+		end)
+	end
 
 	----------------------------------------------------------------- Status footer
 	local statusFooter = mk("Frame", { Size = UDim2.new(1, -172, 0, 18), Position = UDim2.new(0, 166, 1, -22), BackgroundTransparency = 1 }, main)
