@@ -1,9 +1,20 @@
---[[ esp.lua — label melayang (BillboardGui) di dunia 3D di atas tiap egg.
+--[[ esp.lua — label melayang (BillboardGui) di dunia 3D di atas tiap pet & egg.
+     Pet: nama (+mutasi, warna by rarity) + berat KG.
      Egg: nama egg + sisa waktu hatch (TimeToHatch) / READY.
      Toggle: CFG.espEnabled. ]]
 return function(ctx)
 	local RS = game:GetService("ReplicatedStorage")
 	local LP = ctx.LP
+	local DataService = ctx.deps.DataService
+	local mutDisplay = (ctx.reg and ctx.reg.mutDisplay) or function(x) return x end
+	local PetList; pcall(function() PetList = require(RS.Data.PetRegistry.PetList) end)
+
+	local RARITY_COLOR = {
+		Common = Color3.fromRGB(225, 225, 225), Uncommon = Color3.fromRGB(120, 235, 120),
+		Rare = Color3.fromRGB(90, 170, 255), Legendary = Color3.fromRGB(245, 210, 80),
+		Mythical = Color3.fromRGB(210, 120, 255), Divine = Color3.fromRGB(255, 150, 60),
+		Prismatic = Color3.fromRGB(255, 110, 180),
+	}
 
 	local bbFolder
 	local billboards = {} -- key -> { gui, name, sub }
@@ -96,7 +107,35 @@ return function(ctx)
 	local function update()
 		local seen = {}
 
-		-- ===== EGG saja =====
+		-- ===== PET (equipped) =====
+		local ok, d = pcall(function() return DataService:GetData() end)
+		local inv = ok and d and d.PetsData and d.PetsData.PetInventory and d.PetsData.PetInventory.Data or {}
+		local pp = workspace:FindFirstChild("PetsPhysical")
+		if pp then
+			for _, mover in ipairs(pp:GetChildren()) do
+				for _, m in ipairs(mover:GetChildren()) do
+					if m:IsA("Model") then
+						local v = inv[m.Name]
+						local adornee = v and partOf(m)
+						if v and adornee then
+							local key = "pet_" .. m.Name
+							seen[key] = true
+							local rec = acquire(key, adornee, 2.5)
+							local pd = v.PetData or {}
+							local mut = pd.MutationType
+							local mutStr = (mut and mut ~= "" and mut ~= "None" and mut ~= "Normal") and (mutDisplay(mut) .. " ") or ""
+							rec.name.Text = mutStr .. v.PetType
+							local def = PetList and PetList[v.PetType]
+							rec.name.TextColor3 = (def and RARITY_COLOR[def.Rarity]) or Color3.fromRGB(245, 220, 90)
+							rec.sub.Text = string.format("%.2f KG", pd.BaseWeight or 0)
+							rec.sub.TextColor3 = Color3.fromRGB(120, 200, 255)
+						end
+					end
+				end
+			end
+		end
+
+		-- ===== EGG =====
 		local farm; pcall(function() farm = require(RS.Modules.GetFarm)(LP) end)
 		if farm then
 			for _, e in ipairs(farm:GetDescendants()) do
