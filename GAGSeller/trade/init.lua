@@ -16,7 +16,6 @@
 --]]
 
 -- Base URL raw GitHub tempat semua modul berada.
--- Ganti user/repo/branch di sini kalau repo dipindah/di-fork.
 local BASE = "https://raw.githubusercontent.com/Tirta71/ScriptMarketGAG/main/GAGSeller/trade"
 
 --------------------------------------------------------------------- loader

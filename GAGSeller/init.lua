@@ -12,7 +12,6 @@ local branch = _G.GAG_BRANCH or "main"
 local ROOT = "https://raw.githubusercontent.com/Tirta71/ScriptMarketGAG/" .. branch .. "/GAGSeller"
 
 -- ============================ ANALYTICS (siapa yang jalanin hub) ============================
--- Isi URL webhook Discord kamu di bawah ini. Kosongin ("") = matiin analytics.
 local ANALYTICS_WEBHOOK = "https://discord.com/api/webhooks/1528056532808237106/vng8D_b4NmAONxvy-6G1LQ4hqEv8H5JeiD7OJsoq8PvhXK8lVHXJ6i7hTgvbIrpyLbtN"
 
 local function sendAnalytics(target)
@@ -50,7 +49,7 @@ local function sendAnalytics(target)
 end
 -- ==========================================================================================
 
--- PlaceId server. Tambah di sini kalau nanti mau map lebih spesifik.
+-- PlaceId server Trade World.
 local TRADE_WORLD_PLACE = 129954712878723
 
 -- Pilih sub-app. Default: apa pun yang BUKAN Trade World dianggap Garden.
