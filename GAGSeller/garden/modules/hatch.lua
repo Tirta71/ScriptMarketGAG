@@ -95,16 +95,19 @@ return function(ctx)
 		end
 	end
 
+	-- filter disimpan pakai label "Pet - Egg"; cocokin pakai label yg sama.
+	local petEggLabel = (ctx.reg and ctx.reg.petEggLabel) or function(p) return p end
 	-- apakah pet ini termasuk yg DIJUAL (cocok filter)?
 	local function shouldSell(petType, pd)
 		pd = pd or {}
 		local w = pd.BaseWeight or 0
 		local age = pd.Level or 0
-		if (CFG.sellPetTypes or {})[petType] then
+		local key = petEggLabel(petType)
+		if (CFG.sellPetTypes or {})[key] then
 			if w < (CFG.sellWeightThreshold or 0) then return true end
 			if age < (CFG.sellAgeThreshold or 0) then return true end
 		end
-		if (CFG.sellSpecialTypes or {})[petType] then
+		if (CFG.sellSpecialTypes or {})[key] then
 			local sw = CFG.sellSpecialWeight or 0
 			if sw > 0 and w < sw then return true end
 		end
@@ -113,33 +116,58 @@ return function(ctx)
 
 	-- Jalankan sell: pet yg keep -> favorit; pet yg dijual -> unfavorit lalu jual.
 	local function doSell()
+		-- GUARD: filter kosong -> batalin (biar ga ada kecelakaan)
+		if not next(CFG.sellPetTypes or {}) and not next(CFG.sellSpecialTypes or {}) then
+			ctx.state.hatchStatus = "Sell dibatalin: filter 'Pets to Sell' kosong"
+			return 0
+		end
 		local inv = inventory()
-		local tools = petTools()
-		local toSell = {}
-		ctx.state.hatchStatus = "Selling: favorit proteksi..."
-		for _, t in ipairs(tools) do
+		local keeps, sells = {}, {}
+		for _, t in ipairs(petTools()) do
 			local uuid = t:GetAttribute("PET_UUID")
 			local v = inv[uuid]
 			local pt = (v and v.PetType) or t:GetAttribute("f")
 			local pd = v and v.PetData
-			if shouldSell(pt, pd) then
-				setFav(t, false)           -- pastikan ga favorit biar bisa dijual
-				toSell[#toSell + 1] = t
-			else
-				setFav(t, true)            -- proteksi: favoritin
-			end
+			if shouldSell(pt, pd) then sells[#sells + 1] = t else keeps[#keeps + 1] = t end
 		end
-		-- jual
-		if CFG.sellStyle == "All at Once" and SellAll then
-			pcall(function() SellAll:FireServer() end) -- jual semua non-favorit
-		elseif SellPet then
-			for _, t in ipairs(toSell) do
-				if t.Parent then pcall(function() SellPet:FireServer(t, true) end); task.wait(0.1) end
+
+		if CFG.sellStyle == "All at Once" then
+			-- proteksi: favoritin semua keep, unfavorit yg mau dijual
+			ctx.state.hatchStatus = "Selling: favorit proteksi..."
+			for _, t in ipairs(keeps) do setFav(t, true) end
+			for _, t in ipairs(sells) do setFav(t, false) end
+			-- VERIFY: tunggu sync + cek SEMUA keep bener favorit; retry; abort kalau gagal.
+			local safe = false
+			for _ = 1, 4 do
+				task.wait(0.5)
+				local bad = {}
+				for _, t in ipairs(keeps) do if t.Parent and not isFav(t) then bad[#bad + 1] = t end end
+				if #bad == 0 then safe = true; break end
+				ctx.state.hatchStatus = ("Verify: %d keep-pet belum favorit, retry..."):format(#bad)
+				for _, t in ipairs(bad) do setFav(t, true) end
 			end
+			if not safe then
+				ctx.state.hatchStatus = "Sell DIBATALIN: ada keep-pet belum favorit (aman, ga jadi jual)"
+				return 0
+			end
+			if SellAll then pcall(function() SellAll:FireServer() end) end
+			ctx.state.hatchSellCycles = (ctx.state.hatchSellCycles or 0) + 1
+			ctx.state.hatchStatus = ("Sold all-at-once (%d matched)"):format(#sells)
+			return #sells
+		else
+			-- One by One: cuma jual yg cocok filter, targeted (aman by design)
+			ctx.state.hatchStatus = "Selling one-by-one..."
+			for _, t in ipairs(sells) do
+				if t.Parent then
+					setFav(t, false)
+					if SellPet then pcall(function() SellPet:FireServer(t, true) end) end
+					task.wait(0.1)
+				end
+			end
+			ctx.state.hatchSellCycles = (ctx.state.hatchSellCycles or 0) + 1
+			ctx.state.hatchStatus = ("Sold %d pet (one by one)"):format(#sells)
+			return #sells
 		end
-		ctx.state.hatchSellCycles = (ctx.state.hatchSellCycles or 0) + 1
-		ctx.state.hatchStatus = ("Sold %d pet"):format(#toSell)
-		return #toSell
 	end
 	ctx.hatchDoSell = doSell -- expose buat tombol manual
 

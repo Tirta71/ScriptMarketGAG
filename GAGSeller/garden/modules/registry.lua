@@ -4,22 +4,36 @@ return function(ctx)
 	local EnumToMut = ctx.deps.EnumToMut
 
 	-- Daftar pet type unik (nama saja, tanpa egg) untuk filter trade.
+	-- + peta pet->egg (buat label "Pet - Egg" di filter sell).
 	local PET_OPTIONS = {}
+	local petEggMap = {}   -- petType -> eggName (egg pertama yg punya pet ini)
 	do
 		local seen = {}
-		for _, egg in pairs(PetEggs) do
+		for eggName, egg in pairs(PetEggs) do
 			local items = egg.RarityData and egg.RarityData.Items
 			if items then
 				for petName in pairs(items) do
-					local s = tostring(petName)
-					if not s:match("^Egg/") and not seen[s] then
+					local s = tostring(petName):match("([^/]+)$") or tostring(petName)
+					if not tostring(petName):match("^Egg/") and not seen[s] then
 						seen[s] = true
 						PET_OPTIONS[#PET_OPTIONS + 1] = s
 					end
+					if not petEggMap[s] then petEggMap[s] = eggName end
 				end
 			end
 		end
 		table.sort(PET_OPTIONS)
+	end
+
+	-- Opsi filter sell: "Pet - Egg". Label = value (dipakai sbg key filter).
+	local PET_EGG_OPTIONS = {}
+	for _, pt in ipairs(PET_OPTIONS) do
+		local egg = petEggMap[pt]
+		PET_EGG_OPTIONS[#PET_EGG_OPTIONS + 1] = egg and (pt .. " - " .. egg) or pt
+	end
+	local function petEggLabel(pt)
+		local egg = petEggMap[pt]
+		return egg and (pt .. " - " .. egg) or pt
 	end
 
 	local MUT_OPTIONS, seenMut = { "None" }, { None = true }
@@ -71,6 +85,8 @@ return function(ctx)
 
 	ctx.reg = {
 		PET_OPTIONS = PET_OPTIONS,
+		PET_EGG_OPTIONS = PET_EGG_OPTIONS,
+		petEggLabel = petEggLabel,
 		MUT_OPTIONS = MUT_OPTIONS,
 		MACHINE_MUT_OPTIONS = MACHINE_MUT_OPTIONS,
 		mutDisplay = mutDisplay,

@@ -175,13 +175,13 @@ return function(ctx)
 		-- Sell Configuration
 		local hSell = makeAccordion(hatchPage, "Sell Configuration", 4, true)
 		makeMultiDropdown(hSell, "Pets to Sell", "Tipe pet yg DIJUAL (sisanya difavoritin biar aman)",
-			reg.PET_OPTIONS, CFG.sellPetTypes, function() persist() end, 1)
+			reg.PET_EGG_OPTIONS, CFG.sellPetTypes, function() persist() end, 1)
 		makeInput(hSell, "Sell Weight Threshold", "Jual kalau base weight < ini",
 			function() return tostring(CFG.sellWeightThreshold) end, function(t) CFG.sellWeightThreshold = tonumber(t) or 4; persist() end, 2)
 		makeInput(hSell, "Sell Age Threshold", "Jual kalau age < ini",
 			function() return tostring(CFG.sellAgeThreshold) end, function(t) CFG.sellAgeThreshold = tonumber(t) or 3; persist() end, 3)
 		makeMultiDropdown(hSell, "Special Pets to Sell", "Pet spesial (jual by weight)",
-			reg.PET_OPTIONS, CFG.sellSpecialTypes, function() persist() end, 4)
+			reg.PET_EGG_OPTIONS, CFG.sellSpecialTypes, function() persist() end, 4)
 		makeInput(hSell, "Special Pet Weight Threshold", "Jual pet spesial dgn weight < ini (0=off)",
 			function() return tostring(CFG.sellSpecialWeight) end, function(t) CFG.sellSpecialWeight = tonumber(t) or 10; persist() end, 5)
 		local SELLMODE = { { name = "Cycle", display = "Cycle" }, { name = "Backpack", display = "Backpack" } }
