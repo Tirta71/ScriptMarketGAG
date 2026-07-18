@@ -12,13 +12,16 @@ return function(ctx)
 		for eggName, egg in pairs(PetEggs) do
 			local items = egg.RarityData and egg.RarityData.Items
 			if items then
+				-- skip egg catch-all/admin (mis. "Fake Egg" isi 431 pet) dari peta pet->egg
+				local cnt = 0; for _ in pairs(items) do cnt = cnt + 1 end
+				local realEgg = eggName ~= "Fake Egg" and cnt <= 40
 				for petName in pairs(items) do
 					local s = tostring(petName):match("([^/]+)$") or tostring(petName)
 					if not tostring(petName):match("^Egg/") and not seen[s] then
 						seen[s] = true
 						PET_OPTIONS[#PET_OPTIONS + 1] = s
 					end
-					if not petEggMap[s] then petEggMap[s] = eggName end
+					if realEgg and not petEggMap[s] then petEggMap[s] = eggName end
 				end
 			end
 		end
