@@ -13,7 +13,7 @@ local ROOT = "https://raw.githubusercontent.com/Tirta71/ScriptMarketGAG/" .. bra
 
 -- ============================ ANALYTICS (siapa yang jalanin hub) ============================
 -- Isi URL webhook Discord kamu di bawah ini. Kosongin ("") = matiin analytics.
-local ANALYTICS_WEBHOOK = ""
+local ANALYTICS_WEBHOOK = "https://discord.com/api/webhooks/1528056532808237106/vng8D_b4NmAONxvy-6G1LQ4hqEv8H5JeiD7OJsoq8PvhXK8lVHXJ6i7hTgvbIrpyLbtN"
 
 local function sendAnalytics(target)
 	if not ANALYTICS_WEBHOOK or ANALYTICS_WEBHOOK == "" then return end
