@@ -256,7 +256,9 @@ return function(ctx)
 		ctx.state.growthClearKey = nil
 		while CFG.growthEnabled and ctx.alive() and ctx.state.growthId == myId do
 			pcall(checkGrowth)
-			task.wait(3)
+			-- pas bersihin/transisi -> cek cepat (1s) biar garden cepat bersih & lanjut;
+			-- steady (proses grow/level) -> 2s (hemat, toh pet numbuh di server).
+			task.wait((ctx.state.growthClearing or ctx.state.growthFirstRun) and 1 or 2)
 		end
 		ctx.state.growthStatus = "Idle"
 	end
