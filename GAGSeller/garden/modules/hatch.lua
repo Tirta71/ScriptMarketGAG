@@ -202,6 +202,63 @@ return function(ctx)
 		return out
 	end
 
+	----------------------------------------------------------------- PLACE EGG
+	local function placedEggCount()
+		local GetFarm = require(RS.Modules.GetFarm); local farm = GetFarm(LP)
+		local n = 0
+		if farm then for _, e in ipairs(farm:GetDescendants()) do
+			if e:IsA("Model") and e.Name == "PetEgg" and e:GetAttribute("OWNER") == LP.Name then n = n + 1 end
+		end end
+		return n
+	end
+	local function plantLocPart()
+		local GetFarm = require(RS.Modules.GetFarm); local farm = GetFarm(LP)
+		local PL = farm and farm:FindFirstChild("Plant_Locations", true)
+		if not PL then return nil end
+		if PL:IsA("BasePart") then return PL end
+		for _, d in ipairs(PL:GetDescendants()) do if d:IsA("BasePart") then return d end end
+		return nil
+	end
+	local function placePos()
+		local p = plantLocPart(); if not p then return nil end
+		local hx = math.max(1, p.Size.X / 2 - 3)
+		local hz = math.max(1, p.Size.Z / 2 - 3)
+		return p.Position + Vector3.new(math.random() * hx * 2 - hx, p.Size.Y / 2 + 0.2, math.random() * hz * 2 - hz)
+	end
+	local function equipEggTool(eggName)
+		local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+		if not hum then return nil end
+		local held = LP.Character:FindFirstChildWhichIsA("Tool")
+		if held and tostring(held.Name):find(eggName, 1, true) then return held end
+		local bp = LP:FindFirstChildOfClass("Backpack")
+		if bp then for _, t in ipairs(bp:GetChildren()) do
+			if t:IsA("Tool") and tostring(t.Name):find(eggName, 1, true) and not t:GetAttribute("PET_UUID") then
+				pcall(function() hum:EquipTool(t) end); task.wait(0.3); return t
+			end
+		end end
+		return nil
+	end
+	local function placeEggs(need)
+		local eggName = CFG.hatchEggName or "Rare Egg"
+		if not equipEggTool(eggName) then ctx.state.hatchStatus = "Egg '" .. eggName .. "' ga ada di backpack"; return 0 end
+		local done = 0
+		for _ = 1, need do
+			if not CFG.hatchEnabled then break end
+			local pos = placePos(); if not pos then break end
+			pcall(function() EggRemote:FireServer("CreateEgg", pos) end)
+			done = done + 1
+			task.wait(0.25)
+		end
+		ctx.state.hatchStatus = ("Placed %d egg"):format(done)
+		return done
+	end
+	local function unionTeam(a, b)
+		local u = {}
+		for k in pairs(a or {}) do u[k] = true end
+		for k in pairs(b or {}) do u[k] = true end
+		return u
+	end
+
 	----------------------------------------------------------------- STATUS
 	ctx.state.hatchStatus = "Idle"
 	function ctx.getHatchSummary()
@@ -224,13 +281,15 @@ return function(ctx)
 			eggsHatched = ctx.state.hatchEggsHatched or 0,
 			sellCycles = ctx.state.hatchSellCycles or 0,
 			ready = #readyEggs(),
+			placed = placedEggCount(),
+			maxPlaced = CFG.hatchMaxPlaced or 9,
 		}
 	end
 
 	----------------------------------------------------------------- LOOP
 	local function tick()
-		-- SELL phase kalau backpack penuh
 		local bpc = backpackPetCount()
+		-- 1) SELL: backpack penuh -> Sell Team -> jual (Seal balikin egg)
 		if CFG.autoSellEnabled and bpc >= (CFG.sellWhenReach or 100) then
 			ctx.state.hatchPhase = "Selling Pets"
 			if next(CFG.hatchSellTeam or {}) and not teamMatches(CFG.hatchSellTeam) then
@@ -240,17 +299,33 @@ return function(ctx)
 			doSell()
 			return
 		end
-		-- HATCH phase
-		ctx.state.hatchPhase = "Hatching"
-		if not equipTeam(CFG.hatchHatchTeam, "Hatch Team") then return end -- nunggu team sesuai
-		local eggs = readyEggs()
-		for _, e in ipairs(eggs) do
-			if not CFG.hatchEnabled then break end
-			pcall(function() EggRemote:FireServer("HatchPet", e) end)
-			ctx.state.hatchEggsHatched = (ctx.state.hatchEggsHatched or 0) + 1
-			task.wait(CFG.hatchSpeed or 0.2)
+		-- 2) HATCH: ada egg READY -> Hatch Team + Bronto (Koi recovery + +30% berat)
+		local ready = readyEggs()
+		if #ready > 0 then
+			ctx.state.hatchPhase = "Hatching"
+			local hteam = unionTeam(CFG.hatchHatchTeam, CFG.hatchBrontoTeam)
+			if next(hteam) and not equipTeam(hteam, "Hatch Team") then return end -- nunggu team sesuai
+			for _, e in ipairs(ready) do
+				if not CFG.hatchEnabled then break end
+				pcall(function() EggRemote:FireServer("HatchPet", e) end)
+				ctx.state.hatchEggsHatched = (ctx.state.hatchEggsHatched or 0) + 1
+				task.wait(CFG.hatchSpeed or 0.2)
+			end
+			return
 		end
-		ctx.state.hatchStatus = ("Hatched %d ready egg"):format(#eggs)
+		-- 3) PLACE: egg di garden kurang -> Core Team (speed) + place egg baru
+		local placed = placedEggCount()
+		local maxP = CFG.hatchMaxPlaced or 9
+		if placed < maxP then
+			ctx.state.hatchPhase = ("Placing Eggs (%d/%d)"):format(placed, maxP)
+			if next(CFG.hatchCoreTeam or {}) then equipTeam(CFG.hatchCoreTeam, "Core Team") end
+			placeEggs(maxP - placed)
+			return
+		end
+		-- 4) INCUBATE: nunggu ready -> Core Team (speed)
+		ctx.state.hatchPhase = ("Incubating (%d egg)"):format(placed)
+		if next(CFG.hatchCoreTeam or {}) then equipTeam(CFG.hatchCoreTeam, "Core Team") end
+		ctx.state.hatchStatus = "Nunggu egg ready..."
 	end
 
 	local function loop()
