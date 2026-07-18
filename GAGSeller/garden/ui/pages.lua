@@ -590,6 +590,13 @@ return function(ctx)
 		end, 5)
 	ctx.state.pnpMonitorBtnRender = pnpMonitorBtnRender
 
+	makeToggle(pnp, "Enable ESP Label", "Label melayang di atas pet (nama+berat) & egg (nama+waktu hatch)",
+		function() return CFG.espEnabled end,
+		function(v)
+			CFG.espEnabled = v; persist()
+			if v then ctx.startEsp() else ctx.stopEsp() end
+		end, 6)
+
 	-- Accordion: Automation Boost Pet
 	local boostAcc = makeAccordion(pet, "Automation Boost Pet", 2, false)
 	makeMultiDropdownDyn(boostAcc, "Select Pets to Boost", "Pilih pet yang mau di-boost (aktif di garden)",

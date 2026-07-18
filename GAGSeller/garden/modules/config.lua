@@ -29,6 +29,7 @@ return function(ctx)
 		pnpScanInterval = 0.05, -- jeda antar-scan loop PNP (makin kecil = makin sering cek)
 		pnpEnabled  = false,
 		pnpMonitorEnabled = false,
+		espEnabled  = false, -- label melayang (ESP) pet+egg di dunia
 
 		-- Automation Leveling
 		levelingTeamUuids   = {},
@@ -152,6 +153,7 @@ return function(ctx)
 			CFG.pnpScanInterval = tonumber(st.pnpScanInterval) or 0.05
 			CFG.pnpEnabled  = st.pnpEnabled or false
 			CFG.pnpMonitorEnabled = st.pnpMonitorEnabled or false
+			CFG.espEnabled = st.espEnabled or false
 			
 			CFG.levelingTeamUuids   = (type(st.levelingTeamUuids) == "table") and st.levelingTeamUuids or {}
 			CFG.levelingPetTypes    = (type(st.levelingPetTypes) == "table") and st.levelingPetTypes or {}

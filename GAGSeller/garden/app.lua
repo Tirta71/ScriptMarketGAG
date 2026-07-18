@@ -32,6 +32,12 @@ return function(ctx)
 		ctx.log("Anti-AFK aktif.")
 	end)
 
+	-- auto-resume ESP label kalau sebelumnya aktif
+	if CFG.espEnabled and ctx.startEsp then
+		ctx.startEsp()
+		ctx.log("Auto-resume: ESP Label ON.")
+	end
+
 	-- auto-resume PNP kalau sebelumnya aktif
 	if CFG.pnpEnabled and ctx.startPnp then
 		task.wait(1)
