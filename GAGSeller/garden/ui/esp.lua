@@ -16,6 +16,9 @@ return function(ctx)
 		Mythical = "#D278FF", Divine = "#FF963C", Prismatic = "#FF6EB4",
 	}
 
+	-- Game nampilin berat = BaseWeight * 1.1 (bukan raw BaseWeight).
+	local WEIGHT_MULT = 1.1
+
 	local bbFolder
 	local billboards = {} -- key -> { gui, lbl }
 	local eggSlotKey  -- cache slot aktif yg nyimpen SavedObjects
@@ -131,7 +134,7 @@ return function(ctx)
 							local def = PetList and PetList[v.PetType]
 							local hex = (def and RARITY_HEX[def.Rarity]) or "#F5DC5A"
 							rec.lbl.Text = ("<font color='%s'>%s%s</font>\n<font color='#78C8FF'>%.2f KG</font>")
-								:format(hex, mutStr, v.PetType, pd.BaseWeight or 0)
+								:format(hex, mutStr, v.PetType, (pd.BaseWeight or 0) * WEIGHT_MULT)
 						end
 					end
 				end
@@ -154,7 +157,7 @@ return function(ctx)
 						if data and data.Type then
 							lines[#lines + 1] = ("<font color='#FFEB3B'>%s</font>"):format(tostring(data.Type))
 							local w = tonumber(data.BaseWeight)
-							if w then lines[#lines + 1] = ("<font color='#7CF0FF'>%.2f KG</font>"):format(w) end
+							if w then lines[#lines + 1] = ("<font color='#7CF0FF'>%.2f KG</font>"):format(w * WEIGHT_MULT) end
 						end
 						local t = tonumber(e:GetAttribute("TimeToHatch")) or (data and tonumber(data.TimeToHatch)) or 0
 						if t > 0 then
