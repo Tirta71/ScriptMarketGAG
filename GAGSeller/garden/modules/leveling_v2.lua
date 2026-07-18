@@ -114,16 +114,24 @@ return function(ctx)
 			end
 		end
 
-		-- C. Pasang team phase ini (persisten)
+		-- C. Pasang team phase ini + PASTIKAN LENGKAP dulu sebelum proses target pet.
+		-- Kalau ada anggota team yang belum ke-equip (cek dari data asli), equip lalu RETURN;
+		-- cycle berikutnya dicek ulang. Baru lanjut kalau team 100% terpasang.
+		local teamComplete = true
 		for uuid in pairs(team) do
 			if not localEq[uuid] then
+				teamComplete = false
 				local pos = getPos(uuid)
 				if pos then
 					pcall(function() PetsService:FireServer("EquipPet", uuid, CFrame.new(pos)) end)
-					localEq[uuid] = true; localEqCount = localEqCount + 1
+					localEqCount = localEqCount + 1
 					task.wait(0.25)
 				end
 			end
+		end
+		if not teamComplete then
+			ctx.state.levelingV2Status = ("Phase %d: nunggu team lengkap..."):format(phase)
+			return -- tunggu team komplit dulu, baru proses target pet
 		end
 
 		-- D. Target pet yang lulus phase (level >= phaseTarget) -> lepas
