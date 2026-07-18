@@ -179,7 +179,7 @@ return function(ctx)
 				ctx.state.growthStatus = ("%s: bersihin garden (%d pet)..."):format(stepLabel, #eq)
 				for _, uuid in ipairs(eq) do
 					pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
-					task.wait(0.2)
+					task.wait(0.1)
 				end
 				return
 			end
@@ -193,7 +193,7 @@ return function(ctx)
 			if not localEq[uuid] then
 				teamComplete = false
 				local pos = getPos(uuid)
-				if pos then pcall(function() PetsService:FireServer("EquipPet", uuid, CFrame.new(pos)) end); task.wait(0.25) end
+				if pos then pcall(function() PetsService:FireServer("EquipPet", uuid, CFrame.new(pos)) end); task.wait(0.15) end
 			end
 		end
 		if not teamComplete then
@@ -217,7 +217,7 @@ return function(ctx)
 					else
 						pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
 						localEq[uuid] = nil
-						task.wait(0.2)
+						task.wait(0.1)
 					end
 				end
 			end
@@ -239,7 +239,7 @@ return function(ctx)
 					pcall(function() PetsService:FireServer("EquipPet", pool[i].uuid, CFrame.new(pos)) end)
 					localEq[pool[i].uuid] = true
 					table.insert(active, pool[i].uuid)
-					task.wait(0.25)
+					task.wait(0.15)
 				end
 			end
 		end
@@ -258,7 +258,7 @@ return function(ctx)
 			pcall(checkGrowth)
 			-- pas bersihin/transisi -> cek cepat (1s) biar garden cepat bersih & lanjut;
 			-- steady (proses grow/level) -> 2s (hemat, toh pet numbuh di server).
-			task.wait((ctx.state.growthClearing or ctx.state.growthFirstRun) and 1 or 2)
+			task.wait((ctx.state.growthClearing or ctx.state.growthFirstRun) and 0.5 or 2)
 		end
 		ctx.state.growthStatus = "Idle"
 	end
