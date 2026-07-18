@@ -31,7 +31,9 @@ return function(ctx)
 	local maxIcon = mk("TextButton", { Size = UDim2.fromOffset(46, 46), Position = UDim2.new(0, 15, 0.5, -23), BackgroundColor3 = C.panel, Text = "AH", Font = Enum.Font.GothamBold, TextSize = 15, TextColor3 = C.acc, Visible = false, Active = true }, gui)
 	corner(maxIcon, 23); stroke(maxIcon, C.acc, 1.5)
 
-	local main = mk("Frame", { Size = UDim2.fromOffset(720, 470), Position = UDim2.new(0.5, -360, 0.5, -235), BackgroundColor3 = C.bg, BorderSizePixel = 0, Active = true }, gui)
+	-- AnchorPoint tengah + Position tengah -> UIScale ngecilin dari titik tengah,
+	-- jadi window tetap ke-center (penting di HP).
+	local main = mk("Frame", { Size = UDim2.fromOffset(720, 470), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), BackgroundColor3 = C.bg, BorderSizePixel = 0, Active = true }, gui)
 	corner(main, 12); stroke(main, C.stroke, 1)
 
 	-- Auto-scale: kecilin window proporsional biar muat di layar kecil (HP).
@@ -39,9 +41,10 @@ return function(ctx)
 	local function fitScale()
 		local cam = workspace.CurrentCamera
 		local vp = cam and cam.ViewportSize or Vector2.new(1280, 720)
-		-- sisain margin ~40px; jangan gede-in di atas 1x
-		local s = math.min(1, (vp.X - 40) / 720, (vp.Y - 40) / 470)
-		uiScale.Scale = math.max(0.5, s)
+		-- sisain margin ~40px; jangan gede-in di atas 1x; baca ukuran window terkini
+		local w, h = main.Size.X.Offset, main.Size.Y.Offset
+		local s = math.min(1, (vp.X - 40) / w, (vp.Y - 40) / h)
+		uiScale.Scale = math.max(0.4, s)
 	end
 	fitScale()
 	pcall(function()
@@ -102,6 +105,32 @@ return function(ctx)
 
 	-- content
 	local content = mk("Frame", { Size = UDim2.new(1, -206, 1, -66), Position = UDim2.fromOffset(196, 50), BackgroundTransparency = 1 }, main)
+
+	-- Resize grip (pojok kanan-bawah). Drag buat ubah ukuran window.
+	local grip = mk("TextButton", { Size = UDim2.fromOffset(20, 20), Position = UDim2.new(1, -22, 1, -22), BackgroundTransparency = 1, Text = "◢", Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = C.sub, AutoButtonColor = false, Active = true, ZIndex = 20 }, main)
+	grip.MouseEnter:Connect(function() grip.TextColor3 = C.acc end)
+	grip.MouseLeave:Connect(function() grip.TextColor3 = C.sub end)
+	do
+		local rz, ds, ss
+		grip.InputBegan:Connect(function(i)
+			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+				rz = true; ds = i.Position; ss = Vector2.new(main.Size.X.Offset, main.Size.Y.Offset)
+			end
+		end)
+		UserInputService.InputChanged:Connect(function(i)
+			if rz and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
+				local scale = uiScale.Scale > 0 and uiScale.Scale or 1
+				local d = i.Position - ds
+				local w = math.clamp(ss.X + d.X / scale, 480, 1600)
+				local h = math.clamp(ss.Y + d.Y / scale, 320, 1000)
+				main.Size = UDim2.fromOffset(w, h)
+				fitScale() -- pastiin tetap muat di layar
+			end
+		end)
+		UserInputService.InputEnded:Connect(function(i)
+			if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then rz = false end
+		end)
+	end
 
 	-- status footer (disembunyikan; automation punya panel status sendiri)
 	local statusText = mk("TextLabel", { Size = UDim2.new(1, -206, 0, 18), Position = UDim2.new(0, 196, 1, -22), BackgroundTransparency = 1, Text = "Status: idle", Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, Visible = false }, main)
