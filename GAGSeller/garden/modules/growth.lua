@@ -101,14 +101,22 @@ return function(ctx)
 			end
 		end
 		local function nm(t) local o = {}; for k in pairs(t or {}) do o[#o + 1] = k end; return #o > 0 and table.concat(o, ", ") or "-" end
-		-- nama pet dari set uuid team (lookup PetType di inventory)
+		-- ringkas team: hitung per tipe pet -> "Peacock x3, Dog x2" (biar ga kepanjangan)
 		local function teamNm(teamSet)
-			local o = {}
+			local count, order, total = {}, {}, 0
 			for uuid in pairs(teamSet or {}) do
 				local v = inv[uuid]
-				o[#o + 1] = (v and v.PetType) or "?"
+				local pt = (v and v.PetType) or "?"
+				if not count[pt] then order[#order + 1] = pt end
+				count[pt] = (count[pt] or 0) + 1
+				total = total + 1
 			end
-			return #o > 0 and table.concat(o, ", ") or "-"
+			if total == 0 then return "-" end
+			local parts = {}
+			for _, pt in ipairs(order) do
+				parts[#parts + 1] = count[pt] > 1 and (pt .. " x" .. count[pt]) or pt
+			end
+			return ("(%d) %s"):format(total, table.concat(parts, ", "))
 		end
 		return {
 			status = CFG.growthEnabled and "ACTIVE" or "STOPPED",
