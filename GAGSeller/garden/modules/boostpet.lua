@@ -64,6 +64,14 @@ return function(ctx)
 		return out
 	end
 
+	-- Pet dianggap AKTIF di garden kalau uuid-nya ada di PetsData.EquippedPets (array uuid).
+	-- Boost cuma berlaku ke pet yang lagi placed; kalau nggak placed, skip (percuma).
+	local function isPetActive(uuid)
+		local ok, d = pcall(function() return DataService:GetData() end)
+		local eq = ok and d and d.PetsData and d.PetsData.EquippedPets
+		return type(eq) == "table" and table.find(eq, uuid) ~= nil
+	end
+
 	-- Cari tool boost dipilih (Character dulu) yang varian (type+amount)-nya BELUM aktif di pet.
 	local function findToolForMissing(activeTypes)
 		local sel = CFG.boostItemNames or {}
@@ -93,6 +101,8 @@ return function(ctx)
 			else
 				for uuid in pairs(pets) do
 					if not CFG.boostEnabled or ctx.state.boostId ~= myId then break end
+					-- Skip pet yang nggak aktif/placed di garden (boost ga guna)
+					if not isPetActive(uuid) then continue end
 					-- Cek state asli: boost apa yang masih aktif di pet ini
 					local active = petActiveTypes(uuid)
 					local tool = findToolForMissing(active)
