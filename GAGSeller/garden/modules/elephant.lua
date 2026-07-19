@@ -56,7 +56,9 @@ return function(ctx)
 			if CFG.elephantPetTypes[pt] then
 				local pd = v.PetData or {}
 				local w = pd.BaseWeight or 0
-				if w < targetW then readyCount = readyCount + 1 else maxKgCount = maxKgCount + 1 end
+				if not pd.IsFavorite then
+					if w < targetW then readyCount = readyCount + 1 else maxKgCount = maxKgCount + 1 end
+				end
 			end
 		end
 
@@ -154,7 +156,7 @@ return function(ctx)
 				local pt = v.PetType
 				local pd = v.PetData or {}
 				local w = pd.BaseWeight or 0
-				if not localEq[uuid] and targetTypes[pt] and w < targetW then
+				if not localEq[uuid] and targetTypes[pt] and w < targetW and not pd.IsFavorite then
 					table.insert(pool, { uuid = uuid, weight = w })
 				end
 			end

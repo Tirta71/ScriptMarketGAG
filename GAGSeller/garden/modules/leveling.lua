@@ -54,10 +54,12 @@ return function(ctx)
 			if CFG.levelingPetTypes[pt] then
 				local pd = v.PetData or {}
 				local lvl = pd.Level or 0
-				if lvl < targetLvl then
-					readyCount = readyCount + 1
-				else
-					maxLvlCount = maxLvlCount + 1
+				if not pd.IsFavorite then
+					if lvl < targetLvl then
+						readyCount = readyCount + 1
+					else
+						maxLvlCount = maxLvlCount + 1
+					end
 				end
 			end
 		end
@@ -211,7 +213,7 @@ return function(ctx)
 				if targetTypes[pt] and not localEq[otherUuid] then
 					local otherPd = v.PetData or {}
 					local otherLvl = otherPd.Level or 0
-					if otherLvl < targetLvl then
+					if otherLvl < targetLvl and not otherPd.IsFavorite then
 						remainsQueue = remainsQueue + 1
 					end
 				end
@@ -238,7 +240,7 @@ return function(ctx)
 				local pd = v.PetData or {}
 				local lvl = pd.Level or 0
 
-				if not localEq[uuid] and targetTypes[pt] and lvl < targetLvl then
+				if not localEq[uuid] and targetTypes[pt] and lvl < targetLvl and not pd.IsFavorite then
 					table.insert(pool, { uuid = uuid, petType = pt, level = lvl })
 				end
 			end

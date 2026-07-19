@@ -37,7 +37,7 @@ local function scanTargets(ctx)
 	local _, tt, tw = ecfg(ctx)
 	local byType, maxCount, remains = {}, 0, 0
 	for _, v in pairs(inv) do
-		if v.PetType and tt[v.PetType] then
+		if v.PetType and tt[v.PetType] and not (v.PetData or {}).IsFavorite then
 			local w = (v.PetData or {}).BaseWeight or 0
 			if w < tw then
 				remains = remains + 1

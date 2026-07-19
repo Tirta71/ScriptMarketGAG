@@ -45,7 +45,7 @@ return function(ctx)
 		local p2t = CFG.levelingV2P2Target or 500
 		local p1q, p2q = 0, 0
 		for _, v in pairs(inv) do
-			if types[v.PetType] then
+			if types[v.PetType] and not (v.PetData or {}).IsFavorite then
 				local lvl = (v.PetData or {}).Level or 0
 				if lvl < p1t then p1q = p1q + 1 elseif lvl < p2t then p2q = p2q + 1 end
 			end
@@ -82,7 +82,7 @@ return function(ctx)
 		-- Tentukan phase aktif: ada target pet < p1Target -> Phase 1, else Phase 2.
 		local phase1Work = 0
 		for _, v in pairs(inv) do
-			if targetTypes[v.PetType] and ((v.PetData or {}).Level or 0) < p1Target then phase1Work = phase1Work + 1 end
+			if targetTypes[v.PetType] and ((v.PetData or {}).Level or 0) < p1Target and not (v.PetData or {}).IsFavorite then phase1Work = phase1Work + 1 end
 		end
 		local phase = (phase1Work > 0) and 1 or 2
 		ctx.state.levelingV2Phase = "Phase " .. phase
@@ -159,7 +159,7 @@ return function(ctx)
 			local pool = {}
 			for uuid, v in pairs(inv) do
 				local lvl = (v.PetData or {}).Level or 0
-				if not localEq[uuid] and targetTypes[v.PetType] and lvl >= phaseMin and lvl < phaseTarget then
+				if not localEq[uuid] and targetTypes[v.PetType] and lvl >= phaseMin and lvl < phaseTarget and not (v.PetData or {}).IsFavorite then
 					table.insert(pool, { uuid = uuid, level = lvl })
 				end
 			end
