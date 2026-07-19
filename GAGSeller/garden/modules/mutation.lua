@@ -365,7 +365,10 @@ return function(ctx)
 					targetTool.Parent = LP.Character
 					task.wait(0.5)
 					pcall(function() PetMutationMachineService_RE:FireServer("SubmitHeldPet") end)
-					ctx.state.mutationSubmitTime = os.time() -- buat hitung Duration pas claim
+					-- Duration: dari mulai EXP leveling kalau pet ini sempat di-level, else dari submit
+					ctx.state.mutationStartTime = ctx.state.mutationStartTime or {}
+					ctx.state.mutationSubmitTime = ctx.state.mutationStartTime[candidateUuid] or os.time()
+					ctx.state.mutationStartTime[candidateUuid] = nil
 					task.wait(0.5)
 					
 					-- Kirim Webhook Submitted
@@ -408,6 +411,11 @@ return function(ctx)
 				-- Validasi EXP team + target pet LENGKAP dulu (no miss).
 				if ensureEquippedTeam(expTeam, levelUuid) then
 					ctx.state.mutationPhase = "Leveling Target"
+					-- Catat mulai proses EXP leveling pet ini (buat Duration total)
+					ctx.state.mutationStartTime = ctx.state.mutationStartTime or {}
+					if not ctx.state.mutationStartTime[levelUuid] then
+						ctx.state.mutationStartTime[levelUuid] = os.time()
+					end
 				else
 					ctx.state.mutationPhase = "Menunggu EXP Team lengkap..."
 				end
