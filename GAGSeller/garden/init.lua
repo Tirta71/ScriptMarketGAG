@@ -88,7 +88,6 @@ local MODULES = {
 	"modules/cleanse.lua",
 	"modules/summer.lua",
 	"ui/components.lua",
-	"ui/pet_monitor.lua",
 	"ui/esp.lua",
 	"ui/window.lua",
 	"ui/pages.lua",

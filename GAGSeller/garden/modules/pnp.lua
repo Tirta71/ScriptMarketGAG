@@ -166,9 +166,7 @@ return function(ctx)
 						task.spawn(runPetThread, p.uuid, myId)
 					end
 				end
-				if not CFG.pnpMonitorEnabled then
-					setStatus(("PNP jalan: %d pet (paralel)"):format(#pets))
-				end
+				setStatus(("PNP jalan: %d pet (paralel)"):format(#pets))
 			end
 			task.wait(1) -- supervisor cukup ngecek pet baru tiap 1 detik
 		end

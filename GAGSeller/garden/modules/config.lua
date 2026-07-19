@@ -65,7 +65,6 @@ return function(ctx)
 		equipDelay  = 0.3,   -- jeda antara unequip -> equip (aman dari race condition)
 		pnpScanInterval = 0.05, -- jeda antar-scan loop PNP (makin kecil = makin sering cek)
 		pnpEnabled  = false,
-		pnpMonitorEnabled = false,
 		espEnabled  = false, -- label melayang (ESP) pet+egg di dunia
 
 		-- Automation Leveling
@@ -220,7 +219,6 @@ return function(ctx)
 			CFG.equipDelay  = tonumber(st.equipDelay) or 0.02
 			CFG.pnpScanInterval = tonumber(st.pnpScanInterval) or 0.05
 			CFG.pnpEnabled  = st.pnpEnabled or false
-			CFG.pnpMonitorEnabled = st.pnpMonitorEnabled or false
 			CFG.espEnabled = st.espEnabled or false
 			
 			CFG.levelingTeamUuids   = (type(st.levelingTeamUuids) == "table") and st.levelingTeamUuids or {}

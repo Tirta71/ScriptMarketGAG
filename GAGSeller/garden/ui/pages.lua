@@ -726,18 +726,6 @@ return function(ctx)
 			if v then ctx.startPnp() end
 		end, 5)
 
-	local pnpMonitorBtnRender = makeToggle(pnp, "Enable Pet Monitor CD", "Buka jendela mengambang untuk memantau cooldown pet secara live",
-		function() return CFG.pnpMonitorEnabled end,
-		function(v)
-			CFG.pnpMonitorEnabled = v; persist()
-			if v then
-				ctx.showPetMonitor()
-			else
-				ctx.hidePetMonitor()
-			end
-		end, 5)
-	ctx.state.pnpMonitorBtnRender = pnpMonitorBtnRender
-
 	-- Accordion: Automation Boost Pet
 	local boostAcc = makeAccordion(pet, "Automation Boost Pet", 2, false)
 	makeMultiDropdownDyn(boostAcc, "Select Pets to Boost", "Pilih pet yang mau di-boost (aktif di garden)",
