@@ -266,6 +266,34 @@ return function(ctx)
 		return u
 	end
 
+	-- Pending pet dari egg (dari SavedObjects): return petType, displayWeight (base*1.1)
+	local eggSlotKey
+	local function eggPending(egg)
+		local uuid = egg:GetAttribute("OBJECT_UUID"); if not uuid then return nil, 0 end
+		local d = getData(); local slots = d and d.SaveSlots and d.SaveSlots.AllSlots
+		if not slots then return nil, 0 end
+		local function fromSlot(s) local so = s and s.SavedObjects and s.SavedObjects[uuid]; return so and so.Data end
+		local dt = eggSlotKey and fromSlot(slots[eggSlotKey])
+		if not dt then for sn, slot in pairs(slots) do if type(slot) == "table" then local x = fromSlot(slot); if x then eggSlotKey = sn; dt = x; break end end end end
+		if not dt then return nil, 0 end
+		return dt.Type, (tonumber(dt.BaseWeight) or 0) * 1.1
+	end
+
+	-- Klasifikasi egg buat bronto: "skip" | "bronto" | "normal"
+	local function classifyEgg(egg)
+		local pt, w = eggPending(egg)
+		local isSpecial = pt ~= nil and (CFG.brontoSpecialPets or {})[petEggLabel(pt)] == true
+		if isSpecial and (CFG.brontoSpecialWeight or 0) > 0 and w <= CFG.brontoSpecialWeight then isSpecial = false end
+		if isSpecial and CFG.brontoSkipSpecial then return "skip" end
+		local isUni = false
+		if (CFG.brontoUniversalWeight or 0) > 0 and w > CFG.brontoUniversalWeight then
+			local types = CFG.brontoUniversalTypes or {}
+			if not next(types) or (pt and types[pt]) then isUni = true end
+		end
+		if isSpecial or isUni then return "bronto" end
+		return "normal"
+	end
+
 	----------------------------------------------------------------- STATUS
 	ctx.state.hatchStatus = "Idle"
 	function ctx.getHatchSummary()
@@ -338,13 +366,32 @@ return function(ctx)
 		-- 3) HATCH: HANYA kalau SEMUA egg udah READY (jangan switch selama masih ada timer jalan)
 		if placed > 0 and #ready >= placed then
 			ctx.state.hatchPhase = "Hatching"
-			local hteam = unionTeam(CFG.hatchHatchTeam, CFG.hatchBrontoTeam)
-			if next(hteam) and not equipTeam(hteam, "Hatch Team") then return end -- team wajib lengkap dulu
+			-- klasifikasi tiap egg: normal (Hatch team) / bronto (Bronto team) / skip
+			local normal, bronto = {}, {}
 			for _, e in ipairs(ready) do
-				if not CFG.hatchEnabled then break end
-				pcall(function() EggRemote:FireServer("HatchPet", e) end)
-				ctx.state.hatchEggsHatched = (ctx.state.hatchEggsHatched or 0) + 1
-				task.wait(CFG.hatchSpeed or 0.2)
+				local c = classifyEgg(e)
+				if c == "bronto" then bronto[#bronto + 1] = e
+				elseif c == "normal" then normal[#normal + 1] = e end
+			end
+			local function hatchList(list)
+				for _, e in ipairs(list) do
+					if not CFG.hatchEnabled then break end
+					pcall(function() EggRemote:FireServer("HatchPet", e) end)
+					ctx.state.hatchEggsHatched = (ctx.state.hatchEggsHatched or 0) + 1
+					task.wait(CFG.hatchSpeed or 0.2)
+				end
+			end
+			-- pass NORMAL -> Hatch Team (Koi recovery, tanpa boost berat)
+			if #normal > 0 then
+				if next(CFG.hatchHatchTeam or {}) and not equipTeam(CFG.hatchHatchTeam, "Hatch Team") then return end
+				ctx.state.hatchPhase = ("Hatching Hatch-team (%d)"):format(#normal)
+				hatchList(normal)
+			end
+			-- pass BRONTO -> Bronto Team (+30% berat)
+			if #bronto > 0 then
+				if next(CFG.hatchBrontoTeam or {}) and not equipTeam(CFG.hatchBrontoTeam, "Bronto Team") then return end
+				ctx.state.hatchPhase = ("Hatching Bronto-team (%d)"):format(#bronto)
+				hatchList(bronto)
 			end
 			return
 		end

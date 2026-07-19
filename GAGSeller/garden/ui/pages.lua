@@ -176,8 +176,21 @@ return function(ctx)
 		makeInput(hEgg, "Hatch Speed (delay/hatch, sec)", "Jeda per hatch; makin kecil makin cepat (mis. 0.1)",
 			function() return tostring(CFG.hatchSpeed) end, function(t) CFG.hatchSpeed = math.max(0.05, tonumber(t) or 0.2); persist() end, 3)
 
+		-- Bronto Configuration (kapan pakai Bronto team buat +30% berat)
+		local hBr = makeAccordion(hatchPage, "Bronto Configuration", 4, true)
+		makeMultiDropdown(hBr, "Special Pets", "Pet yg WAJIB di-hatch pakai Bronto team",
+			reg.PET_EGG_OPTIONS, CFG.brontoSpecialPets, function() persist() end, 1)
+		makeInput(hBr, "Special Pets Weight Filter", "Special cuma kalau weight > ini (0 = ga difilter)",
+			function() return tostring(CFG.brontoSpecialWeight) end, function(t) CFG.brontoSpecialWeight = tonumber(t) or 0; persist() end, 2)
+		makeMultiDropdown(hBr, "Universal Weight Pet Types", "Tipe pet buat aturan universal (kosong = semua)",
+			reg.PET_OPTIONS, CFG.brontoUniversalTypes, function() persist() end, 3)
+		makeInput(hBr, "Universal Weight Threshold", "Pakai Bronto team kalau weight > ini (0 = off)",
+			function() return tostring(CFG.brontoUniversalWeight) end, function(t) CFG.brontoUniversalWeight = tonumber(t) or 0; persist() end, 4)
+		makeToggle(hBr, "Don't Hatch Special Pets", "Skip special pet sama sekali (jangan di-hatch)",
+			function() return CFG.brontoSkipSpecial end, function(v) CFG.brontoSkipSpecial = v; persist() end, 5)
+
 		-- Sell Configuration
-		local hSell = makeAccordion(hatchPage, "Sell Configuration", 4, true)
+		local hSell = makeAccordion(hatchPage, "Sell Configuration", 5, true)
 		makeMultiDropdown(hSell, "Pets to Sell", "Tipe pet yg DIJUAL (sisanya difavoritin biar aman)",
 			reg.PET_EGG_OPTIONS, CFG.sellPetTypes, function() persist() end, 1)
 		makeInput(hSell, "Sell Weight Threshold", "Jual kalau base weight < ini",

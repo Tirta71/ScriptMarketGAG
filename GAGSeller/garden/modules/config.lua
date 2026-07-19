@@ -25,6 +25,12 @@ return function(ctx)
 		hatchEggName    = "Rare Egg", -- egg yg di-place & di-hatch
 		hatchMaxPlaced  = 9,          -- target egg ke-place di garden
 		hatchSpeed      = 0.2,        -- delay per hatch (detik); kecil = cepat
+		-- bronto config: egg yg pending pet-nya cocok -> hatch pakai Bronto team (+30% berat)
+		brontoSpecialPets    = {},   -- set "Pet - Egg" (special: wajib bronto)
+		brontoSpecialWeight  = 0,    -- special cuma kalau weight > ini (0 = ga difilter)
+		brontoUniversalTypes = {},   -- set tipe pet buat aturan universal (kosong = semua)
+		brontoUniversalWeight = 0,   -- pakai bronto kalau weight > ini (0 = off)
+		brontoSkipSpecial    = false,-- jangan hatch special pet sama sekali
 		-- sell config (filter = DIJUAL; sisanya difavoritin biar aman)
 		sellPetTypes       = {},   -- set tipe pet yg dijual
 		sellWeightThreshold = 4,   -- jual kalau BaseWeight < ini
@@ -178,6 +184,11 @@ return function(ctx)
 			CFG.hatchEggName    = st.hatchEggName or "Rare Egg"
 			CFG.hatchMaxPlaced  = tonumber(st.hatchMaxPlaced) or 9
 			CFG.hatchSpeed      = tonumber(st.hatchSpeed) or 0.2
+			CFG.brontoSpecialPets    = tbl(st.brontoSpecialPets)
+			CFG.brontoSpecialWeight  = tonumber(st.brontoSpecialWeight) or 0
+			CFG.brontoUniversalTypes = tbl(st.brontoUniversalTypes)
+			CFG.brontoUniversalWeight = tonumber(st.brontoUniversalWeight) or 0
+			CFG.brontoSkipSpecial    = st.brontoSkipSpecial or false
 			CFG.sellPetTypes    = tbl(st.sellPetTypes)
 			CFG.sellWeightThreshold = tonumber(st.sellWeightThreshold) or 4
 			CFG.sellAgeThreshold    = tonumber(st.sellAgeThreshold) or 3
