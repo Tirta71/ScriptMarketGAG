@@ -83,6 +83,7 @@ local MODULES = {
 	"modules/elephant.lua",
 	"modules/growth.lua",
 	"modules/hatch.lua",
+	"modules/chesthunt.lua",
 	"modules/mutation.lua",
 	"modules/cleanse.lua",
 	"modules/summer.lua",

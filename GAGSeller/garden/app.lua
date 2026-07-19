@@ -32,6 +32,12 @@ return function(ctx)
 		ctx.log("Anti-AFK aktif.")
 	end)
 
+	-- auto-resume Auto Chest Hunt kalau sebelumnya aktif (listener event udah kepasang di modul)
+	if CFG.chestHuntEnabled and ctx.startChestHunt then
+		ctx.startChestHunt()
+		ctx.log("Auto-resume: Chest Hunt ON (nunggu/ikut event).")
+	end
+
 	-- auto-resume ESP label kalau sebelumnya aktif
 	if CFG.espEnabled and ctx.startEsp then
 		ctx.startEsp()

@@ -44,6 +44,10 @@ return function(ctx)
 		sellTeamDelay    = 5,      -- detik tunggu abis swap team sebelum jual
 		autoBoostBeforeSell = false,
 
+		-- Auto Chest Hunt (event): TP ke chest -> bawa ke garden -> ulang
+		chestHuntEnabled = false,
+		chestHuntDeposit = "garden", -- garden | platform
+
 		-- Automation Accept
 		acceptGifts   = false,
 		acceptTrades  = false,
@@ -200,6 +204,8 @@ return function(ctx)
 			CFG.sellWhenReach    = tonumber(st.sellWhenReach) or 100
 			CFG.sellTeamDelay    = tonumber(st.sellTeamDelay) or 5
 			CFG.autoBoostBeforeSell = st.autoBoostBeforeSell or false
+			CFG.chestHuntEnabled = st.chestHuntEnabled or false
+			CFG.chestHuntDeposit = st.chestHuntDeposit or "garden"
 			CFG.acceptGifts    = st.acceptGifts or false
 			CFG.acceptTrades   = st.acceptTrades or false
 			CFG.autoFavorite   = st.autoFavorite or false
