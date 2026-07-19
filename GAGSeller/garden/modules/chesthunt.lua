@@ -25,16 +25,27 @@ return function(ctx)
 	-- kandidat tag chest (tebakan; finder fallback ke scan nama)
 	local CHEST_TAGS = { "SummerChest", "SummerChestHuntChest", "GlobalChest", "SummerChestHunt_Chest", "ChestHuntChest", "SummerChestHuntGlobalChest" }
 
-	-- chest hunt asli: model bernama "...Chest" / rarity, TAPI bukan false-positive.
-	local function isHuntChest(d)
-		if not (d:IsA("Model") or d:IsA("BasePart")) then return false end
-		local nm = tostring(d.Name)
-		local low = nm:lower()
-		if not low:find("chest") then return false end
-		if low:find("cooler") then return false end          -- SummerTeamEvent
-		if nm:find("Platform") then return false end
-		if d:FindFirstAncestor("SummerTeamEvent") or d:FindFirstAncestor("SummerHarvestEvent") then return false end
-		return rootPart(d) ~= nil
+	local RARITY = { Divine = true, Mythical = true, Legendary = true, Golden = true, Rare = true,
+		Common = true, Uncommon = true, Prismatic = true, Godly = true, Celestial = true }
+
+	-- exclude: platform (deko/deposit), event lain, karakter.
+	local function excluded(m)
+		if m:FindFirstChildOfClass("Humanoid") then return true end
+		if tostring(m.Name):lower():find("cooler") then return true end
+		if m:FindFirstAncestor("SummerChestHuntPlatform") or m:FindFirstAncestor("SummerTeamEvent") or m:FindFirstAncestor("SummerHarvestEvent") then return true end
+		if game.Players:GetPlayerFromCharacter(m) then return true end
+		return false
+	end
+
+	-- Chest hunt asli: deteksi by STRUKTUR (AnimationController + part Inside/Top1 = bentuk chest)
+	-- ATAU nama (mengandung "chest" / rarity). Bukan platform/event lain/karakter.
+	local function isHuntChest(m)
+		if not m:IsA("Model") or excluded(m) then return false end
+		if not rootPart(m) then return false end
+		local nm = tostring(m.Name)
+		local nameHit = nm:lower():find("chest") ~= nil or RARITY[nm] == true or RARITY[nm:match("^(%a+)")] == true
+		local structHit = m:FindFirstChildOfClass("AnimationController") and (m:FindFirstChild("Inside") or m:FindFirstChild("Top1")) ~= nil
+		return nameHit or structHit
 	end
 
 	local function findChests()
@@ -44,10 +55,8 @@ return function(ctx)
 				if not seen[inst] then seen[inst] = true; out[#out + 1] = inst end
 			end
 		end
-		if #out == 0 then -- fallback: scan model nama "...Chest" (exclude false-positive)
-			for _, d in ipairs(workspace:GetDescendants()) do
-				if isHuntChest(d) and not seen[d] then seen[d] = true; out[#out + 1] = d end
-			end
+		for _, d in ipairs(workspace:GetDescendants()) do
+			if isHuntChest(d) and not seen[d] then seen[d] = true; out[#out + 1] = d end
 		end
 		return out
 	end
@@ -71,13 +80,24 @@ return function(ctx)
 				if #rawChest >= 10 then break end
 			end
 		end
+		-- model dgn STRUKTUR chest (AnimationController + Inside/Top1), by name apapun
+		local structItems = {}
+		for _, d in ipairs(workspace:GetDescendants()) do
+			if d:IsA("Model") and not d:FindFirstChildOfClass("Humanoid")
+				and d:FindFirstChildOfClass("AnimationController")
+				and (d:FindFirstChild("Inside") or d:FindFirstChild("Top1")) then
+				local r = rootPart(d)
+				structItems[#structItems + 1] = ("'%s' <%s> @ %s"):format(d.Name, (d.Parent and d.Parent.Name) or "?", r and tostring(r.Position):sub(1, 24) or "?")
+				if #structItems >= 10 then break end
+			end
+		end
 		local tags = {}
 		for _, d in ipairs(workspace:GetDescendants()) do
 			for _, t in ipairs(CS:GetTags(d)) do
 				if (t:lower():find("chest") or t:lower():find("hunt")) then tags[t] = (tags[t] or 0) + 1 end
 			end
 		end
-		return { chestCount = #chests, sample = info, rawChestNamed = rawChest, chestHuntTags = tags, carrying = carrying() }
+		return { chestCount = #chests, sample = info, rawChestNamed = rawChest, structChests = structItems, chestHuntTags = tags, carrying = carrying() }
 	end
 
 	local function depositPos()

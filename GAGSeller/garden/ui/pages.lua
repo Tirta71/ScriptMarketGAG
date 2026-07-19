@@ -826,6 +826,7 @@ return function(ctx)
 			local s = ctx.scanChests()
 			ctx.log(("[ChestScan] found=%d carrying=%s"):format(s.chestCount, tostring(s.carrying)))
 			for _, x in ipairs(s.sample) do ctx.log("[ChestScan] hit: " .. x) end
+			for _, x in ipairs(s.structChests or {}) do ctx.log("[ChestScan] struct: " .. x) end
 			for _, x in ipairs(s.rawChestNamed or {}) do ctx.log("[ChestScan] raw: " .. x) end
 			for t, n in pairs(s.chestHuntTags) do ctx.log(("[ChestScan] tag '%s' x%d"):format(t, n)) end
 		end) end, 4)
