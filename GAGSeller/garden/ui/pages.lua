@@ -141,8 +141,8 @@ return function(ctx)
 					hLbl.Text = string.format(
 						"<b>Live Status</b>\n" ..
 						"Status: <font color=\"%s\"><b>%s</b></font>\nPhase: <font color=\"#f5c82d\">%s</font>\n\n" ..
-						"Core Team:\n<font color=\"%s\">%s</font>\n\nHatch Team:\n<font color=\"%s\">%s</font>\n\n" ..
-						"Bronto Team:\n<font color=\"%s\">%s</font>\n\nSell Team:\n<font color=\"%s\">%s</font>\n\n" ..
+						"Core Team: <font color=\"%s\">%s</font>\nHatch Team: <font color=\"%s\">%s</font>\n" ..
+						"Bronto Team: <font color=\"%s\">%s</font>\nSell Team: <font color=\"%s\">%s</font>\n\n" ..
 						"Pet on Backpack: <font color=\"%s\">%d/%d</font>\n\n" ..
 						"Current Egg: <font color=\"%s\">%s</font>\nEgg Before: <font color=\"%s\">%d</font>\n" ..
 						"Current Amount: <font color=\"%s\">%d</font>\nPlaced: <font color=\"%s\">%d/%d</font>\n" ..

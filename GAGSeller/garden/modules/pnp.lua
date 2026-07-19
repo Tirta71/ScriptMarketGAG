@@ -72,14 +72,15 @@ return function(ctx)
 			local pd = v.PetData or {}
 			local age = pd.Level or 0
 			local mut = pd.MutationType
-			-- Tampilkan nama mutasi penuh (mis. "EV" -> "Everchanted"), bukan kode singkat.
+			-- Format: "Mutasi Nama | Berat | Age" (mutasi penuh, mis. "EV" -> "Everchanted").
 			local mutName = mut
 			if mut and ctx.reg and ctx.reg.mutDisplay then mutName = ctx.reg.mutDisplay(mut) end
-			local mutStr = (mut and mut ~= "" and mut ~= "Normal") and (" " .. tostring(mutName)) or ""
+			local mutPrefix = (mut and mut ~= "" and mut ~= "Normal") and (tostring(mutName) .. " ") or ""
+			local weight = (pd.BaseWeight or 0) * 1.1
 			local tag = eqSet[uuid] and " [aktif]" or ""
 			out[#out + 1] = {
 				value = uuid,
-				display = ("%s%s | Age %s | #%s%s"):format(pt, mutStr, tostring(age), uuid:sub(2, 5), tag),
+				display = ("%s%s | %.2f KG | Age %s | #%s%s"):format(mutPrefix, pt, weight, tostring(age), uuid:sub(2, 5), tag),
 			}
 		end
 		-- Auto-prune UUID kepilih yang pet-nya udah ga ada di inventory (biar ga nyangkut
