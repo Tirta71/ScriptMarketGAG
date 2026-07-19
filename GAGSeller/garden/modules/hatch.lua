@@ -235,22 +235,23 @@ return function(ctx)
 		for _, d in ipairs(PL:GetDescendants()) do if d:IsA("BasePart") then return d end end
 		return nil
 	end
-	-- Grid PENUH se-area (banyak kandidat slot, spacing 3 studs, rapih sejajar).
-	-- Isi berurut dari depan -> baris rapi; kandidat banyak biar selalu bisa penuh.
-	local function gridPositions()
+	-- Grid FIX & rapih: n slot, center di area, baris rata (spacing 4 studs).
+	-- + sedikit baris cadangan di belakang biar tetap bisa penuh kalau ada egg nyempil.
+	local function gridPositions(n)
 		local p = plantLocPart(); if not p then return {} end
+		n = math.max(1, n or 9)
 		local SP = 4 -- jarak antar egg (min server = 3, kasih margin biar ga "Too close")
-		local hx = math.max(0, p.Size.X / 2 - 2)
-		local hz = math.max(0, p.Size.Z / 2 - 2)
+		local usableX = math.max(SP, p.Size.X - 4)
+		local cols = math.max(1, math.min(n, math.floor(usableX / SP) + 1))
+		-- baris = cukup buat n + 1 baris cadangan (anti-stuck, tetap rapi)
+		local rows = math.ceil(n / cols) + 1
+		local startX = -((cols - 1) * SP) / 2
+		local startZ = -((rows - 1) * SP) / 2
 		local out = {}
-		local z = -hz
-		while z <= hz do
-			local x = -hx
-			while x <= hx do
-				out[#out + 1] = p.Position + Vector3.new(x, p.Size.Y / 2 + 0.2, z)
-				x = x + SP
+		for r = 0, rows - 1 do
+			for c = 0, cols - 1 do
+				out[#out + 1] = p.Position + Vector3.new(startX + c * SP, p.Size.Y / 2 + 0.2, startZ + r * SP)
 			end
-			z = z + SP
 		end
 		return out
 	end
@@ -290,7 +291,7 @@ return function(ctx)
 		local eggName = CFG.hatchEggName or "Rare Egg"
 		if not equipEggTool(eggName) then ctx.state.hatchStatus = "Egg '" .. eggName .. "' ga ada di backpack"; return 0 end
 		local start = placedEggCount()
-		local grid = gridPositions()
+		local grid = gridPositions(target)
 		-- isi slot kosong sampai TEPAT target; berhenti kalau 1 pass ga nambah (mentok)
 		for _ = 1, 3 do
 			if placedEggCount() >= target then break end
