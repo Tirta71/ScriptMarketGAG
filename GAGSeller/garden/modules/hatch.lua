@@ -350,6 +350,41 @@ return function(ctx)
 		return "normal"
 	end
 
+	----------------------------------------------------------------- Hatch Alert (webhook bronto)
+	local PetList; pcall(function() PetList = require(RS.Data.PetRegistry.PetList) end)
+	local PetRegistry; pcall(function() PetRegistry = require(RS.Data.PetRegistry) end)
+	local function petSize(eggName, petType, baseW)
+		local egg = PetRegistry and PetRegistry.PetEggs and PetRegistry.PetEggs[eggName]
+		local item = egg and egg.RarityData and egg.RarityData.Items and egg.RarityData.Items[petType]
+		local wr = item and item.GeneratedPetData and item.GeneratedPetData.WeightRange
+		if type(wr) == "table" and wr[1] and wr[2] and wr[2] > wr[1] then
+			local f = (baseW - wr[1]) / (wr[2] - wr[1])
+			if f < 0.33 then return "Small" elseif f < 0.7 then return "Normal" else return "Big" end
+		end
+		return "Normal"
+	end
+	-- dispWeight = berat tampil (base*1.1). Bronto = dispWeight*1.3 (+30%).
+	local function sendHatchAlert(petType, eggName, dispWeight)
+		local url = CFG.hatchWebhookUrl
+		if not CFG.hatchAlertEnabled or not url or url == "" or not ctx.sendWebhook then return end
+		local baseW = dispWeight / 1.1
+		local rarity = (PetList and PetList[petType] and PetList[petType].Rarity) or "?"
+		local payload = {
+			content = "@everyone",
+			embeds = { {
+				title = "AllegiaanHub \u{2014} Hatch Alerts",
+				color = 5814783,
+				fields = {
+					{ name = "Profile :", value = ("> Username : ||%s||"):format(LP.Name), inline = false },
+					{ name = "Hatched :", value = ("> Pet Name: `%s`\n> Hatched From: `%s`\n> Rarity: `%s`\n> Weight: `%.2f KG`\n> Status: `%s`\n> Bronto: `%.2f KG`")
+						:format(petType, eggName, rarity, dispWeight, petSize(eggName, petType, baseW), dispWeight * 1.3), inline = false },
+				},
+				footer = { text = os.date("%B %d | %I:%M %p") },
+			} },
+		}
+		pcall(function() ctx.sendWebhook(url, payload, ctx) end)
+	end
+
 	----------------------------------------------------------------- STATUS
 	ctx.state.hatchStatus = "Idle"
 	function ctx.getHatchSummary()
@@ -468,11 +503,18 @@ return function(ctx)
 				ctx.state.hatchPhase = ("Hatching Hatch-team (%d)"):format(#normal)
 				hatchList(normal)
 			end
-			-- pass BRONTO -> Bronto Team (+30% berat)
+			-- pass BRONTO -> Bronto Team (+30% berat) + kirim Hatch Alert per pet
 			if #bronto > 0 then
 				if next(CFG.hatchBrontoTeam or {}) and not equipTeam(CFG.hatchBrontoTeam, "Bronto Team") then return end
 				ctx.state.hatchPhase = ("Hatching Bronto-team (%d)"):format(#bronto)
-				hatchList(bronto)
+				for _, e in ipairs(bronto) do
+					if not CFG.hatchEnabled then break end
+					local pt, w = eggPending(e)
+					if pt then task.spawn(function() sendHatchAlert(pt, CFG.hatchEggName or "Rare Egg", w) end) end
+					pcall(function() EggRemote:FireServer("HatchPet", e) end)
+					ctx.state.hatchEggsHatched = (ctx.state.hatchEggsHatched or 0) + 1
+					task.wait(CFG.hatchSpeed or 0.2)
+				end
 			end
 			return
 		end

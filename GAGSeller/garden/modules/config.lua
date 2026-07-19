@@ -25,6 +25,8 @@ return function(ctx)
 		hatchEggName    = "Rare Egg", -- egg yg di-place & di-hatch
 		hatchMaxPlaced  = 9,          -- target egg ke-place di garden
 		hatchSpeed      = 0.2,        -- delay per hatch (detik); kecil = cepat
+		hatchWebhookUrl   = "",       -- webhook Discord buat Hatch Alert (bronto)
+		hatchAlertEnabled = false,    -- kirim alert pas pet masuk filter bronto
 		-- bronto config: egg yg pending pet-nya cocok -> hatch pakai Bronto team (+30% berat)
 		brontoSpecialPets    = {},   -- set "Pet - Egg" (special: wajib bronto)
 		brontoSpecialWeight  = 0,    -- special cuma kalau weight > ini (0 = ga difilter)
@@ -188,6 +190,8 @@ return function(ctx)
 			CFG.hatchEggName    = st.hatchEggName or "Rare Egg"
 			CFG.hatchMaxPlaced  = tonumber(st.hatchMaxPlaced) or 9
 			CFG.hatchSpeed      = tonumber(st.hatchSpeed) or 0.2
+			CFG.hatchWebhookUrl   = st.hatchWebhookUrl or ""
+			CFG.hatchAlertEnabled = st.hatchAlertEnabled or false
 			CFG.brontoSpecialPets    = tbl(st.brontoSpecialPets)
 			CFG.brontoSpecialWeight  = tonumber(st.brontoSpecialWeight) or 0
 			CFG.brontoUniversalTypes = tbl(st.brontoUniversalTypes)
