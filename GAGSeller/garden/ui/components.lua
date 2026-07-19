@@ -78,7 +78,16 @@ return function(ctx)
 			for _, b in pairs(optBtns) do b:Destroy() end
 			optBtns = {}
 			local cur = getv()
-			for _, opt in ipairs(getOptions()) do
+			-- selected-first: opsi yg lagi dipilih diurut ke paling atas
+			local raw = getOptions()
+			local ordered, rest = {}, {}
+			for _, opt in ipairs(raw) do
+				local display = type(opt) == "table" and opt.display or opt
+				local code    = type(opt) == "table" and opt.name or opt
+				if display == cur or code == cur then ordered[#ordered + 1] = opt else rest[#rest + 1] = opt end
+			end
+			for _, opt in ipairs(rest) do ordered[#ordered + 1] = opt end
+			for _, opt in ipairs(ordered) do
 				local display = type(opt) == "table" and opt.display or opt
 				local code    = type(opt) == "table" and opt.name or opt
 				local isSel = (display == cur or code == cur)
