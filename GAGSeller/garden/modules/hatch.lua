@@ -235,23 +235,22 @@ return function(ctx)
 		for _, d in ipairs(PL:GetDescendants()) do if d:IsA("BasePart") then return d end end
 		return nil
 	end
-	-- Grid rapih & sejajar: spacing TETAP (3 studs), center di area tanam.
-	local function gridPositions(n)
+	-- Grid PENUH se-area (banyak kandidat slot, spacing 3 studs, rapih sejajar).
+	-- Isi berurut dari depan -> baris rapi; kandidat banyak biar selalu bisa penuh.
+	local function gridPositions()
 		local p = plantLocPart(); if not p then return {} end
-		n = math.max(1, n)
-		local SP = 3 -- jarak antar egg (studs)
-		local maxCols = math.max(1, math.floor((p.Size.X - 2) / SP))
-		local cols = math.min(n, maxCols)
-		local rows = math.ceil(n / cols)
-		local startX = -((cols - 1) * SP) / 2
-		local startZ = -((rows - 1) * SP) / 2
+		local SP = 3
+		local hx = math.max(0, p.Size.X / 2 - 2)
+		local hz = math.max(0, p.Size.Z / 2 - 2)
 		local out = {}
-		for r = 0, rows - 1 do
-			for c = 0, cols - 1 do
-				if #out < n then
-					out[#out + 1] = p.Position + Vector3.new(startX + c * SP, p.Size.Y / 2 + 0.2, startZ + r * SP)
-				end
+		local z = -hz
+		while z <= hz do
+			local x = -hx
+			while x <= hx do
+				out[#out + 1] = p.Position + Vector3.new(x, p.Size.Y / 2 + 0.2, z)
+				x = x + SP
 			end
+			z = z + SP
 		end
 		return out
 	end
@@ -288,19 +287,23 @@ return function(ctx)
 		local eggName = CFG.hatchEggName or "Rare Egg"
 		if not equipEggTool(eggName) then ctx.state.hatchStatus = "Egg '" .. eggName .. "' ga ada di backpack"; return 0 end
 		local start = placedEggCount()
-		local grid = gridPositions(target)
-		for pass = 1, 3 do
+		local grid = gridPositions()
+		-- isi slot kosong sampai TEPAT target; berhenti kalau 1 pass ga nambah (mentok)
+		for _ = 1, 3 do
 			if placedEggCount() >= target then break end
+			local before = placedEggCount()
+			local eggs = currentEggs()
 			for _, pos in ipairs(grid) do
-				if not CFG.hatchEnabled then break end
-				if placedEggCount() >= target then break end
-				if not slotOccupied(pos, currentEggs()) then
+				if not CFG.hatchEnabled or placedEggCount() >= target then break end
+				if not slotOccupied(pos, eggs) then
 					equipEggTool(eggName)
 					pcall(function() EggRemote:FireServer("CreateEgg", pos) end)
 					task.wait(0.3)
+					eggs = currentEggs() -- refresh biar ga dobel di slot sama
 					ctx.state.hatchStatus = ("Placing: %d/%d egg"):format(placedEggCount(), target)
 				end
 			end
+			if placedEggCount() <= before then break end -- ga nambah -> mentok
 		end
 		return placedEggCount() - start
 	end
