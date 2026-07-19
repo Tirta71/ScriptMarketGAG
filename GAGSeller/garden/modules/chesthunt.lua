@@ -66,7 +66,8 @@ return function(ctx)
 		for i, c in ipairs(chests) do
 			if i <= 10 then
 				local r = rootPart(c)
-				info[#info + 1] = ("%s '%s' @ %s | %s"):format(c.ClassName, c.Name, r and tostring(r.Position) or "?", (c.Parent and c.Parent.Name) or "?")
+				local pp = c:FindFirstChildWhichIsA("ProximityPrompt", true)
+				info[#info + 1] = ("%s '%s' @ %s | prompt:%s"):format(c.ClassName, c.Name, r and tostring(r.Position):sub(1, 22) or "?", pp and (pp.ActionText .. "/" .. tostring(pp.HoldDuration) .. "s") or "NONE")
 			end
 		end
 		-- semua model bernama "chest" (mentah, buat lihat kandidat + tag-nya)
@@ -144,9 +145,18 @@ return function(ctx)
 			end
 			if not target then return end
 			local r = rootPart(target)
-			for _ = 1, 8 do
+			-- carry = hold E (ProximityPrompt). TP deket chest -> trigger prompt-nya.
+			local fireProx = fireproximityprompt or (getgenv and getgenv().fireproximityprompt)
+			for _ = 1, 10 do
 				if carrying() or not CFG.chestHuntEnabled or not target.Parent then break end
-				tpTo(r.Position, 2); task.wait(1.1) -- grace pickup ~1s
+				tpTo(r.Position, 2)
+				task.wait(0.15)
+				local prompt = target:FindFirstChildWhichIsA("ProximityPrompt", true)
+				if prompt and fireProx then
+					pcall(function() fireProx(prompt, prompt.HoldDuration or 0) end)
+					pcall(function() fireProx(prompt) end)
+				end
+				task.wait(0.5)
 			end
 		end
 	end
