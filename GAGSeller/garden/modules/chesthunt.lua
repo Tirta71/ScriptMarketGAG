@@ -25,28 +25,25 @@ return function(ctx)
 	-- kandidat tag chest (tebakan; finder fallback ke scan nama)
 	local CHEST_TAGS = { "SummerChest", "SummerChestHuntChest", "GlobalChest", "SummerChestHunt_Chest", "ChestHuntChest", "SummerChestHuntGlobalChest" }
 
-	local RARITY = { Divine = true, Mythical = true, Legendary = true, Golden = true, Rare = true,
-		Common = true, Uncommon = true, Prismatic = true, Godly = true, Celestial = true }
-
 	-- exclude: dekorasi/NPC statis (semua di bawah Workspace.Interaction), karakter, cooler.
 	-- Chest hunt asli spawn DINAMIS di luar Interaction (tersebar di map).
 	local function excluded(m)
 		if m:FindFirstChildOfClass("Humanoid") then return true end
-		if tostring(m.Name):lower():find("cooler") then return true end
-		if m:FindFirstAncestor("Interaction") then return true end -- platform, Sam, event NPC dll
+		local low = tostring(m.Name):lower()
+		if low:find("cooler") or low:find("egg") then return true end -- cooler & pet egg
+		if m:FindFirstAncestor("Interaction") or m:FindFirstAncestor("PetEgg") then return true end
 		if game.Players:GetPlayerFromCharacter(m) then return true end
 		return false
 	end
 
-	-- Chest hunt asli: deteksi by STRUKTUR (AnimationController + part Inside/Top1 = bentuk chest)
-	-- ATAU nama (mengandung "chest" / rarity). Bukan platform/event lain/karakter.
+	-- Chest hunt asli: STRUKTUR chest (AnimationController + part Inside/Top1) = paling andal.
+	-- Nama "...chest" jadi sinyal tambahan. (RARITY dipakai cuma kalau juga ada struktur.)
 	local function isHuntChest(m)
 		if not m:IsA("Model") or excluded(m) then return false end
 		if not rootPart(m) then return false end
-		local nm = tostring(m.Name)
-		local nameHit = nm:lower():find("chest") ~= nil or RARITY[nm] == true or RARITY[nm:match("^(%a+)")] == true
 		local structHit = m:FindFirstChildOfClass("AnimationController") and (m:FindFirstChild("Inside") or m:FindFirstChild("Top1")) ~= nil
-		return nameHit or structHit
+		local nameHit = tostring(m.Name):lower():find("chest") ~= nil
+		return structHit or nameHit
 	end
 
 	local function findChests()
