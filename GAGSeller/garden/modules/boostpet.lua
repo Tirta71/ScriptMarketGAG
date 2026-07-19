@@ -39,7 +39,15 @@ return function(ctx)
 
 	local THRESHOLD = 5 -- detik; boost dianggap habis kalau sisa <= ini
 
-	-- Baca boostType yang MASIH aktif di pet (dari PetData.Boosts, sisa Time > THRESHOLD).
+	-- Key unik per varian boost: type + amount. Small & Medium Pet Toy sama-sama
+	-- PASSIVE_BOOST tapi amount beda (0.1 vs 0.2) dan BISA di-stack, jadi harus dibedakan.
+	local function boostKey(btype, amount)
+		local n = tonumber(amount)
+		return tostring(btype) .. "|" .. (n and tostring(n) or tostring(amount))
+	end
+
+	-- Baca boost yang MASIH aktif di pet (dari PetData.Boosts, sisa Time > THRESHOLD).
+	-- Keyed by type+amount supaya varian beda amount tidak saling menutupi.
 	local function petActiveTypes(uuid)
 		local out = {}
 		local ok, d = pcall(function() return DataService:GetData() end)
@@ -48,13 +56,15 @@ return function(ctx)
 		local boosts = pd and pd.PetData and pd.PetData.Boosts
 		if type(boosts) == "table" then
 			for _, b in ipairs(boosts) do
-				if b.BoostType and (tonumber(b.Time) or 0) > THRESHOLD then out[b.BoostType] = true end
+				if b.BoostType and (tonumber(b.Time) or 0) > THRESHOLD then
+					out[boostKey(b.BoostType, b.BoostAmount)] = true
+				end
 			end
 		end
 		return out
 	end
 
-	-- Cari tool boost dipilih (Character dulu) yang boostType-nya BELUM aktif di pet.
+	-- Cari tool boost dipilih (Character dulu) yang varian (type+amount)-nya BELUM aktif di pet.
 	local function findToolForMissing(activeTypes)
 		local sel = CFG.boostItemNames or {}
 		for _, src in ipairs({ LP.Character, LP:FindFirstChildOfClass("Backpack") }) do
@@ -62,7 +72,7 @@ return function(ctx)
 				for _, t in ipairs(src:GetChildren()) do
 					if t:IsA("Tool") and t:HasTag("PetBoost") and sel[baseName(t.Name)] then
 						local bt = t:GetAttribute("q")
-						if bt and not activeTypes[bt] then return t end
+						if bt and not activeTypes[boostKey(bt, t:GetAttribute("o"))] then return t end
 					end
 				end
 			end
