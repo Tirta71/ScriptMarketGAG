@@ -172,11 +172,15 @@ return function(ctx)
 	ctx.hatchDoSell = doSell -- expose buat tombol manual
 
 	----------------------------------------------------------------- HATCH
+	-- Egg ready = timer habis (TimeToHatch <= 0). Egg yg timer-nya jalan = belum ready.
 	local function readyEggs()
 		local GetFarm = require(RS.Modules.GetFarm); local farm = GetFarm(LP)
 		local t = {}
 		if farm then for _, e in ipairs(farm:GetDescendants()) do
-			if e:IsA("Model") and e.Name == "PetEgg" and e:GetAttribute("OWNER") == LP.Name and e:GetAttribute("READY") then t[#t + 1] = e end
+			if e:IsA("Model") and e.Name == "PetEgg" and e:GetAttribute("OWNER") == LP.Name then
+				local tth = tonumber(e:GetAttribute("TimeToHatch")) or 0
+				if tth <= 0 then t[#t + 1] = e end
+			end
 		end end
 		return t
 	end
@@ -238,19 +242,22 @@ return function(ctx)
 		end end
 		return nil
 	end
-	local function placeEggs(need)
+	-- Isi egg sampai PENUH (target). Retry karena posisi acak kadang gagal.
+	local function placeEggs(target)
 		local eggName = CFG.hatchEggName or "Rare Egg"
 		if not equipEggTool(eggName) then ctx.state.hatchStatus = "Egg '" .. eggName .. "' ga ada di backpack"; return 0 end
-		local done = 0
-		for _ = 1, need do
-			if not CFG.hatchEnabled then break end
+		local start = placedEggCount()
+		local attempts = 0
+		local cap = math.max(8, (target - start) * 5)
+		while CFG.hatchEnabled and placedEggCount() < target and attempts < cap do
+			attempts = attempts + 1
+			equipEggTool(eggName) -- pastiin masih megang egg
 			local pos = placePos(); if not pos then break end
 			pcall(function() EggRemote:FireServer("CreateEgg", pos) end)
-			done = done + 1
-			task.wait(0.25)
+			task.wait(0.3)
+			ctx.state.hatchStatus = ("Placing: %d/%d egg"):format(placedEggCount(), target)
 		end
-		ctx.state.hatchStatus = ("Placed %d egg"):format(done)
-		return done
+		return placedEggCount() - start
 	end
 	local function unionTeam(a, b)
 		local u = {}
@@ -306,20 +313,33 @@ return function(ctx)
 		end
 		if sellNow then
 			ctx.state.hatchPhase = "Selling Pets"
-			if next(CFG.hatchSellTeam or {}) and not teamMatches(CFG.hatchSellTeam) then
-				equipTeam(CFG.hatchSellTeam, "Sell Team")
-				task.wait(CFG.sellTeamDelay or 5)
-			end
+			if next(CFG.hatchSellTeam or {}) and not equipTeam(CFG.hatchSellTeam, "Sell Team") then return end -- team wajib lengkap
+			task.wait(CFG.sellTeamDelay or 5)
 			doSell()
 			ctx.state.hatchLastSellCycle = cycle
 			return
 		end
-		-- 2) HATCH: ada egg READY -> Hatch Team + Bronto (Koi recovery + +30% berat)
+		-- clamp target ke kapasitas farm biar ga nyangkut (mis. Max Placed > MaxEggsInFarm)
+		local d = getData()
+		local farmCap = d and d.PetsData and d.PetsData.MutableStats and d.PetsData.MutableStats.MaxEggsInFarm or maxP
+		maxP = math.min(maxP, farmCap)
+
+		local placed = placedEggCount()
 		local ready = readyEggs()
-		if #ready > 0 then
+
+		-- 2) PLACE: egg di garden kurang -> Core Team (speed, wajib lengkap) + isi PENUH
+		if placed < maxP then
+			ctx.state.hatchPhase = ("Placing Eggs (%d/%d)"):format(placed, maxP)
+			if not equipTeam(CFG.hatchCoreTeam, "Core Team") then return end -- team wajib lengkap dulu
+			placeEggs(maxP)
+			return
+		end
+
+		-- 3) HATCH: HANYA kalau SEMUA egg udah READY (jangan switch selama masih ada timer jalan)
+		if placed > 0 and #ready >= placed then
 			ctx.state.hatchPhase = "Hatching"
 			local hteam = unionTeam(CFG.hatchHatchTeam, CFG.hatchBrontoTeam)
-			if next(hteam) and not equipTeam(hteam, "Hatch Team") then return end -- nunggu team sesuai
+			if next(hteam) and not equipTeam(hteam, "Hatch Team") then return end -- team wajib lengkap dulu
 			for _, e in ipairs(ready) do
 				if not CFG.hatchEnabled then break end
 				pcall(function() EggRemote:FireServer("HatchPet", e) end)
@@ -328,18 +348,11 @@ return function(ctx)
 			end
 			return
 		end
-		-- 3) PLACE: egg di garden kurang -> Core Team (speed) + place egg baru
-		local placed = placedEggCount()
-		if placed < maxP then
-			ctx.state.hatchPhase = ("Placing Eggs (%d/%d)"):format(placed, maxP)
-			if next(CFG.hatchCoreTeam or {}) then equipTeam(CFG.hatchCoreTeam, "Core Team") end
-			placeEggs(maxP - placed)
-			return
-		end
-		-- 4) INCUBATE: nunggu ready -> Core Team (speed)
-		ctx.state.hatchPhase = ("Incubating (%d egg)"):format(placed)
-		if next(CFG.hatchCoreTeam or {}) then equipTeam(CFG.hatchCoreTeam, "Core Team") end
-		ctx.state.hatchStatus = "Nunggu egg ready..."
+
+		-- 4) INCUBATE: masih ada egg belum ready -> TETAP Core Team (speed), jangan switch/hatch
+		ctx.state.hatchPhase = ("Incubating (%d/%d ready)"):format(#ready, placed)
+		equipTeam(CFG.hatchCoreTeam, "Core Team")
+		ctx.state.hatchStatus = ("Nunggu egg ready (%d/%d)..."):format(#ready, placed)
 	end
 
 	local function loop()
