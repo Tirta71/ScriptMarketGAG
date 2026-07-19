@@ -599,16 +599,15 @@ return function(ctx)
 	------------------------------------------------------------------ EVENT
 	local eventPage = pageRef["Event"]
 	do
-		local summerAcc = makeAccordion(eventPage, "Automation Summer Event", 1, true)
-
-		-- Status timer Sam (live)
+		-- Accordion 1: Sam The Clam (status timer live)
+		local samAcc = makeAccordion(eventPage, "Sam The Clam", 1, true)
 		local samLbl = mk("TextLabel", {
 			Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
 			BackgroundTransparency = 1, Text = "Sam: loading...",
 			Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = C.txt,
 			TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true,
 			LineHeight = 1.35, RichText = true, LayoutOrder = 0
-		}, summerAcc)
+		}, samAcc)
 		task.spawn(function()
 			while ctx.alive() do
 				local ok, s = pcall(function() return ctx.getSamSummary() end)
@@ -624,6 +623,9 @@ return function(ctx)
 				task.wait(1)
 			end
 		end)
+
+		-- Accordion 2: Automation Summer Event (config feed)
+		local summerAcc = makeAccordion(eventPage, "Automation Summer Event", 2, true)
 
 		-- Pilih tipe pet yang boleh di-feed ke Sam (kosong = pakai filter berat saja)
 		makeMultiDropdownDyn(summerAcc, "Pilih Pet (Feed ke Sam)", "Tipe pet yang boleh dikorbankan. Kosong = pakai filter berat.",
@@ -652,8 +654,8 @@ return function(ctx)
 				if v and ctx.startSummerEvent then ctx.startSummerEvent() end
 			end, 6)
 
-		-- Auto Chest Hunt (event) — accordion ke-2
-		local chAcc = makeAccordion(eventPage, "Auto Chest Hunt", 2, true)
+		-- Accordion 3: Auto Chest Hunt (deposit selalu ke Garden)
+		local chAcc = makeAccordion(eventPage, "Auto Chest Hunt", 3, true)
 		local chLbl = mk("TextLabel", { Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, Text = "Idle", Font = Enum.Font.Gotham, TextSize = 12, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, RichText = true, LayoutOrder = 0 }, chAcc)
 		mk("Frame", { Size = UDim2.new(1, 0, 0, 8), BackgroundTransparency = 1, LayoutOrder = 1 }, chAcc)
 		task.spawn(function()
@@ -661,27 +663,16 @@ return function(ctx)
 				local ok, s = pcall(function() return ctx.getChestSummary() end)
 				if ok and s then
 					local col = s.status == "ACTIVE" and "#5acc78" or "#dc5050"
-					chLbl.Text = ("Status: <font color=\"%s\"><b>%s</b></font>  |  deposit: <font color=\"#8c929e\">%s</font>\n<font color=\"#8c929e\">%s</font>"):format(col, s.status, s.deposit, s.info)
+					chLbl.Text = ("Status: <font color=\"%s\"><b>%s</b></font>\n<font color=\"#8c929e\">%s</font>"):format(col, s.status, s.info)
 				end
 				task.wait(0.5)
 			end
 		end)
+		-- Deposit selalu ke Garden
+		CFG.chestHuntDeposit = "garden"
 		makeToggle(chAcc, "Enable Auto Chest Hunt", "TP ke chest -> bawa ke garden -> ulang (auto pas event mulai)",
 			function() return CFG.chestHuntEnabled end,
 			function(v) CFG.chestHuntEnabled = v; persist(); if v then ctx.startChestHunt() else ctx.stopChestHunt() end end, 2)
-		local DEP = { { name = "garden", display = "Garden" }, { name = "platform", display = "Platform" } }
-		makeSingleDropdown(chAcc, "Deposit ke", "Bawa chest ke Garden atau Platform NPC",
-			function() return DEP end, function() return CFG.chestHuntDeposit == "platform" and "Platform" or "Garden" end,
-			function(code) CFG.chestHuntDeposit = code; persist() end, 3)
-		makeButton(chAcc, "Scan Chest (debug)", "Cek apa yg kedetect sbg chest (jalanin pas event live)",
-			function() task.spawn(function()
-				local s = ctx.scanChests()
-				ctx.log(("[ChestScan] found=%d carrying=%s"):format(s.chestCount, tostring(s.carrying)))
-				for _, x in ipairs(s.sample) do ctx.log("[ChestScan] hit: " .. x) end
-				for _, x in ipairs(s.structChests or {}) do ctx.log("[ChestScan] struct: " .. x) end
-				for _, x in ipairs(s.rawChestNamed or {}) do ctx.log("[ChestScan] raw: " .. x) end
-				for t, n in pairs(s.chestHuntTags) do ctx.log(("[ChestScan] tag '%s' x%d"):format(t, n)) end
-			end) end, 4)
 	end
 
 	------------------------------------------------------------------ PET (PNP)
