@@ -457,7 +457,7 @@ return function(ctx)
 		local hunt = #huntLines > 0 and table.concat(huntLines, "\n") or "-"
 		local maxBp = 0
 		local d = getData(); if d then maxBp = tonumber(d.PetsData.MutableStats.MaxPetsInInventory) or 0 end
-		local hatchCycles = math.floor(hatched / math.max(1, maxP))
+		local hatchCycles = ctx.state.hatchRounds or 0
 		local payload = { embeds = { {
 			title = "\u{1F4CA} Hatch Cycle Statistics",
 			color = 5793266,
@@ -470,7 +470,7 @@ return function(ctx)
 				{ name = "Egg Statistics :", value = ("> Egg Before: `%d`\n> Current Amount: `%d`\n> Net Result: `%d`\n> Lucky Hatch: `%d` ( %.2f%% )\n> Total Recovery: `%d`")
 					:format(eggBefore, curAmt, curAmt - eggBefore, recovery, luckyHatch, recovery), inline = false },
 				{ name = "Hatch Statistics :", value = ("> Hatch Cycles: `%d`\n> Total Hatched: `%d`\n> Sell Cycle: `%d / %d`\n> Cycle Duration: `%s`\n> All Time Duration: `%s`")
-					:format(hatchCycles, hatched, (math.floor(hatched / math.max(1, maxP)) - (ctx.state.hatchLastSellCycle or 0)), CFG.sellEveryNCycles or 1,
+					:format(hatchCycles, hatched, ((ctx.state.hatchRounds or 0) - (ctx.state.hatchLastSellCycle or 0)), CFG.sellEveryNCycles or 1,
 						fmtDur(os.time() - (ctx.state.hatchCycleStartTime or os.time())), fmtDur(os.time() - (ctx.state.hatchStartTime or os.time()))), inline = false },
 			},
 			footer = { text = os.date("%B %d | %I:%M %p") },
@@ -528,7 +528,7 @@ return function(ctx)
 			placed = placedEggCount(),
 			maxPlaced = CFG.hatchMaxPlaced or 9,
 			sellMode = CFG.sellMode or "Cycle",
-			cycleProg = math.floor((ctx.state.hatchEggsHatched or 0) / math.max(1, CFG.hatchMaxPlaced or 9)) - (ctx.state.hatchLastSellCycle or 0),
+			cycleProg = (ctx.state.hatchRounds or 0) - (ctx.state.hatchLastSellCycle or 0),
 			cycleTarget = CFG.sellEveryNCycles or 1,
 		}
 	end
@@ -537,8 +537,8 @@ return function(ctx)
 	local function tick()
 		local bpc = backpackPetCount()
 		local maxP = CFG.hatchMaxPlaced or 9
-		-- cycle = tiap maxPlaced egg ke-hatch dihitung 1 cycle
-		local cycle = math.floor((ctx.state.hatchEggsHatched or 0) / math.max(1, maxP))
+		-- cycle = jumlah RONDE hatch (tiap 1 batch garden selesai di-hatch = 1 cycle)
+		local cycle = ctx.state.hatchRounds or 0
 		-- 1) SELL trigger: mode "Cycle" (tiap N cycle) atau "Backpack" (pas penuh)
 		local sellNow = false
 		if CFG.autoSellEnabled then
@@ -615,6 +615,8 @@ return function(ctx)
 					task.wait(CFG.hatchSpeed or 0.2)
 				end
 			end
+			-- 1 batch (normal+bronto) selesai = 1 ronde/cycle
+			ctx.state.hatchRounds = (ctx.state.hatchRounds or 0) + 1
 			return
 		end
 
