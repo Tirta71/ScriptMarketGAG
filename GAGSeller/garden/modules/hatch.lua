@@ -273,11 +273,14 @@ return function(ctx)
 		local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
 		if not hum then return nil end
 		local held = LP.Character:FindFirstChildWhichIsA("Tool")
-		if held and tostring(held.Name):find(eggName, 1, true) then return held end
+		-- udah megang egg yg bener (bukan pet) -> ok
+		if held and not held:GetAttribute("PET_UUID") and tostring(held.Name):find(eggName, 1, true) then return held end
+		-- lepas dulu tool lama (mis. PET hasil hatch yg auto ke-pegang) biar ga konflik
+		if held then pcall(function() hum:UnequipTools() end); task.wait(0.15) end
 		local bp = LP:FindFirstChildOfClass("Backpack")
 		if bp then for _, t in ipairs(bp:GetChildren()) do
 			if t:IsA("Tool") and tostring(t.Name):find(eggName, 1, true) and not t:GetAttribute("PET_UUID") then
-				pcall(function() hum:EquipTool(t) end); task.wait(0.3); return t
+				pcall(function() hum:EquipTool(t) end); task.wait(0.35); return t
 			end
 		end end
 		return nil
@@ -297,10 +300,14 @@ return function(ctx)
 				if not CFG.hatchEnabled or placedEggCount() >= target then break end
 				if not slotOccupied(pos, eggs) then
 					equipEggTool(eggName)
-					pcall(function() EggRemote:FireServer("CreateEgg", pos) end)
-					task.wait(0.3)
-					eggs = currentEggs() -- refresh biar ga dobel di slot sama
-					ctx.state.hatchStatus = ("Placing: %d/%d egg"):format(placedEggCount(), target)
+					-- pastiin bener-bener MEGANG egg (bukan pet hasil hatch) sebelum place
+					local held = LP.Character and LP.Character:FindFirstChildWhichIsA("Tool")
+					if held and not held:GetAttribute("PET_UUID") and tostring(held.Name):find(eggName, 1, true) then
+						pcall(function() EggRemote:FireServer("CreateEgg", pos) end)
+						task.wait(0.3)
+						eggs = currentEggs() -- refresh biar ga dobel di slot sama
+						ctx.state.hatchStatus = ("Placing: %d/%d egg"):format(placedEggCount(), target)
+					end
 				end
 			end
 			if placedEggCount() <= before then break end -- ga nambah -> mentok
