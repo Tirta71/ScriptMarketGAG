@@ -599,8 +599,11 @@ return function(ctx)
 	------------------------------------------------------------------ EVENT
 	local eventPage = pageRef["Event"]
 	do
-		-- Accordion 1: Sam The Clam (status timer live)
-		local samAcc = makeAccordion(eventPage, "Sam The Clam", 1, true)
+		-- Accordion pembungkus: Automation Summer Event
+		local summerAcc = makeAccordion(eventPage, "Automation Summer Event", 1, true)
+
+		-- Sub-accordion 1: Sam The Clam (status timer live + config feed)
+		local samAcc = makeAccordion(summerAcc, "Sam The Clam", 1, true)
 		local samLbl = mk("TextLabel", {
 			Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
 			BackgroundTransparency = 1, Text = "Sam: loading...",
@@ -624,38 +627,35 @@ return function(ctx)
 			end
 		end)
 
-		-- Accordion 2: Automation Summer Event (config feed)
-		local summerAcc = makeAccordion(eventPage, "Automation Summer Event", 2, true)
-
 		-- Pilih tipe pet yang boleh di-feed ke Sam (kosong = pakai filter berat saja)
-		makeMultiDropdownDyn(summerAcc, "Pilih Pet (Feed ke Sam)", "Tipe pet yang boleh dikorbankan. Kosong = pakai filter berat.",
+		makeMultiDropdownDyn(samAcc, "Pilih Pet (Feed ke Sam)", "Tipe pet yang boleh dikorbankan. Kosong = pakai filter berat.",
 			function() return ctx.getSummerPetTypes(CFG.summerPetTypes) end, CFG.summerPetTypes, function() persist() end, 1)
 
 		-- Berat minimum (KG)
-		makeInput(summerAcc, "Berat Min (KG)", "Hanya feed pet >= berat ini. 0 = off",
+		makeInput(samAcc, "Berat Min (KG)", "Hanya feed pet >= berat ini. 0 = off",
 			function() return tostring(CFG.summerMinWeight) end,
 			function(txt) CFG.summerMinWeight = tonumber(txt) or 0; persist() end, 2)
 
 		-- Berat maksimum (KG)
-		makeInput(summerAcc, "Berat Max (KG)", "Hanya feed pet <= berat ini. 0 = off",
+		makeInput(samAcc, "Berat Max (KG)", "Hanya feed pet <= berat ini. 0 = off",
 			function() return tostring(CFG.summerMaxWeight) end,
 			function(txt) CFG.summerMaxWeight = tonumber(txt) or 0; persist() end, 3)
 
 		-- Ikutkan pet favorite
-		makeToggle(summerAcc, "Ikut Feed Pet Favorite", "Kalau ON, pet favorite juga boleh dikorbankan",
+		makeToggle(samAcc, "Ikut Feed Pet Favorite", "Kalau ON, pet favorite juga boleh dikorbankan",
 			function() return CFG.summerAllowFavorite end,
 			function(v) CFG.summerAllowFavorite = v; persist() end, 4)
 
 		-- Enable Automation Summer Event (Toggle) — auto TP ke Sam sudah otomatis di dalam logic
-		makeToggle(summerAcc, "Enable Automation Summer Event", "Auto TP ke Sam + submit pet + claim reward saat timer habis.",
+		makeToggle(samAcc, "Enable Automation Summer Event", "Auto TP ke Sam + submit pet + claim reward saat timer habis.",
 			function() return CFG.summerEventEnabled end,
 			function(v)
 				CFG.summerEventEnabled = v; persist()
 				if v and ctx.startSummerEvent then ctx.startSummerEvent() end
 			end, 6)
 
-		-- Accordion 3: Auto Chest Hunt (deposit selalu ke Garden)
-		local chAcc = makeAccordion(eventPage, "Auto Chest Hunt", 3, true)
+		-- Sub-accordion 2: Auto Chest Hunt (deposit selalu ke Garden)
+		local chAcc = makeAccordion(summerAcc, "Auto Chest Hunt", 2, true)
 		local chLbl = mk("TextLabel", { Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, Text = "Idle", Font = Enum.Font.Gotham, TextSize = 12, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, RichText = true, LayoutOrder = 0 }, chAcc)
 		mk("Frame", { Size = UDim2.new(1, 0, 0, 8), BackgroundTransparency = 1, LayoutOrder = 1 }, chAcc)
 		task.spawn(function()
