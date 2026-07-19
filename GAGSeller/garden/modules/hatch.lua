@@ -239,7 +239,7 @@ return function(ctx)
 	-- Isi berurut dari depan -> baris rapi; kandidat banyak biar selalu bisa penuh.
 	local function gridPositions()
 		local p = plantLocPart(); if not p then return {} end
-		local SP = 3
+		local SP = 4 -- jarak antar egg (min server = 3, kasih margin biar ga "Too close")
 		local hx = math.max(0, p.Size.X / 2 - 2)
 		local hz = math.max(0, p.Size.Z / 2 - 2)
 		local out = {}
@@ -265,7 +265,7 @@ return function(ctx)
 	local function slotOccupied(pos, eggs)
 		for _, e in ipairs(eggs) do
 			local ep = e:GetPivot().Position
-			if (Vector3.new(ep.X, 0, ep.Z) - Vector3.new(pos.X, 0, pos.Z)).Magnitude < 2.5 then return true end
+			if (Vector3.new(ep.X, 0, ep.Z) - Vector3.new(pos.X, 0, pos.Z)).Magnitude < 3.5 then return true end
 		end
 		return false
 	end
