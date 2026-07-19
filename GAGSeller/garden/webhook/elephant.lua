@@ -27,30 +27,44 @@ local function ecfg(ctx)
 	return CFG.elephantTeamUuids or {}, CFG.elephantPetTypes or {}, CFG.elephantTargetWeight or 5.5
 end
 
--- Hitung pet target yang belum max (Remains Queue), live dari data.
-local function remainsQueue(ctx)
-	local CFG = ctx.CFG
+-- Scan inventory live: pisah pet target jadi 'selesai' (>= target KG) dan 'sisa' (< target KG).
+-- Yang selesai dikelompokkan per type + bracket berat (byType), plus total maxCount.
+-- Sumber angka Boosting Statistics & Pets at Max KG = SEMUA pet target yang sudah max di data,
+-- bukan cuma yang selesai selama sesi ini (tahan reload / re-enable).
+local function scanTargets(ctx)
 	local ok, d = pcall(function() return ctx.deps.DataService:GetData() end)
-	if not ok or not d or not d.PetsData then return 0 end
-	local inv = d.PetsData.PetInventory and d.PetsData.PetInventory.Data or {}
+	local inv = ok and d and d.PetsData and d.PetsData.PetInventory and d.PetsData.PetInventory.Data or {}
 	local _, tt, tw = ecfg(ctx)
-	local n = 0
+	local byType, maxCount, remains = {}, 0, 0
 	for _, v in pairs(inv) do
-		if v.PetType and tt[v.PetType] and ((v.PetData or {}).BaseWeight or 0) < tw then n = n + 1 end
+		if v.PetType and tt[v.PetType] then
+			local w = (v.PetData or {}).BaseWeight or 0
+			if w < tw then
+				remains = remains + 1
+			else
+				maxCount = maxCount + 1
+				local bt = byType[v.PetType]
+				if not bt then bt = { total = 0, brackets = {}, order = {} }; byType[v.PetType] = bt end
+				bt.total = bt.total + 1
+				local lbl = bracketLabel(w)
+				if not bt.brackets[lbl] then bt.brackets[lbl] = 0; bt.order[#bt.order + 1] = lbl end
+				bt.brackets[lbl] = bt.brackets[lbl] + 1
+			end
+		end
 	end
-	return n
+	return byType, maxCount, remains
 end
 
 local function buildPayload(ctx)
 	local base = ctx.state.elephantBase or {}
-	local tally = ctx.state.elephantTally or { byType = {}, maxCount = 0 }
+	local byType, maxCount, remains = scanTargets(ctx)
 
 	local typeKeys = {}
-	for t in pairs(tally.byType) do typeKeys[#typeKeys + 1] = t end
+	for t in pairs(byType) do typeKeys[#typeKeys + 1] = t end
 	table.sort(typeKeys)
 	local lines = {}
 	for _, t in ipairs(typeKeys) do
-		local bt = tally.byType[t]
+		local bt = byType[t]
 		lines[#lines + 1] = string.format("**%s:** %d", t, bt.total)
 		table.sort(bt.order)
 		for _, lbl in ipairs(bt.order) do
@@ -67,7 +81,7 @@ local function buildPayload(ctx)
 		"**Pets at Max KG :** `%d`\n" ..
 		"**Remains Queue :** `%d`",
 		ctx.LP.Name, base.teamText or "None", base.typesText or "None",
-		boostText, tally.maxCount or 0, remainsQueue(ctx))
+		boostText, maxCount, remains)
 	if #desc > 4000 then desc = desc:sub(1, 3980) .. "\n... (truncated)" end
 
 	return {
@@ -140,22 +154,11 @@ function elephantWebhook.sendEnabled(ctx)
 	end
 end
 
--- Tiap pet target selesai (>= max KG): tambah ke tally lalu EDIT pesan.
+-- Tiap pet target selesai (>= max KG): kirim/EDIT pesan. Angka dihitung live dari
+-- data di buildPayload (scanTargets), jadi tidak perlu tally manual lagi.
 function elephantWebhook.onFinished(ctx, petType, weight)
 	local CFG = ctx.CFG
 	if not CFG.webhookUrl or CFG.webhookUrl == "" then return end
-	petType = petType or "?"
-	weight = tonumber(weight) or 0
-
-	local tally = ctx.state.elephantTally
-	if not tally then tally = { byType = {}, maxCount = 0 }; ctx.state.elephantTally = tally end
-	tally.maxCount = tally.maxCount + 1
-	local bt = tally.byType[petType]
-	if not bt then bt = { total = 0, brackets = {}, order = {} }; tally.byType[petType] = bt end
-	bt.total = bt.total + 1
-	local lbl = bracketLabel(weight)
-	if not bt.brackets[lbl] then bt.brackets[lbl] = 0; bt.order[#bt.order + 1] = lbl end
-	bt.brackets[lbl] = bt.brackets[lbl] + 1
 
 	-- Mode POST (Growth: kirim pesan baru tiap pet selesai) ATAU edit pesan (standalone).
 	local f = reqFn()
