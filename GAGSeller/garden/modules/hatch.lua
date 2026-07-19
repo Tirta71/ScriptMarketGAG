@@ -365,7 +365,7 @@ return function(ctx)
 	end
 	-- dispWeight = berat tampil (base*1.1). Bronto = dispWeight*1.3 (+30%).
 	local function sendHatchAlert(petType, eggName, dispWeight)
-		local url = CFG.hatchWebhookUrl
+		local url = CFG.webhookUrl
 		if not url or url == "" or not ctx.sendWebhook then return end
 		local baseW = dispWeight / 1.1
 		local rarity = (PetList and PetList[petType] and PetList[petType].Rarity) or "?"
@@ -386,22 +386,22 @@ return function(ctx)
 	end
 
 	----------------------------------------------------------------- Cycle Statistics (webhook)
+	-- Format tiap pet di team: "Mutasi - Nama - Berat - Age" (1 pet per baris).
 	local function teamNames(set)
 		local mutDisplay = (ctx.reg and ctx.reg.mutDisplay) or function(x) return x end
 		local inv = inventory()
-		local order, c = {}, {}
+		local out = {}
 		for u in pairs(set or {}) do
-			local v = inv[u]; local full = "?"
+			local v = inv[u]
 			if v then
-				local mut = (v.PetData or {}).MutationType
-				local mutStr = (mut and mut ~= "" and mut ~= "None" and mut ~= "Normal") and (mutDisplay(mut) .. " ") or ""
-				full = mutStr .. v.PetType
+				local pd = v.PetData or {}
+				local mut = pd.MutationType
+				local mutStr = (mut and mut ~= "" and mut ~= "None" and mut ~= "Normal") and mutDisplay(mut) or "Normal"
+				out[#out + 1] = string.format("%s - %s - %.2f KG - Age %d", mutStr, v.PetType, (pd.BaseWeight or 0) * 1.1, pd.Level or 0)
 			end
-			if not c[full] then order[#order + 1] = full end
-			c[full] = (c[full] or 0) + 1
 		end
-		local p = {}; for _, x in ipairs(order) do p[#p + 1] = c[x] .. " " .. x end
-		return #p > 0 and table.concat(p, ", ") or "-"
+		table.sort(out)
+		return #out > 0 and table.concat(out, "\n") or "-"
 	end
 	ctx.hatchTeamNames = teamNames
 
@@ -437,7 +437,7 @@ return function(ctx)
 	end
 
 	local function sendCycleStats()
-		local url = CFG.hatchWebhookUrl
+		local url = CFG.webhookUrl
 		if not url or url == "" or not ctx.sendWebhook then return end
 		local eggName = CFG.hatchEggName or "Rare Egg"
 		local maxP = CFG.hatchMaxPlaced or 9
@@ -464,8 +464,10 @@ return function(ctx)
 			fields = {
 				{ name = "Profile :", value = ("> Username : ||%s||\n> Egg Name: `%s`\n> Pet on backpack: `%d/%d`\n> Server Version: `%s`")
 					:format(LP.Name, eggName, backpackPetCount(), maxBp, tostring(game.PlaceVersion)), inline = false },
-				{ name = "Teams :", value = ("> Core: %s\n> Hatch: %s\n> Bronto: %s\n> Sell: %s")
-					:format(teamNames(CFG.hatchCoreTeam), teamNames(CFG.hatchHatchTeam), teamNames(CFG.hatchBrontoTeam), teamNames(CFG.hatchSellTeam)), inline = false },
+				{ name = "Core Team :", value = teamNames(CFG.hatchCoreTeam):sub(1, 1020), inline = false },
+				{ name = "Hatch Team :", value = teamNames(CFG.hatchHatchTeam):sub(1, 1020), inline = false },
+				{ name = "Bronto Team :", value = teamNames(CFG.hatchBrontoTeam):sub(1, 1020), inline = false },
+				{ name = "Sell Team :", value = teamNames(CFG.hatchSellTeam):sub(1, 1020), inline = false },
 				{ name = ("Hunt Statistics (%d):"):format(totalPets), value = hunt, inline = false },
 				{ name = "Egg Statistics :", value = ("> Egg Before: `%d`\n> Current Amount: `%d`\n> Net Result: `%d`\n> Lucky Hatch: `%d` ( %.2f%% )\n> Total Recovery: `%d`")
 					:format(eggBefore, curAmt, curAmt - eggBefore, recovery, luckyHatch, recovery), inline = false },
@@ -484,25 +486,8 @@ return function(ctx)
 	----------------------------------------------------------------- STATUS
 	ctx.state.hatchStatus = "Idle"
 	function ctx.getHatchSummary()
-		local inv = inventory()
-		-- team: "N Nama Lengkap" (mutasi + tipe), grup per nama lengkap
-		local function nm(set)
-			local mutDisplay = (ctx.reg and ctx.reg.mutDisplay) or function(x) return x end
-			local order, c = {}, {}
-			for u in pairs(set or {}) do
-				local v = inv[u]
-				local full = "?"
-				if v then
-					local mut = (v.PetData or {}).MutationType
-					local mutStr = (mut and mut ~= "" and mut ~= "None" and mut ~= "Normal") and (mutDisplay(mut) .. " ") or ""
-					full = mutStr .. v.PetType
-				end
-				if not c[full] then order[#order + 1] = full end
-				c[full] = (c[full] or 0) + 1
-			end
-			local p = {}; for _, x in ipairs(order) do p[#p + 1] = c[x] .. " " .. x end
-			return #p > 0 and table.concat(p, ", ") or "-"
-		end
+		-- team: format per pet "Mutasi - Nama - Berat - Age" (pakai teamNames global)
+		local nm = teamNames
 		-- max backpack + jumlah egg terpilih
 		local d = getData()
 		local maxBp = d and d.PetsData and d.PetsData.MutableStats and tonumber(d.PetsData.MutableStats.MaxPetsInInventory) or 0
