@@ -76,7 +76,8 @@ return function(ctx)
 			local mutName = mut
 			if mut and ctx.reg and ctx.reg.mutDisplay then mutName = ctx.reg.mutDisplay(mut) end
 			local mutPrefix = (mut and mut ~= "" and mut ~= "Normal") and (tostring(mutName) .. " ") or ""
-			local weight = (pd.BaseWeight or 0) * 1.1
+			-- berat tampil game = BaseWeight * (1 + 0.1*Level)
+			local weight = (pd.BaseWeight or 0) * (1 + 0.1 * age)
 			local tag = eqSet[uuid] and " [aktif]" or ""
 			out[#out + 1] = {
 				value = uuid,

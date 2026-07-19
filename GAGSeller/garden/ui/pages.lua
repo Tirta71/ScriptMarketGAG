@@ -651,6 +651,37 @@ return function(ctx)
 				CFG.summerEventEnabled = v; persist()
 				if v and ctx.startSummerEvent then ctx.startSummerEvent() end
 			end, 6)
+
+		-- Auto Chest Hunt (event) — accordion ke-2
+		local chAcc = makeAccordion(eventPage, "Auto Chest Hunt", 2, true)
+		local chLbl = mk("TextLabel", { Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, Text = "Idle", Font = Enum.Font.Gotham, TextSize = 12, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, RichText = true, LayoutOrder = 0 }, chAcc)
+		mk("Frame", { Size = UDim2.new(1, 0, 0, 8), BackgroundTransparency = 1, LayoutOrder = 1 }, chAcc)
+		task.spawn(function()
+			while ctx.alive() do
+				local ok, s = pcall(function() return ctx.getChestSummary() end)
+				if ok and s then
+					local col = s.status == "ACTIVE" and "#5acc78" or "#dc5050"
+					chLbl.Text = ("Status: <font color=\"%s\"><b>%s</b></font>  |  deposit: <font color=\"#8c929e\">%s</font>\n<font color=\"#8c929e\">%s</font>"):format(col, s.status, s.deposit, s.info)
+				end
+				task.wait(0.5)
+			end
+		end)
+		makeToggle(chAcc, "Enable Auto Chest Hunt", "TP ke chest -> bawa ke garden -> ulang (auto pas event mulai)",
+			function() return CFG.chestHuntEnabled end,
+			function(v) CFG.chestHuntEnabled = v; persist(); if v then ctx.startChestHunt() else ctx.stopChestHunt() end end, 2)
+		local DEP = { { name = "garden", display = "Garden" }, { name = "platform", display = "Platform" } }
+		makeSingleDropdown(chAcc, "Deposit ke", "Bawa chest ke Garden atau Platform NPC",
+			function() return DEP end, function() return CFG.chestHuntDeposit == "platform" and "Platform" or "Garden" end,
+			function(code) CFG.chestHuntDeposit = code; persist() end, 3)
+		makeButton(chAcc, "Scan Chest (debug)", "Cek apa yg kedetect sbg chest (jalanin pas event live)",
+			function() task.spawn(function()
+				local s = ctx.scanChests()
+				ctx.log(("[ChestScan] found=%d carrying=%s"):format(s.chestCount, tostring(s.carrying)))
+				for _, x in ipairs(s.sample) do ctx.log("[ChestScan] hit: " .. x) end
+				for _, x in ipairs(s.structChests or {}) do ctx.log("[ChestScan] struct: " .. x) end
+				for _, x in ipairs(s.rawChestNamed or {}) do ctx.log("[ChestScan] raw: " .. x) end
+				for t, n in pairs(s.chestHuntTags) do ctx.log(("[ChestScan] tag '%s' x%d"):format(t, n)) end
+			end) end, 4)
 	end
 
 	------------------------------------------------------------------ PET (PNP)
@@ -808,39 +839,8 @@ return function(ctx)
 			if v then ctx.startEsp() else ctx.stopEsp() end
 		end, 1)
 
-	-- Auto Chest Hunt Accordion (event)
-	local chAcc = makeAccordion(misc, "Auto Chest Hunt (Event)", 2, false)
-	local chLbl = mk("TextLabel", { Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1, Text = "Idle", Font = Enum.Font.Gotham, TextSize = 12, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, RichText = true, LayoutOrder = 0 }, chAcc)
-	mk("Frame", { Size = UDim2.new(1, 0, 0, 8), BackgroundTransparency = 1, LayoutOrder = 1 }, chAcc)
-	task.spawn(function()
-		while ctx.alive() do
-			local ok, s = pcall(function() return ctx.getChestSummary() end)
-			if ok and s then
-				local col = s.status == "ACTIVE" and "#5acc78" or "#dc5050"
-				chLbl.Text = ("Status: <font color=\"%s\"><b>%s</b></font>  |  deposit: <font color=\"#8c929e\">%s</font>\n<font color=\"#8c929e\">%s</font>"):format(col, s.status, s.deposit, s.info)
-			end
-			task.wait(0.5)
-		end
-	end)
-	makeToggle(chAcc, "Enable Auto Chest Hunt", "TP ke chest -> bawa ke garden -> ulang (auto pas event mulai)",
-		function() return CFG.chestHuntEnabled end,
-		function(v) CFG.chestHuntEnabled = v; persist(); if v then ctx.startChestHunt() else ctx.stopChestHunt() end end, 2)
-	local DEP = { { name = "garden", display = "Garden" }, { name = "platform", display = "Platform" } }
-	makeSingleDropdown(chAcc, "Deposit ke", "Bawa chest ke Garden atau Platform NPC",
-		function() return DEP end, function() return CFG.chestHuntDeposit == "platform" and "Platform" or "Garden" end,
-		function(code) CFG.chestHuntDeposit = code; persist() end, 3)
-	makeButton(chAcc, "Scan Chest (debug)", "Cek apa yg kedetect sbg chest (jalanin pas event live)",
-		function() task.spawn(function()
-			local s = ctx.scanChests()
-			ctx.log(("[ChestScan] found=%d carrying=%s"):format(s.chestCount, tostring(s.carrying)))
-			for _, x in ipairs(s.sample) do ctx.log("[ChestScan] hit: " .. x) end
-			for _, x in ipairs(s.structChests or {}) do ctx.log("[ChestScan] struct: " .. x) end
-			for _, x in ipairs(s.rawChestNamed or {}) do ctx.log("[ChestScan] raw: " .. x) end
-			for t, n in pairs(s.chestHuntTags) do ctx.log(("[ChestScan] tag '%s' x%d"):format(t, n)) end
-		end) end, 4)
-
 	-- Webhook Settings Accordion
-	local whAcc = makeAccordion(misc, "Discord Webhook Settings", 3, true)
+	local whAcc = makeAccordion(misc, "Discord Webhook Settings", 2, true)
 
 	-- Discord Webhook URL Input
 	makeInput(whAcc, "Discord Webhook URL", "Webhook URL for automation updates (Leveling, Mutation & Elephant)",
@@ -886,7 +886,7 @@ return function(ctx)
 			end)
 		end, 2)
 
-	local logCard = mk("Frame", { Size = UDim2.new(1, 0, 0, 220), BackgroundColor3 = C.row, LayoutOrder = 4 }, misc)
+	local logCard = mk("Frame", { Size = UDim2.new(1, 0, 0, 220), BackgroundColor3 = C.row, LayoutOrder = 3 }, misc)
 	corner(logCard, 8); stroke(logCard); pad(logCard, 12, 12, 10, 10)
 	mk("TextLabel", { Size = UDim2.new(1, 0, 0, 20), BackgroundTransparency = 1, Text = "Console Log", Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = C.txt, TextXAlignment = Enum.TextXAlignment.Left }, logCard)
 	local logBox = mk("TextLabel", { Size = UDim2.new(1, 0, 1, -26), Position = UDim2.fromOffset(0, 24), BackgroundColor3 = C.panel, Text = "", Font = Enum.Font.Code, TextSize = 11, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true }, logCard)
