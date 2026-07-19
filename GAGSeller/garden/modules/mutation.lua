@@ -360,29 +360,47 @@ return function(ctx)
 					end
 				end
 
-				-- 3. Equip tool pet tersebut ke tangan
+				-- 3. Equip pet ke tangan lalu VERIFIKASI beneran dipegang sebelum submit.
+				--    Cegah submit KOSONG kalau equip gagal/ke-race (mesin nerima submit hampa
+				--    -> langsung "ready" tanpa isi). Kalau gagal pegang, JANGAN submit.
 				if targetTool then
-					targetTool.Parent = LP.Character
-					task.wait(0.5)
-					pcall(function() PetMutationMachineService_RE:FireServer("SubmitHeldPet") end)
-					-- Duration: dari mulai EXP leveling kalau pet ini sempat di-level, else dari submit
-					ctx.state.mutationStartTime = ctx.state.mutationStartTime or {}
-					ctx.state.mutationSubmitTime = ctx.state.mutationStartTime[candidateUuid] or os.time()
-					ctx.state.mutationStartTime[candidateUuid] = nil
-					task.wait(0.5)
-					
-					-- Kirim Webhook Submitted
-					task.spawn(function()
-						local WebhookMut = ctx.webhookMutation
-						if WebhookMut then
-							local petLevel = inv[candidateUuid] and inv[candidateUuid].PetData and inv[candidateUuid].PetData.Level or 50
-							pcall(function() WebhookMut.sendSubmitted(ctx, candidateType, petLevel) end)
+					local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+					local held
+					for _ = 1, 4 do
+						pcall(function()
+							if hum then hum:EquipTool(targetTool) else targetTool.Parent = LP.Character end
+						end)
+						task.wait(0.35)
+						local h = LP.Character and LP.Character:FindFirstChildWhichIsA("Tool")
+						if h and cleanUuid(h:GetAttribute("PET_UUID")) == cleanUuid(candidateUuid) then
+							held = h
+							break
 						end
-					end)
+					end
 
-					-- Jalankan mesin langsung di detik yang sama
-					pcall(function() PetMutationMachineService_RE:FireServer("StartMachine") end)
-					task.wait(0.3)
+					if held then
+						pcall(function() PetMutationMachineService_RE:FireServer("SubmitHeldPet") end)
+						-- Duration: dari mulai EXP leveling kalau pet ini sempat di-level, else dari submit
+						ctx.state.mutationStartTime = ctx.state.mutationStartTime or {}
+						ctx.state.mutationSubmitTime = ctx.state.mutationStartTime[candidateUuid] or os.time()
+						ctx.state.mutationStartTime[candidateUuid] = nil
+						task.wait(0.5)
+
+						-- Kirim Webhook Submitted
+						task.spawn(function()
+							local WebhookMut = ctx.webhookMutation
+							if WebhookMut then
+								local petLevel = inv[candidateUuid] and inv[candidateUuid].PetData and inv[candidateUuid].PetData.Level or 50
+								pcall(function() WebhookMut.sendSubmitted(ctx, candidateType, petLevel) end)
+							end
+						end)
+
+						-- Jalankan mesin langsung di detik yang sama
+						pcall(function() PetMutationMachineService_RE:FireServer("StartMachine") end)
+						task.wait(0.3)
+					else
+						ctx.state.mutationPhase = "Gagal pegang pet, retry..."
+					end
 				end
 				return
 			end
