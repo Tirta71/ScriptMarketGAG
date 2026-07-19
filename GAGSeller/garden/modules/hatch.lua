@@ -377,12 +377,13 @@ return function(ctx)
 		local maxBp = d and d.PetsData and d.PetsData.MutableStats and tonumber(d.PetsData.MutableStats.MaxPetsInInventory) or 0
 		local eggName = CFG.hatchEggName or "Rare Egg"
 		local curEgg = 0
-		local bp = LP:FindFirstChildOfClass("Backpack")
-		if bp then for _, t in ipairs(bp:GetChildren()) do
-			if t:IsA("Tool") and not t:GetAttribute("PET_UUID") and tostring(t.Name):find(eggName, 1, true) then
-				local _, cnt = tostring(t.Name):match("^(.-)%s*x(%d+)$"); curEgg = tonumber(cnt) or curEgg
-			end
-		end end
+		for _, src in ipairs({ LP:FindFirstChildOfClass("Backpack"), LP.Character }) do
+			if src then for _, t in ipairs(src:GetChildren()) do
+				if t:IsA("Tool") and not t:GetAttribute("PET_UUID") and tostring(t.Name):find(eggName, 1, true) then
+					local _, cnt = tostring(t.Name):match("^(.-)%s*x(%d+)$"); if tonumber(cnt) then curEgg = tonumber(cnt) end
+				end
+			end end
+		end
 		return {
 			status = CFG.hatchEnabled and "RUNNING" or "STOPPED",
 			phase = ctx.state.hatchPhase or "-",
@@ -495,14 +496,15 @@ return function(ctx)
 
 	function ctx.startHatch()
 		if ctx.cancelClearGarden then ctx.cancelClearGarden() end
-		-- catat jumlah egg terpilih di awal (buat "Egg Before")
+		-- catat jumlah egg terpilih di awal (buat "Egg Before") — scan Backpack + Character
 		local eggName = CFG.hatchEggName or "Rare Egg"
-		local bp = LP:FindFirstChildOfClass("Backpack")
-		if bp then for _, t in ipairs(bp:GetChildren()) do
-			if t:IsA("Tool") and not t:GetAttribute("PET_UUID") and tostring(t.Name):find(eggName, 1, true) then
-				local _, cnt = tostring(t.Name):match("^(.-)%s*x(%d+)$"); ctx.state.hatchEggBefore = tonumber(cnt)
-			end
-		end end
+		for _, src in ipairs({ LP:FindFirstChildOfClass("Backpack"), LP.Character }) do
+			if src then for _, t in ipairs(src:GetChildren()) do
+				if t:IsA("Tool") and not t:GetAttribute("PET_UUID") and tostring(t.Name):find(eggName, 1, true) then
+					local _, cnt = tostring(t.Name):match("^(.-)%s*x(%d+)$"); if tonumber(cnt) then ctx.state.hatchEggBefore = tonumber(cnt) end
+				end
+			end end
+		end
 		task.spawn(loop)
 	end
 	function ctx.stopHatch()
