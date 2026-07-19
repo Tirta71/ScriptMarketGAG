@@ -50,21 +50,16 @@ return function(ctx)
 		return eqN == tN
 	end
 
-	-- Equip team dgn guard: skip total kalau udah sesuai. Return true kalau team siap.
-	local function equipTeam(teamSet, label)
-		if not next(teamSet or {}) then return true end
-		if teamMatches(teamSet) then return true end -- GUARD
-		local eq = equippedList()
+	-- 1 pass: cabut non-team, pasang anggota team yg belum ke-equip.
+	local function equipTeamOnce(teamSet)
 		local keep = {}
 		for u in pairs(teamSet) do keep[u] = true end
-		-- cabut yg bukan anggota team
-		for _, u in ipairs(eq) do
+		for _, u in ipairs(equippedList()) do
 			if not keep[u] then
 				pcall(function() PetsRemote:FireServer("UnequipPet", u) end)
-				task.wait(0.12)
+				task.wait(0.1)
 			end
 		end
-		-- pasang anggota team yg belum ke-equip
 		local eqNow = {}
 		for _, u in ipairs(equippedList()) do eqNow[u] = true end
 		for u in pairs(teamSet) do
@@ -73,7 +68,18 @@ return function(ctx)
 				if pos then pcall(function() PetsRemote:FireServer("EquipPet", u, CFrame.new(pos)) end); task.wait(0.15) end
 			end
 		end
+	end
+
+	-- Equip team dgn guard: skip kalau udah sesuai. BLOK sampai team LENGKAP (retry).
+	local function equipTeam(teamSet, label)
+		if not next(teamSet or {}) then return true end
+		if teamMatches(teamSet) then return true end -- GUARD
 		ctx.state.hatchStatus = (label or "Team") .. ": equipping..."
+		for _ = 1, 6 do
+			if teamMatches(teamSet) then return true end
+			equipTeamOnce(teamSet)
+			task.wait(0.2)
+		end
 		return teamMatches(teamSet)
 	end
 
