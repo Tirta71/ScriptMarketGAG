@@ -422,11 +422,17 @@ return function(ctx)
 		end)
 	end
 
-	-- Thread pemantau update visual
+	-- Thread pemantau update visual.
+	-- Saat window ketutup, tidur lama (1s) biar ga bikin GC pressure percuma.
+	-- Saat kebuka, refresh 0.4s (dari 0.15s) — cukup mulus buat panel data, jauh lebih hemat.
 	task.spawn(function()
 		while ctx.alive() do
-			pcall(updateMonitor)
-			task.wait(0.15)
+			if main and main.Visible then
+				pcall(updateMonitor)
+				task.wait(0.4)
+			else
+				task.wait(1)
+			end
 		end
 	end)
 
