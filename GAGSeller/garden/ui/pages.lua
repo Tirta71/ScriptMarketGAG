@@ -196,10 +196,8 @@ return function(ctx)
 			function() return tostring(CFG.brontoUniversalWeight) end, function(t) CFG.brontoUniversalWeight = tonumber(t) or 0; persist() end, 4)
 		makeToggle(hBr, "Don't Hatch Special Pets", "Skip special pet sama sekali (jangan di-hatch)",
 			function() return CFG.brontoSkipSpecial end, function(v) CFG.brontoSkipSpecial = v; persist() end, 5)
-		makeInput(hBr, "Hatch Alert Webhook URL", "Discord webhook buat alert pet masuk filter Bronto",
+		makeInput(hBr, "Hatch Webhook URL", "Discord webhook: alert bronto + cycle statistics (isi = nyala)",
 			function() return CFG.hatchWebhookUrl end, function(t) CFG.hatchWebhookUrl = t; persist() end, 6)
-		makeToggle(hBr, "Enable Hatch Alert (Bronto)", "Kirim alert @everyone tiap pet bronto ke-hatch",
-			function() return CFG.hatchAlertEnabled end, function(v) CFG.hatchAlertEnabled = v; persist() end, 7)
 
 		-- Sell Configuration
 		local hSell = makeAccordion(hatchPage, "Sell Configuration", 5, true)

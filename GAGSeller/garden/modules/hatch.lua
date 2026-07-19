@@ -366,7 +366,7 @@ return function(ctx)
 	-- dispWeight = berat tampil (base*1.1). Bronto = dispWeight*1.3 (+30%).
 	local function sendHatchAlert(petType, eggName, dispWeight)
 		local url = CFG.hatchWebhookUrl
-		if not CFG.hatchAlertEnabled or not url or url == "" or not ctx.sendWebhook then return end
+		if not url or url == "" or not ctx.sendWebhook then return end
 		local baseW = dispWeight / 1.1
 		local rarity = (PetList and PetList[petType] and PetList[petType].Rarity) or "?"
 		local payload = {
@@ -384,6 +384,102 @@ return function(ctx)
 		}
 		pcall(function() ctx.sendWebhook(url, payload, ctx) end)
 	end
+
+	----------------------------------------------------------------- Cycle Statistics (webhook)
+	local function teamNames(set)
+		local mutDisplay = (ctx.reg and ctx.reg.mutDisplay) or function(x) return x end
+		local inv = inventory()
+		local order, c = {}, {}
+		for u in pairs(set or {}) do
+			local v = inv[u]; local full = "?"
+			if v then
+				local mut = (v.PetData or {}).MutationType
+				local mutStr = (mut and mut ~= "" and mut ~= "None" and mut ~= "Normal") and (mutDisplay(mut) .. " ") or ""
+				full = mutStr .. v.PetType
+			end
+			if not c[full] then order[#order + 1] = full end
+			c[full] = (c[full] or 0) + 1
+		end
+		local p = {}; for _, x in ipairs(order) do p[#p + 1] = c[x] .. " " .. x end
+		return #p > 0 and table.concat(p, ", ") or "-"
+	end
+	ctx.hatchTeamNames = teamNames
+
+	-- akumulasi pet ke-hatch per tipe (buat Hunt Statistics)
+	local function trackHatch(petType, dispW)
+		ctx.state.hatchByType = ctx.state.hatchByType or {}
+		local t = ctx.state.hatchByType[petType]
+		if not t then t = { n = 0, minW = math.huge, maxW = 0 }; ctx.state.hatchByType[petType] = t end
+		t.n = t.n + 1
+		if dispW < t.minW then t.minW = dispW end
+		if dispW > t.maxW then t.maxW = dispW end
+	end
+
+	local function eggAmount(eggName)
+		local n = 0
+		for _, src in ipairs({ LP:FindFirstChildOfClass("Backpack"), LP.Character }) do
+			if src then for _, t in ipairs(src:GetChildren()) do
+				if t:IsA("Tool") and not t:GetAttribute("PET_UUID") and tostring(t.Name):find(eggName, 1, true) then
+					local _, cnt = tostring(t.Name):match("^(.-)%s*x(%d+)$"); if tonumber(cnt) then n = tonumber(cnt) end
+				end
+			end end
+		end
+		return n
+	end
+	local function fmtDur(sec)
+		sec = math.max(0, math.floor(sec))
+		local h = math.floor(sec / 3600); local m = math.floor((sec % 3600) / 60); local s = sec % 60
+		local p = {}
+		if h > 0 then p[#p + 1] = h .. "h" end
+		if m > 0 then p[#p + 1] = m .. "m" end
+		p[#p + 1] = s .. "s"
+		return table.concat(p, " ")
+	end
+
+	local function sendCycleStats()
+		local url = CFG.hatchWebhookUrl
+		if not url or url == "" or not ctx.sendWebhook then return end
+		local eggName = CFG.hatchEggName or "Rare Egg"
+		local maxP = CFG.hatchMaxPlaced or 9
+		local hatched = ctx.state.hatchEggsHatched or 0
+		local eggBefore = ctx.state.hatchEggBefore or 0
+		local curAmt = eggAmount(eggName)
+		local consumed = eggBefore - curAmt
+		local recovery = math.max(0, hatched - consumed)
+		local luckyHatch = hatched > 0 and (recovery / hatched * 100) or 0
+		-- Hunt Statistics: pet per tipe + range berat
+		local huntLines, totalPets = {}, 0
+		for pt, t in pairs(ctx.state.hatchByType or {}) do
+			totalPets = totalPets + t.n
+			huntLines[#huntLines + 1] = ("`%s x%d` (%.2f-%.2f kg)"):format(pt, t.n, t.minW == math.huge and 0 or t.minW, t.maxW)
+		end
+		table.sort(huntLines)
+		local hunt = #huntLines > 0 and table.concat(huntLines, "\n") or "-"
+		local maxBp = 0
+		local d = getData(); if d then maxBp = tonumber(d.PetsData.MutableStats.MaxPetsInInventory) or 0 end
+		local hatchCycles = math.floor(hatched / math.max(1, maxP))
+		local payload = { embeds = { {
+			title = "\u{1F4CA} Hatch Cycle Statistics",
+			color = 5793266,
+			fields = {
+				{ name = "Profile :", value = ("> Username : ||%s||\n> Egg Name: `%s`\n> Pet on backpack: `%d/%d`\n> Server Version: `%s`")
+					:format(LP.Name, eggName, backpackPetCount(), maxBp, tostring(game.PlaceVersion)), inline = false },
+				{ name = "Teams :", value = ("> Core: %s\n> Hatch: %s\n> Bronto: %s\n> Sell: %s")
+					:format(teamNames(CFG.hatchCoreTeam), teamNames(CFG.hatchHatchTeam), teamNames(CFG.hatchBrontoTeam), teamNames(CFG.hatchSellTeam)), inline = false },
+				{ name = ("Hunt Statistics (%d):"):format(totalPets), value = hunt, inline = false },
+				{ name = "Egg Statistics :", value = ("> Egg Before: `%d`\n> Current Amount: `%d`\n> Net Result: `%d`\n> Lucky Hatch: `%d` ( %.2f%% )\n> Total Recovery: `%d`")
+					:format(eggBefore, curAmt, curAmt - eggBefore, recovery, luckyHatch, recovery), inline = false },
+				{ name = "Hatch Statistics :", value = ("> Hatch Cycles: `%d`\n> Total Hatched: `%d`\n> Sell Cycle: `%d / %d`\n> Cycle Duration: `%s`\n> All Time Duration: `%s`")
+					:format(hatchCycles, hatched, (math.floor(hatched / math.max(1, maxP)) - (ctx.state.hatchLastSellCycle or 0)), CFG.sellEveryNCycles or 1,
+						fmtDur(os.time() - (ctx.state.hatchCycleStartTime or os.time())), fmtDur(os.time() - (ctx.state.hatchStartTime or os.time()))), inline = false },
+			},
+			footer = { text = os.date("%B %d | %I:%M %p") },
+		} } }
+		pcall(function() ctx.sendWebhook(url, payload, ctx) end)
+		ctx.state.hatchCycleStartTime = os.time()
+	end
+	ctx.hatchSendCycleStats = sendCycleStats
+	ctx.hatchTrack = trackHatch
 
 	----------------------------------------------------------------- STATUS
 	ctx.state.hatchStatus = "Idle"
@@ -458,6 +554,7 @@ return function(ctx)
 			task.wait(CFG.sellTeamDelay or 5)
 			doSell()
 			ctx.state.hatchLastSellCycle = cycle
+			task.spawn(sendCycleStats) -- summary per sell cycle
 			return
 		end
 		-- clamp target ke kapasitas farm biar ga nyangkut (mis. Max Placed > MaxEggsInFarm)
@@ -492,6 +589,8 @@ return function(ctx)
 			local function hatchList(list)
 				for _, e in ipairs(list) do
 					if not CFG.hatchEnabled then break end
+					local pt, w = eggPending(e)
+					if pt then trackHatch(pt, w) end
 					pcall(function() EggRemote:FireServer("HatchPet", e) end)
 					ctx.state.hatchEggsHatched = (ctx.state.hatchEggsHatched or 0) + 1
 					task.wait(CFG.hatchSpeed or 0.2)
@@ -510,7 +609,7 @@ return function(ctx)
 				for _, e in ipairs(bronto) do
 					if not CFG.hatchEnabled then break end
 					local pt, w = eggPending(e)
-					if pt then task.spawn(function() sendHatchAlert(pt, CFG.hatchEggName or "Rare Egg", w) end) end
+					if pt then trackHatch(pt, w); task.spawn(function() sendHatchAlert(pt, CFG.hatchEggName or "Rare Egg", w) end) end
 					pcall(function() EggRemote:FireServer("HatchPet", e) end)
 					ctx.state.hatchEggsHatched = (ctx.state.hatchEggsHatched or 0) + 1
 					task.wait(CFG.hatchSpeed or 0.2)
@@ -547,6 +646,8 @@ return function(ctx)
 				end
 			end end
 		end
+		ctx.state.hatchStartTime = ctx.state.hatchStartTime or os.time()
+		ctx.state.hatchCycleStartTime = os.time()
 		task.spawn(loop)
 	end
 	function ctx.stopHatch()
