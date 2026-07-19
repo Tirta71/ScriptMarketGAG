@@ -59,19 +59,59 @@ return function(ctx)
 		return { state = state, timer = timer, reward = reward, submitted = submitted }
 	end
 
-	-- daftar tipe pet buat dropdown Summer.
-	-- TIDAK di-prune: pilihan tetap dipertahankan walau pet-nya lagi 0 di inventory,
-	-- biar loop bisa retry sampai pet muncul lagi. Tipe yang dipilih tapi lagi habis
-	-- tetap ditampilkan (ditandai "(0 di inventory)") biar keliatan masih kepilih.
+	-- Master list SEMUA tipe pet (dari PetRegistry.PetList), di-cache sekali.
+	local masterPetNames
+	local function getMasterPetNames()
+		if masterPetNames then return masterPetNames end
+		local names = {}
+		pcall(function()
+			local m = require(RS.Data.PetRegistry)
+			local pl = m.PetList
+			if type(pl) == "table" then
+				if pl[1] ~= nil then
+					for _, v in ipairs(pl) do
+						local n = type(v) == "table" and (v.PetName or v.Name) or v
+						if n then names[#names + 1] = tostring(n) end
+					end
+				else
+					for k in pairs(pl) do names[#names + 1] = tostring(k) end
+				end
+			end
+		end)
+		table.sort(names)
+		masterPetNames = names
+		return names
+	end
+
+	-- daftar tipe pet buat dropdown Summer — TAMPILKAN SEMUA pet (walau belum punya),
+	-- biar bisa pra-filter sebelum pet-nya ada. Pet yang ditolak Sam disembunyikan.
+	-- Yang lagi dipunya ditandai "(x N)", yang kepilih ditaruh paling atas.
 	function ctx.getSummerPetTypes(selectedSet)
-		local opts = ctx.getInventoryPetTypes and ctx.getInventoryPetTypes(selectedSet) or {}
-		local shown = {}
-		for _, o in ipairs(opts) do shown[o.value] = true end
-		for t in pairs(CFG.summerPetTypes or {}) do
-			if not shown[t] then
-				opts[#opts + 1] = { value = t, display = t .. " (0 di inventory)" }
+		-- info kepemilikan dari inventory (display biasanya sudah bawa jumlah)
+		local owned = {}
+		local inv = ctx.getInventoryPetTypes and ctx.getInventoryPetTypes(selectedSet) or {}
+		for _, o in ipairs(inv) do owned[o.value] = o.display end
+
+		local sel = selectedSet or CFG.summerPetTypes or {}
+		local opts, shown = {}, {}
+		for _, name in ipairs(getMasterPetNames()) do
+			if not rejectPool[name] then
+				opts[#opts + 1] = { value = name, display = owned[name] or name }
+				shown[name] = true
 			end
 		end
+		-- tipe kepilih yang ga ada di master (jaga-jaga) tetap dimunculkan
+		for t in pairs(sel) do
+			if not shown[t] and not rejectPool[t] then
+				opts[#opts + 1] = { value = t, display = owned[t] or t }
+			end
+		end
+		-- kepilih dulu, lalu alfabet
+		table.sort(opts, function(a, b)
+			local sa, sb = sel[a.value] and 1 or 0, sel[b.value] and 1 or 0
+			if sa ~= sb then return sa > sb end
+			return a.value < b.value
+		end)
 		return opts
 	end
 
