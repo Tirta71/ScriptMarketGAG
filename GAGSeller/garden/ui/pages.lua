@@ -8,6 +8,17 @@ return function(ctx)
 	local reg = ctx.reg
 	local function log(m) ctx.log(m) end
 
+	-- True kalau GuiObject benar-benar kelihatan di layar (tab aktif + accordion kebuka
+	-- + window ga diminimize). Dipakai supaya loop status berhenti hitung/redraw label
+	-- yang lagi nggak dilihat — cegah layout-thrashing yang bikin CPU naik.
+	local function onScreen(o)
+		while o and o ~= game do
+			if o:IsA("GuiObject") and not o.Visible then return false end
+			o = o.Parent
+		end
+		return o == game
+	end
+
 	local makePage = ctx.makePage
 	local makeAccordion = ctx.makeAccordion
 	local makeToggle = ctx.makeToggle
@@ -53,6 +64,7 @@ return function(ctx)
 		mk("Frame", { Size = UDim2.new(1, 0, 0, 12), BackgroundTransparency = 1, LayoutOrder = 1 }, gCtrl)
 		task.spawn(function()
 			while ctx.alive() do
+				if not onScreen(growthPage) then task.wait(1) continue end
 				local ok, s = pcall(function() return ctx.getGrowthSummary() end)
 				if ok and s then
 					local col = s.status == "ACTIVE" and "#5acc78" or "#dc5050"
@@ -134,6 +146,7 @@ return function(ctx)
 		mk("Frame", { Size = UDim2.new(1, 0, 0, 12), BackgroundTransparency = 1, LayoutOrder = 1 }, hCtrl)
 		task.spawn(function()
 			while ctx.alive() do
+				if not onScreen(hatchPage) then task.wait(1) continue end
 				local ok, s = pcall(function() return ctx.getHatchSummary() end)
 				if ok and s then
 					local col = s.status == "RUNNING" and "#5acc78" or "#dc5050"
@@ -271,6 +284,7 @@ return function(ctx)
 		mk("Frame", { Size = UDim2.new(1, 0, 0, 12), BackgroundTransparency = 1, LayoutOrder = 1 }, acc)
 		task.spawn(function()
 			while ctx.alive() do
+				if not onScreen(elephantPage) then task.wait(1) continue end
 				local ok, s = pcall(function() return ctx.getElephantSummary() end)
 				if ok and s then
 					local col = s.status == "ACTIVE" and "#5acc78" or "#dc5050"
@@ -332,6 +346,7 @@ return function(ctx)
 
 		task.spawn(function()
 			while ctx.alive() do
+				if not onScreen(levelingPage) then task.wait(1) continue end
 				local ok, s = pcall(function() return ctx.getLevelingSummary() end)
 				if ok and s then
 					local statusColor = s.status == "ACTIVE" and "#5acc78" or "#dc5050"
@@ -396,6 +411,7 @@ return function(ctx)
 		mk("Frame", { Size = UDim2.new(1, 0, 0, 12), BackgroundTransparency = 1, LayoutOrder = 1 }, lv2)
 		task.spawn(function()
 			while ctx.alive() do
+				if not onScreen(levelingPage) then task.wait(1) continue end
 				local ok, s = pcall(function() return ctx.getLevelingV2Summary() end)
 				if ok and s then
 					local col = s.status == "ACTIVE" and "#5acc78" or "#dc5050"
@@ -469,6 +485,7 @@ return function(ctx)
 
 		task.spawn(function()
 			while ctx.alive() do
+				if not onScreen(mutationPage) then task.wait(1) continue end
 				local ok, s = pcall(function() return ctx.getMutationSummary() end)
 				if ok and s then
 					local statusColor = s.status == "ACTIVE" and "#5acc78" or "#dc5050"
@@ -556,6 +573,7 @@ return function(ctx)
 		mk("Frame", { Size = UDim2.new(1, 0, 0, 12), BackgroundTransparency = 1, LayoutOrder = 1 }, cleanseAcc)
 		task.spawn(function()
 			while ctx.alive() do
+				if not onScreen(mutationPage) then task.wait(1) continue end
 				local ok, s = pcall(function() return ctx.getCleanseSummary() end)
 				if ok and s then
 					local col = s.status == "ACTIVE" and "#5acc78" or "#dc5050"
@@ -613,6 +631,7 @@ return function(ctx)
 		}, samAcc)
 		task.spawn(function()
 			while ctx.alive() do
+				if not onScreen(eventPage) then task.wait(1) continue end
 				local ok, s = pcall(function() return ctx.getSamSummary() end)
 				if ok and s then
 					local col = s.state == "READY" and "#5acc78" or (s.state == "WORKING" and "#f5c82d" or "#8c929e")
@@ -660,6 +679,7 @@ return function(ctx)
 		mk("Frame", { Size = UDim2.new(1, 0, 0, 8), BackgroundTransparency = 1, LayoutOrder = 1 }, chAcc)
 		task.spawn(function()
 			while ctx.alive() do
+				if not onScreen(eventPage) then task.wait(1) continue end
 				local ok, s = pcall(function() return ctx.getChestSummary() end)
 				if ok and s then
 					local col = s.status == "ACTIVE" and "#5acc78" or "#dc5050"
@@ -782,6 +802,7 @@ return function(ctx)
 	-- refresh live tiap 2 detik biar jumlah pet update walau filter berubah
 	task.spawn(function()
 		while ctx.alive() do
+			if not onScreen(stLbl) then task.wait(2) continue end
 			pcall(function() ctx.refreshTradeStatus() end)
 			task.wait(2)
 		end
