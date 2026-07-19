@@ -398,17 +398,20 @@ return function(ctx)
 		maxP = math.min(maxP, farmCap)
 
 		local placed = placedEggCount()
-		local ready = readyEggs()
 
-		-- 2) PLACE: egg di garden kurang -> Core Team (speed, wajib lengkap) + isi PENUH
+		-- 2) PLACE (best-effort): tambah egg kalau kurang. JANGAN stuck kalau ga bisa penuh
+		--    (grid bentrok egg recovered / kapasitas farm mentok) -> lanjut proses egg yg ada.
 		if placed < maxP then
 			ctx.state.hatchPhase = ("Placing Eggs (%d/%d)"):format(placed, maxP)
 			if not equipTeam(CFG.hatchCoreTeam, "Core Team") then return end -- team wajib lengkap dulu
-			placeEggs(maxP)
-			return
+			local added = placeEggs(maxP)
+			placed = placedEggCount()
+			if added > 0 and placed < maxP then return end -- masih nambah -> lanjut place tick berikut
+			-- added==0 (mentok) & belum penuh -> anti-stuck: lanjut proses egg yg udah ada
 		end
 
-		-- 3) HATCH: HANYA kalau SEMUA egg udah READY (jangan switch selama masih ada timer jalan)
+		local ready = readyEggs()
+		-- 3) HATCH: HANYA kalau SEMUA egg (yg ke-place) udah READY (jangan switch selama timer jalan)
 		if placed > 0 and #ready >= placed then
 			ctx.state.hatchPhase = "Hatching"
 			-- klasifikasi tiap egg: normal (Hatch team) / bronto (Bronto team) / skip
