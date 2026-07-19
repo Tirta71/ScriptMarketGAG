@@ -137,13 +137,21 @@ return function(ctx)
 				local ok, s = pcall(function() return ctx.getHatchSummary() end)
 				if ok and s then
 					local col = s.status == "RUNNING" and "#5acc78" or "#dc5050"
+					local gr = "#b8bdc7"
 					hLbl.Text = string.format(
-						"Status: <font color=\"%s\"><b>%s</b></font>  |  <font color=\"#f5c82d\">%s</font>\n" ..
-						"Core Team: <font color=\"#8c929e\">%s</font>\nHatch Team: <font color=\"#8c929e\">%s</font>\n" ..
-						"Bronto Team: <font color=\"#8c929e\">%s</font>\nSell Team: <font color=\"#8c929e\">%s</font>\n\n" ..
-						"Backpack pet: <font color=\"#8c929e\">%d</font>\nEgg placed: <font color=\"#8c929e\">%d/%d</font>  |  ready: <font color=\"#8c929e\">%d</font>\n" ..
-						"Eggs hatched: <font color=\"#8c929e\">%d</font>\nSell cycle (%s): <font color=\"#8c929e\">%d/%d</font>  |  sold: <font color=\"#8c929e\">%d</font>",
-						col, s.status, s.phase, s.core, s.hatch, s.bronto, s.sell, s.backpack, s.placed, s.maxPlaced, s.ready, s.eggsHatched, s.sellMode, s.cycleProg, s.cycleTarget, s.sellCycles)
+						"<b>Live Status</b>\n" ..
+						"Status: <font color=\"%s\"><b>%s</b></font>\nPhase: <font color=\"#f5c82d\">%s</font>\n\n" ..
+						"Core Team: <font color=\"%s\">%s</font>\nHatch Team: <font color=\"%s\">%s</font>\n" ..
+						"Bronto Team: <font color=\"%s\">%s</font>\nSell Team: <font color=\"%s\">%s</font>\n\n" ..
+						"Pet on Backpack: <font color=\"%s\">%d/%d</font>\n\n" ..
+						"Current Egg: <font color=\"%s\">%s</font>\nEgg Before: <font color=\"%s\">%d</font>\n" ..
+						"Current Amount: <font color=\"%s\">%d</font>\nPlaced: <font color=\"%s\">%d/%d</font>\n" ..
+						"Eggs Hatched: <font color=\"%s\">%d</font>\nSell Cycle: <font color=\"%s\">%d/%d</font>",
+						col, s.status, s.phase,
+						gr, s.core, gr, s.hatch, gr, s.bronto, gr, s.sell,
+						gr, s.backpack, s.maxBackpack,
+						gr, s.currentEgg, gr, s.eggBefore, gr, s.currentAmount, gr, s.placed, s.maxPlaced,
+						gr, s.eggsHatched, gr, s.cycleProg, s.cycleTarget)
 				end
 				task.wait(1.0)
 			end

@@ -353,22 +353,43 @@ return function(ctx)
 	----------------------------------------------------------------- STATUS
 	ctx.state.hatchStatus = "Idle"
 	function ctx.getHatchSummary()
+		local inv = inventory()
+		-- team: "N Nama Lengkap" (mutasi + tipe), grup per nama lengkap
 		local function nm(set)
-			local o = {}; for u in pairs(set or {}) do
-				local v = inventory()[u]; o[#o + 1] = (v and v.PetType) or "?"
+			local mutDisplay = (ctx.reg and ctx.reg.mutDisplay) or function(x) return x end
+			local order, c = {}, {}
+			for u in pairs(set or {}) do
+				local v = inv[u]
+				local full = "?"
+				if v then
+					local mut = (v.PetData or {}).MutationType
+					local mutStr = (mut and mut ~= "" and mut ~= "None" and mut ~= "Normal") and (mutDisplay(mut) .. " ") or ""
+					full = mutStr .. v.PetType
+				end
+				if not c[full] then order[#order + 1] = full end
+				c[full] = (c[full] or 0) + 1
 			end
-			-- ringkas per tipe
-			local c, order = {}, {}
-			for _, x in ipairs(o) do if not c[x] then order[#order + 1] = x end; c[x] = (c[x] or 0) + 1 end
-			local p = {}; for _, x in ipairs(order) do p[#p + 1] = (c[x] > 1 and (x .. " x" .. c[x]) or x) end
+			local p = {}; for _, x in ipairs(order) do p[#p + 1] = c[x] .. " " .. x end
 			return #p > 0 and table.concat(p, ", ") or "-"
 		end
+		-- max backpack + jumlah egg terpilih
+		local d = getData()
+		local maxBp = d and d.PetsData and d.PetsData.MutableStats and tonumber(d.PetsData.MutableStats.MaxPetsInInventory) or 0
+		local eggName = CFG.hatchEggName or "Rare Egg"
+		local curEgg = 0
+		local bp = LP:FindFirstChildOfClass("Backpack")
+		if bp then for _, t in ipairs(bp:GetChildren()) do
+			if t:IsA("Tool") and not t:GetAttribute("PET_UUID") and tostring(t.Name):find(eggName, 1, true) then
+				local _, cnt = tostring(t.Name):match("^(.-)%s*x(%d+)$"); curEgg = tonumber(cnt) or curEgg
+			end
+		end end
 		return {
 			status = CFG.hatchEnabled and "RUNNING" or "STOPPED",
 			phase = ctx.state.hatchPhase or "-",
 			core = nm(CFG.hatchCoreTeam), hatch = nm(CFG.hatchHatchTeam),
 			bronto = nm(CFG.hatchBrontoTeam), sell = nm(CFG.hatchSellTeam),
-			backpack = backpackPetCount(),
+			backpack = backpackPetCount(), maxBackpack = maxBp,
+			currentEgg = eggName, eggBefore = ctx.state.hatchEggBefore or curEgg, currentAmount = curEgg,
 			eggsHatched = ctx.state.hatchEggsHatched or 0,
 			sellCycles = ctx.state.hatchSellCycles or 0,
 			ready = #readyEggs(),
@@ -474,6 +495,14 @@ return function(ctx)
 
 	function ctx.startHatch()
 		if ctx.cancelClearGarden then ctx.cancelClearGarden() end
+		-- catat jumlah egg terpilih di awal (buat "Egg Before")
+		local eggName = CFG.hatchEggName or "Rare Egg"
+		local bp = LP:FindFirstChildOfClass("Backpack")
+		if bp then for _, t in ipairs(bp:GetChildren()) do
+			if t:IsA("Tool") and not t:GetAttribute("PET_UUID") and tostring(t.Name):find(eggName, 1, true) then
+				local _, cnt = tostring(t.Name):match("^(.-)%s*x(%d+)$"); ctx.state.hatchEggBefore = tonumber(cnt)
+			end
+		end end
 		task.spawn(loop)
 	end
 	function ctx.stopHatch()
