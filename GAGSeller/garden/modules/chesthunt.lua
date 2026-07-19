@@ -24,7 +24,18 @@ return function(ctx)
 
 	-- kandidat tag chest (tebakan; finder fallback ke scan nama)
 	local CHEST_TAGS = { "SummerChest", "SummerChestHuntChest", "GlobalChest", "SummerChestHunt_Chest", "ChestHuntChest", "SummerChestHuntGlobalChest" }
-	local function isPlatform(d) return CS:HasTag(d, "SummerChestHuntPlatform") or tostring(d.Name):find("Platform") end
+
+	-- chest hunt asli: model bernama "...Chest" / rarity, TAPI bukan false-positive.
+	local function isHuntChest(d)
+		if not (d:IsA("Model") or d:IsA("BasePart")) then return false end
+		local nm = tostring(d.Name)
+		local low = nm:lower()
+		if not low:find("chest") then return false end
+		if low:find("cooler") then return false end          -- SummerTeamEvent
+		if nm:find("Platform") then return false end
+		if d:FindFirstAncestor("SummerTeamEvent") or d:FindFirstAncestor("SummerHarvestEvent") then return false end
+		return rootPart(d) ~= nil
+	end
 
 	local function findChests()
 		local seen, out = {}, {}
@@ -33,11 +44,9 @@ return function(ctx)
 				if not seen[inst] then seen[inst] = true; out[#out + 1] = inst end
 			end
 		end
-		if #out == 0 then -- fallback: scan model/part nama mengandung "chest" (bukan platform)
+		if #out == 0 then -- fallback: scan model nama "...Chest" (exclude false-positive)
 			for _, d in ipairs(workspace:GetDescendants()) do
-				if (d:IsA("Model") or d:IsA("BasePart")) and tostring(d.Name):lower():find("chest") and not isPlatform(d) then
-					if rootPart(d) then out[#out + 1] = d end
-				end
+				if isHuntChest(d) and not seen[d] then seen[d] = true; out[#out + 1] = d end
 			end
 		end
 		return out
@@ -48,9 +57,18 @@ return function(ctx)
 		local chests = findChests()
 		local info = {}
 		for i, c in ipairs(chests) do
-			if i <= 8 then
+			if i <= 10 then
 				local r = rootPart(c)
-				info[#info + 1] = c.ClassName .. " " .. c.Name .. (r and (" @ " .. tostring(r.Position)) or "")
+				info[#info + 1] = ("%s '%s' @ %s | %s"):format(c.ClassName, c.Name, r and tostring(r.Position) or "?", (c.Parent and c.Parent.Name) or "?")
+			end
+		end
+		-- semua model bernama "chest" (mentah, buat lihat kandidat + tag-nya)
+		local rawChest = {}
+		for _, d in ipairs(workspace:GetDescendants()) do
+			if (d:IsA("Model") or d:IsA("BasePart")) and tostring(d.Name):lower():find("chest") then
+				local tg = table.concat(CS:GetTags(d), ",")
+				rawChest[#rawChest + 1] = ("%s '%s' <%s> tags[%s]"):format(d.ClassName, d.Name, (d.Parent and d.Parent.Name) or "?", tg)
+				if #rawChest >= 10 then break end
 			end
 		end
 		local tags = {}
@@ -59,7 +77,7 @@ return function(ctx)
 				if (t:lower():find("chest") or t:lower():find("hunt")) then tags[t] = (tags[t] or 0) + 1 end
 			end
 		end
-		return { chestCount = #chests, sample = info, chestHuntTags = tags, carrying = carrying() }
+		return { chestCount = #chests, sample = info, rawChestNamed = rawChest, chestHuntTags = tags, carrying = carrying() }
 	end
 
 	local function depositPos()
