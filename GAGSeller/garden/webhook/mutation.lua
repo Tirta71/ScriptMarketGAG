@@ -118,7 +118,7 @@ function mutationWebhook.sendClaimed(ctx, petType, outcomeMutation, isMatched, d
 	if not CFG.webhookUrl or CFG.webhookUrl == "" then return end
 
 	local mutDisplay = ctx.reg.mutDisplay and ctx.reg.mutDisplay(outcomeMutation) or outcomeMutation
-	local statusText = isMatched and "✅ TARGET MUTATION FOUND (Bot Stopped)" or "❌ Non-target Mutation (Continuing)"
+	local statusText = isMatched and "✅ Target Found" or "❌ Non-target"
 
 	local payload = {
 		embeds = {
