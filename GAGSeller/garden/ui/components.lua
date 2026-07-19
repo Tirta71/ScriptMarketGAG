@@ -77,10 +77,12 @@ return function(ctx)
 		local function rebuild()
 			for _, b in pairs(optBtns) do b:Destroy() end
 			optBtns = {}
+			local cur = getv()
 			for _, opt in ipairs(getOptions()) do
 				local display = type(opt) == "table" and opt.display or opt
 				local code    = type(opt) == "table" and opt.name or opt
-				local ob = mk("TextButton", { Size = UDim2.new(1, 0, 0, 24), BackgroundColor3 = C.row, Text = "  " .. display, TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = C.txt, AutoButtonColor = false }, scroll)
+				local isSel = (display == cur or code == cur)
+				local ob = mk("TextButton", { Size = UDim2.new(1, 0, 0, 24), BackgroundColor3 = isSel and C.acc or C.row, Text = (isSel and "  \u{2713} " or "  ") .. display, TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.Gotham, TextSize = 11, TextColor3 = isSel and C.panel or C.txt, AutoButtonColor = false }, scroll)
 				corner(ob, 4)
 				ob.MouseButton1Click:Connect(function()
 					setv(code); valLbl.Text = display; listFrame.Visible = false

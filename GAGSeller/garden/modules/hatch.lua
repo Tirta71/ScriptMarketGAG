@@ -134,7 +134,13 @@ return function(ctx)
 			local v = inv[uuid]
 			local pt = (v and v.PetType) or t:GetAttribute("f")
 			local pd = v and v.PetData
-			if shouldSell(pt, pd) then sells[#sells + 1] = t else keeps[#keeps + 1] = t end
+			if isFav(t) then
+				keeps[#keeps + 1] = t              -- udah favorit = MUTLAK ga dijual (walau filter cocok)
+			elseif shouldSell(pt, pd) then
+				sells[#sells + 1] = t
+			else
+				keeps[#keeps + 1] = t
+			end
 		end
 
 		if CFG.sellStyle == "All at Once" then
@@ -229,11 +235,40 @@ return function(ctx)
 		for _, d in ipairs(PL:GetDescendants()) do if d:IsA("BasePart") then return d end end
 		return nil
 	end
-	local function placePos()
-		local p = plantLocPart(); if not p then return nil end
+	-- Grid posisi rapih/sejajar buat n egg di atas Plant_Locations.
+	local function gridPositions(n)
+		local p = plantLocPart(); if not p then return {} end
+		n = math.max(1, n)
+		local cols = math.ceil(math.sqrt(n))
+		local rows = math.ceil(n / cols)
 		local hx = math.max(1, p.Size.X / 2 - 3)
 		local hz = math.max(1, p.Size.Z / 2 - 3)
-		return p.Position + Vector3.new(math.random() * hx * 2 - hx, p.Size.Y / 2 + 0.2, math.random() * hz * 2 - hz)
+		local out = {}
+		for r = 0, rows - 1 do
+			for c = 0, cols - 1 do
+				if #out < n then
+					local fx = cols > 1 and (c / (cols - 1)) or 0.5
+					local fz = rows > 1 and (r / (rows - 1)) or 0.5
+					out[#out + 1] = p.Position + Vector3.new(-hx + fx * hx * 2, p.Size.Y / 2 + 0.2, -hz + fz * hz * 2)
+				end
+			end
+		end
+		return out
+	end
+	local function currentEggs()
+		local GetFarm = require(RS.Modules.GetFarm); local farm = GetFarm(LP)
+		local t = {}
+		if farm then for _, e in ipairs(farm:GetDescendants()) do
+			if e:IsA("Model") and e.Name == "PetEgg" and e:GetAttribute("OWNER") == LP.Name then t[#t + 1] = e end
+		end end
+		return t
+	end
+	local function slotOccupied(pos, eggs)
+		for _, e in ipairs(eggs) do
+			local ep = e:GetPivot().Position
+			if (Vector3.new(ep.X, 0, ep.Z) - Vector3.new(pos.X, 0, pos.Z)).Magnitude < 2.5 then return true end
+		end
+		return false
 	end
 	local function equipEggTool(eggName)
 		local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
@@ -248,20 +283,24 @@ return function(ctx)
 		end end
 		return nil
 	end
-	-- Isi egg sampai PENUH (target). Retry karena posisi acak kadang gagal.
+	-- Isi egg RAPIH ke grid, cuma di slot yg kosong. Retry sampai penuh (target).
 	local function placeEggs(target)
 		local eggName = CFG.hatchEggName or "Rare Egg"
 		if not equipEggTool(eggName) then ctx.state.hatchStatus = "Egg '" .. eggName .. "' ga ada di backpack"; return 0 end
 		local start = placedEggCount()
-		local attempts = 0
-		local cap = math.max(8, (target - start) * 5)
-		while CFG.hatchEnabled and placedEggCount() < target and attempts < cap do
-			attempts = attempts + 1
-			equipEggTool(eggName) -- pastiin masih megang egg
-			local pos = placePos(); if not pos then break end
-			pcall(function() EggRemote:FireServer("CreateEgg", pos) end)
-			task.wait(0.3)
-			ctx.state.hatchStatus = ("Placing: %d/%d egg"):format(placedEggCount(), target)
+		local grid = gridPositions(target)
+		for pass = 1, 3 do
+			if placedEggCount() >= target then break end
+			for _, pos in ipairs(grid) do
+				if not CFG.hatchEnabled then break end
+				if placedEggCount() >= target then break end
+				if not slotOccupied(pos, currentEggs()) then
+					equipEggTool(eggName)
+					pcall(function() EggRemote:FireServer("CreateEgg", pos) end)
+					task.wait(0.3)
+					ctx.state.hatchStatus = ("Placing: %d/%d egg"):format(placedEggCount(), target)
+				end
+			end
 		end
 		return placedEggCount() - start
 	end
