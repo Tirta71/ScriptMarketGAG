@@ -235,21 +235,21 @@ return function(ctx)
 		for _, d in ipairs(PL:GetDescendants()) do if d:IsA("BasePart") then return d end end
 		return nil
 	end
-	-- Grid posisi rapih/sejajar buat n egg di atas Plant_Locations.
+	-- Grid rapih & sejajar: spacing TETAP (3 studs), center di area tanam.
 	local function gridPositions(n)
 		local p = plantLocPart(); if not p then return {} end
 		n = math.max(1, n)
-		local cols = math.ceil(math.sqrt(n))
+		local SP = 3 -- jarak antar egg (studs)
+		local maxCols = math.max(1, math.floor((p.Size.X - 2) / SP))
+		local cols = math.min(n, maxCols)
 		local rows = math.ceil(n / cols)
-		local hx = math.max(1, p.Size.X / 2 - 3)
-		local hz = math.max(1, p.Size.Z / 2 - 3)
+		local startX = -((cols - 1) * SP) / 2
+		local startZ = -((rows - 1) * SP) / 2
 		local out = {}
 		for r = 0, rows - 1 do
 			for c = 0, cols - 1 do
 				if #out < n then
-					local fx = cols > 1 and (c / (cols - 1)) or 0.5
-					local fz = rows > 1 and (r / (rows - 1)) or 0.5
-					out[#out + 1] = p.Position + Vector3.new(-hx + fx * hx * 2, p.Size.Y / 2 + 0.2, -hz + fz * hz * 2)
+					out[#out + 1] = p.Position + Vector3.new(startX + c * SP, p.Size.Y / 2 + 0.2, startZ + r * SP)
 				end
 			end
 		end
