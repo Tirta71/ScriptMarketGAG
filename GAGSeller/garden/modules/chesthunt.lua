@@ -28,11 +28,12 @@ return function(ctx)
 	local RARITY = { Divine = true, Mythical = true, Legendary = true, Golden = true, Rare = true,
 		Common = true, Uncommon = true, Prismatic = true, Godly = true, Celestial = true }
 
-	-- exclude: platform (deko/deposit), event lain, karakter.
+	-- exclude: dekorasi/NPC statis (semua di bawah Workspace.Interaction), karakter, cooler.
+	-- Chest hunt asli spawn DINAMIS di luar Interaction (tersebar di map).
 	local function excluded(m)
 		if m:FindFirstChildOfClass("Humanoid") then return true end
 		if tostring(m.Name):lower():find("cooler") then return true end
-		if m:FindFirstAncestor("SummerChestHuntPlatform") or m:FindFirstAncestor("SummerTeamEvent") or m:FindFirstAncestor("SummerHarvestEvent") then return true end
+		if m:FindFirstAncestor("Interaction") then return true end -- platform, Sam, event NPC dll
 		if game.Players:GetPlayerFromCharacter(m) then return true end
 		return false
 	end
