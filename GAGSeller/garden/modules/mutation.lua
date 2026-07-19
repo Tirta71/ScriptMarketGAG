@@ -246,10 +246,13 @@ return function(ctx)
 			pcall(function() PetMutationMachineService_RE:FireServer("ClaimMutatedPet") end)
 			task.wait(1.0)
 
-			-- 2. Ambil data setelah klaim, cari pet hasil mutasi
-			local claimedPetType = "Unknown"
-			local outcomeMutation = "Normal"
-			local isMatched = false
+			-- 2. Tentukan pet hasil klaim.
+			-- Sumber UTAMA = machine.SubmittedPet (pet yg barusan diproses) -> reliable, ga
+			-- jadi "Unknown" walau data inventory telat sync. Diff inventory dipakai buat
+			-- refine (mis. dapat mutasi hasil terbaru) kalau ketemu.
+			local sp = machine.SubmittedPet or {}
+			local claimedPetType = sp.PetType or "Unknown"
+			local outcomeMutation = (sp.PetData and sp.PetData.MutationType) or "Normal"
 
 			local ok3, d3 = pcall(function() return DataService:GetData() end)
 			if ok3 and d3 and d3.PetsData then
@@ -261,27 +264,34 @@ return function(ctx)
 						if not preSnapshot[u] or preSnapshot[u] ~= mut then
 							claimedPetType = v.PetType
 							outcomeMutation = mut
-							isMatched = hasTargetMutation(pd, targetMutations)
 							break
 						end
 					end
 				end
+			end
+			local isMatched = hasTargetMutation({ MutationType = outcomeMutation }, targetMutations)
 
-				-- Kirim Webhook Claimed
-				task.spawn(function()
-					local WebhookMut = ctx.webhookMutation
-					if WebhookMut then
-						pcall(function() WebhookMut.sendClaimed(ctx, claimedPetType, outcomeMutation, isMatched) end)
-					end
-				end)
+			-- Durasi proses: dari submit sampai klaim
+			local duration = 0
+			if ctx.state.mutationSubmitTime then
+				duration = os.time() - ctx.state.mutationSubmitTime
+				ctx.state.mutationSubmitTime = nil
+			end
 
-				if isMatched then
-					ctx.state.mutationPhase = "Finished"
-					CFG.mutationEnabled = false
-					ctx.persistState()
-					if ctx.state.mutationToggleRender then
-						pcall(ctx.state.mutationToggleRender)
-					end
+			-- Kirim Webhook Claimed
+			task.spawn(function()
+				local WebhookMut = ctx.webhookMutation
+				if WebhookMut then
+					pcall(function() WebhookMut.sendClaimed(ctx, claimedPetType, outcomeMutation, isMatched, duration) end)
+				end
+			end)
+
+			if isMatched then
+				ctx.state.mutationPhase = "Finished"
+				CFG.mutationEnabled = false
+				ctx.persistState()
+				if ctx.state.mutationToggleRender then
+					pcall(ctx.state.mutationToggleRender)
 				end
 			end
 			return
@@ -355,6 +365,7 @@ return function(ctx)
 					targetTool.Parent = LP.Character
 					task.wait(0.5)
 					pcall(function() PetMutationMachineService_RE:FireServer("SubmitHeldPet") end)
+					ctx.state.mutationSubmitTime = os.time() -- buat hitung Duration pas claim
 					task.wait(0.5)
 					
 					-- Kirim Webhook Submitted

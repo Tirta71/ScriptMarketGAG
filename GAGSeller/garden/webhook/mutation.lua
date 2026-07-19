@@ -105,8 +105,15 @@ function mutationWebhook.sendSubmitted(ctx, petType, level)
 	if ctx.sendWebhook then ctx.sendWebhook(CFG.webhookUrl, payload, ctx) end
 end
 
+-- Format detik -> "Xm Ys" / "Ys"
+local function fmtDuration(sec)
+	sec = math.max(0, math.floor(tonumber(sec) or 0))
+	if sec >= 60 then return string.format("%dm %ds", math.floor(sec / 60), sec % 60) end
+	return string.format("%ds", sec)
+end
+
 -- Webhook saat pet diklaim (hasil mutasi)
-function mutationWebhook.sendClaimed(ctx, petType, outcomeMutation, isMatched)
+function mutationWebhook.sendClaimed(ctx, petType, outcomeMutation, isMatched, duration)
 	local CFG = ctx.CFG
 	if not CFG.webhookUrl or CFG.webhookUrl == "" then return end
 
@@ -129,9 +136,11 @@ function mutationWebhook.sendClaimed(ctx, petType, outcomeMutation, isMatched)
 						value = string.format(
 							"> Pet Type: `%s`\n" ..
 							"> Outcome Mutation: `%s`\n" ..
+							"> Duration: `%s`\n" ..
 							"> Status: **%s**",
 							petType,
 							mutDisplay,
+							fmtDuration(duration),
 							statusText
 						),
 						inline = false
