@@ -200,11 +200,11 @@ return function(ctx)
 		-- Bronto Configuration (kapan pakai Bronto team buat +30% berat)
 		local hBr = makeAccordion(hatchPage, "Bronto Configuration", 4, true)
 		makeMultiDropdown(hBr, "Special Pets", "Pet yg WAJIB di-hatch pakai Bronto team",
-			reg.PET_EGG_OPTIONS, CFG.brontoSpecialPets, function() persist() end, 1)
+			reg.PET_EGG_ONLY, CFG.brontoSpecialPets, function() persist() end, 1)
 		makeInput(hBr, "Special Pets Weight Filter", "Special cuma kalau weight > ini (0 = ga difilter)",
 			function() return tostring(CFG.brontoSpecialWeight) end, function(t) CFG.brontoSpecialWeight = tonumber(t) or 0; persist() end, 2)
-		makeMultiDropdown(hBr, "Universal Weight Pet Types", "Tipe pet buat aturan universal (kosong = semua)",
-			reg.PET_OPTIONS, CFG.brontoUniversalTypes, function() persist() end, 3)
+		makeMultiDropdown(hBr, "Universal Weight Pet Types", "Tipe pet buat aturan universal (kosong = semua). Tampil dgn tipe egg-nya.",
+			reg.PET_EGG_ONLY, CFG.brontoUniversalTypes, function() persist() end, 3)
 		makeInput(hBr, "Universal Weight Threshold", "Pakai Bronto team kalau weight > ini (0 = off)",
 			function() return tostring(CFG.brontoUniversalWeight) end, function(t) CFG.brontoUniversalWeight = tonumber(t) or 0; persist() end, 4)
 		makeToggle(hBr, "Don't Hatch Special Pets", "Skip special pet sama sekali (jangan di-hatch)",
@@ -219,7 +219,7 @@ return function(ctx)
 		makeInput(hSell, "Sell Age Threshold", "Jual kalau age < ini",
 			function() return tostring(CFG.sellAgeThreshold) end, function(t) CFG.sellAgeThreshold = tonumber(t) or 3; persist() end, 3)
 		makeMultiDropdown(hSell, "Special Pets to Sell", "Pet spesial (jual by weight)",
-			reg.PET_EGG_OPTIONS, CFG.sellSpecialTypes, function() persist() end, 4)
+			reg.PET_EGG_ONLY, CFG.sellSpecialTypes, function() persist() end, 4)
 		makeInput(hSell, "Special Pet Weight Threshold", "Jual pet spesial dgn weight < ini (0=off)",
 			function() return tostring(CFG.sellSpecialWeight) end, function(t) CFG.sellSpecialWeight = tonumber(t) or 10; persist() end, 5)
 		local SELLMODE = { { name = "Cycle", display = "Cycle" }, { name = "Backpack", display = "Backpack" } }

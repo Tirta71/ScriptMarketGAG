@@ -344,7 +344,7 @@ return function(ctx)
 		local isUni = false
 		if (CFG.brontoUniversalWeight or 0) > 0 and w > CFG.brontoUniversalWeight then
 			local types = CFG.brontoUniversalTypes or {}
-			if not next(types) or (pt and types[pt]) then isUni = true end
+			if not next(types) or (pt and types[petEggLabel(pt)]) then isUni = true end
 		end
 		if isSpecial or isUni then return "bronto" end
 		return "normal"

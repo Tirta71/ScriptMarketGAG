@@ -39,6 +39,13 @@ return function(ctx)
 		return egg and (pt .. " - " .. egg) or pt
 	end
 
+	-- CUMA pet yang punya egg asli (format "Pet - Egg"). Buat filter yang wajib ada egg-nya
+	-- (Special Pets, Universal, Pet to Sell) — pet tanpa egg tidak ditampilkan.
+	local PET_EGG_ONLY = {}
+	for _, pt in ipairs(PET_OPTIONS) do
+		if petEggMap[pt] then PET_EGG_ONLY[#PET_EGG_ONLY + 1] = pt .. " - " .. petEggMap[pt] end
+	end
+
 	local MUT_OPTIONS, seenMut = { "None" }, { None = true }
 	for _, name in pairs(EnumToMut) do
 		if name ~= "Normal" and not seenMut[name] then
@@ -89,6 +96,7 @@ return function(ctx)
 	ctx.reg = {
 		PET_OPTIONS = PET_OPTIONS,
 		PET_EGG_OPTIONS = PET_EGG_OPTIONS,
+		PET_EGG_ONLY = PET_EGG_ONLY,
 		petEggLabel = petEggLabel,
 		MUT_OPTIONS = MUT_OPTIONS,
 		MACHINE_MUT_OPTIONS = MACHINE_MUT_OPTIONS,
