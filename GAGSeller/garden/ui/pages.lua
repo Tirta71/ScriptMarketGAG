@@ -338,11 +338,16 @@ return function(ctx)
 				if ok and s then
 					local col = s.status == "ACTIVE" and "#5acc78" or "#dc5050"
 					v2Lbl.Text = string.format(
-						"Status: <font color=\"%s\"><b>%s</b></font>  |  <font color=\"#f5c82d\">%s</font>\n\n" ..
+						"Automation Status: <font color=\"%s\"><b>%s</b></font>  |  <font color=\"#f5c82d\">%s</font>\n\n" ..
+						"Elephant Team: <font color=\"#8c929e\">%s</font>\n" ..
+						"Target Types: <font color=\"#f5c82d\">%s</font>\n" ..
+						"Target Pets Ready: <font color=\"#8c929e\">%s</font>\n" ..
+						"Pets at Max KG: <font color=\"#8c929e\">%s</font>\n" ..
+						"Max Target Pets: <font color=\"#8c929e\">%s</font>  |  Target Weight: <font color=\"#f5c82d\"><b>%s</b></font>\n\n" ..
 						"Gajah: <font color=\"#8c929e\">%s</font>\n" ..
 						"Switch: <font color=\"#8c929e\">%s</font>\n" ..
-						"Masuk saat target Age >= <font color=\"#f5c82d\"><b>%s</b></font>",
-						col, s.status, s.info, s.gajah, s.switch, s.level)
+						"Gajah masuk saat target Age >= <font color=\"#f5c82d\"><b>%s</b></font>",
+						col, s.status, s.info, s.team, s.types, s.ready, s.maxKg, s.maxTarget, s.targetWeight, s.gajah, s.switch, s.level)
 				end
 				task.wait(0.5)
 			end
@@ -360,15 +365,21 @@ return function(ctx)
 			function() return ctx.elephantV2SwitchOptions() end,
 			function() return ctx.elephantV2Label(CFG.elephantV2Switch) end,
 			function(uuid) CFG.elephantV2Switch = uuid; persist() end, 5)
+		makeInput(acc2, "Target Weight (KG)", "Berat max target sebelum dilepas (mis. 5.5)",
+			function() return tostring(CFG.elephantV2Weight) end,
+			function(txt) CFG.elephantV2Weight = tonumber(txt) or 5.5; persist() end, 6)
+		makeInput(acc2, "Max Target Pets", "Jumlah pet target aktif barengan di garden",
+			function() return tostring(CFG.elephantV2MaxPets) end,
+			function(txt) CFG.elephantV2MaxPets = tonumber(txt) or 3; persist() end, 7)
 		makeInput(acc2, "Trigger Level", "Level target buat masukin gajah (default 40)",
 			function() return tostring(CFG.elephantV2Level) end,
-			function(txt) CFG.elephantV2Level = tonumber(txt) or 40; persist() end, 6)
-		makeToggle(acc2, "Enable Elephant V2", "Swap gajah otomatis saat ada target lvl 40. Jalan barengan PNP.",
+			function(txt) CFG.elephantV2Level = tonumber(txt) or 40; persist() end, 8)
+		makeToggle(acc2, "Enable Elephant V2", "Rotasi target + swap gajah otomatis saat target lvl 40. Jalan barengan PNP.",
 			function() return CFG.elephantV2Enabled end,
 			function(v)
 				CFG.elephantV2Enabled = v; persist()
 				if v then ctx.startElephantV2() else ctx.stopElephantV2() end
-			end, 7)
+			end, 9)
 	end
 
 	------------------------------------------------------------------ LEVELING

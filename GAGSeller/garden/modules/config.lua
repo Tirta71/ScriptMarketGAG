@@ -143,6 +143,8 @@ return function(ctx)
 		-- Elephant V2: swap gajah keluar-masuk saat target hit level 40 (barengan PNP)
 		elephantV2Team      = {},   -- sumber pet Switch (team standby di garden)
 		elephantV2Types     = {},   -- tipe pet target yg dipantau levelnya
+		elephantV2Weight    = 5.5,  -- berat max target sebelum dilepas
+		elephantV2MaxPets   = 3,    -- jumlah pet target aktif barengan
 		elephantV2Gajah     = "",   -- uuid pet gajah (booster berat)
 		elephantV2Switch    = "",   -- uuid pet team yg ditukar sama gajah
 		elephantV2Level     = 40,   -- ambang level target buat masukin gajah
@@ -296,6 +298,8 @@ return function(ctx)
 			CFG.elephantEnabled     = st.elephantEnabled or false
 			CFG.elephantV2Team      = (type(st.elephantV2Team) == "table") and st.elephantV2Team or {}
 			CFG.elephantV2Types     = (type(st.elephantV2Types) == "table") and st.elephantV2Types or {}
+			CFG.elephantV2Weight    = tonumber(st.elephantV2Weight) or 5.5
+			CFG.elephantV2MaxPets   = tonumber(st.elephantV2MaxPets) or 3
 			CFG.elephantV2Gajah     = (type(st.elephantV2Gajah) == "string") and st.elephantV2Gajah or ""
 			CFG.elephantV2Switch    = (type(st.elephantV2Switch) == "string") and st.elephantV2Switch or ""
 			CFG.elephantV2Level     = tonumber(st.elephantV2Level) or 40
