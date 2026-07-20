@@ -127,7 +127,13 @@ return function(ctx)
 				local pd = pInfo and pInfo.PetData or {}
 				local w = pd.BaseWeight or 0
 				if targetTypes[pt] then
-					if w < targetW then table.insert(currentGrowing, uuid)
+					if w < targetW then
+						table.insert(currentGrowing, uuid)
+						-- catat waktu mulai growing (buat Duration di webhook per-pet)
+						ctx.state.elephantStartTime = ctx.state.elephantStartTime or {}
+						if not ctx.state.elephantStartTime[uuid] then
+							ctx.state.elephantStartTime[uuid] = os.time()
+						end
 					else table.insert(finishedMax, uuid) end
 				else
 					table.insert(otherEquipped, uuid)
@@ -135,15 +141,27 @@ return function(ctx)
 			end
 		end
 
-		-- D. LEPAS pet yang sudah MAX KG (+ webhook onFinished)
+		-- D. LEPAS pet yang sudah MAX KG (+ webhook agregat + kartu per-pet)
 		for _, uuid in ipairs(finishedMax) do
 			local pInfo = inv[uuid]
+			local pd = pInfo and pInfo.PetData or {}
 			local pt = pInfo and pInfo.PetType or "?"
-			local w = pInfo and pInfo.PetData and pInfo.PetData.BaseWeight or 0
+			local w = pd.BaseWeight or 0
+			-- Durasi: dari mulai growing sampai sekarang; nil kalau start ga kecatat (mis. reload)
+			local duration
+			if ctx.state.elephantStartTime and ctx.state.elephantStartTime[uuid] then
+				duration = os.time() - ctx.state.elephantStartTime[uuid]
+				ctx.state.elephantStartTime[uuid] = nil
+			end
 			pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
 			localEq[uuid] = nil; localEqCount = localEqCount - 1
-			if ctx.webhookElephant and ctx.webhookElephant.onFinished then
-				pcall(function() ctx.webhookElephant.onFinished(ctx, pt, w) end)
+			if ctx.webhookElephant then
+				if ctx.webhookElephant.onFinished then
+					pcall(function() ctx.webhookElephant.onFinished(ctx, pt, w) end)
+				end
+				if ctx.webhookElephant.sendFinished then
+					pcall(function() ctx.webhookElephant.sendFinished(ctx, pt, w, pd.MutationType, pd.Level or 0, duration) end)
+				end
 			end
 			task.wait(0.25)
 		end
@@ -175,6 +193,8 @@ return function(ctx)
 					pcall(function() PetsService:FireServer("EquipPet", target.uuid, CFrame.new(pos)) end)
 					localEq[target.uuid] = true; localEqCount = localEqCount + 1
 					table.insert(currentGrowing, target.uuid)
+					ctx.state.elephantStartTime = ctx.state.elephantStartTime or {}
+					ctx.state.elephantStartTime[target.uuid] = os.time()
 					task.wait(0.3)
 				end
 			end

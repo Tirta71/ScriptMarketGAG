@@ -245,11 +245,26 @@ return function(ctx)
 							cleansePet(uuid) -- mutasi salah -> cleanse
 						end
 						table.insert(active, uuid)
+						if step == "elephant" then
+							ctx.state.growthElephantStart = ctx.state.growthElephantStart or {}
+							if not ctx.state.growthElephantStart[uuid] then
+								ctx.state.growthElephantStart[uuid] = os.time()
+							end
+						end
 					else
 						-- pet SELESAI step ini -> kirim webhook (template per-step)
 						local pt = v.PetType
 						if step == "elephant" and ctx.webhookElephant and ctx.webhookElephant.onFinished then
+							-- Durasi: dari pet masuk garden (equip) sampai lepas; nil kalau ga kecatat
+							local dur
+							if ctx.state.growthElephantStart and ctx.state.growthElephantStart[uuid] then
+								dur = os.time() - ctx.state.growthElephantStart[uuid]
+								ctx.state.growthElephantStart[uuid] = nil
+							end
 							pcall(function() ctx.webhookElephant.onFinished(ctx, pt, pd.BaseWeight or 0) end)
+							if ctx.webhookElephant.sendFinished then
+								pcall(function() ctx.webhookElephant.sendFinished(ctx, pt, pd.BaseWeight or 0, pd.MutationType, pd.Level or 0, dur) end)
+							end
 						elseif step == "mutation" and ctx.webhookCleanse and ctx.webhookCleanse.sendObtained then
 							-- aura/cleanse webhook (bukan mutasi mesin)
 							local remainsM = 0
@@ -290,6 +305,10 @@ return function(ctx)
 					pcall(function() PetsService:FireServer("EquipPet", pool[i].uuid, CFrame.new(pos)) end)
 					localEq[pool[i].uuid] = true
 					table.insert(active, pool[i].uuid)
+					if step == "elephant" then
+						ctx.state.growthElephantStart = ctx.state.growthElephantStart or {}
+						ctx.state.growthElephantStart[pool[i].uuid] = os.time()
+					end
 					task.wait(0.15)
 				end
 			end

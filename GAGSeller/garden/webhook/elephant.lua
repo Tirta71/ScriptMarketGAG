@@ -15,6 +15,15 @@ local function bracketLabel(w)
 	return string.format("%.2f-%.2f KG", lo + 0.01, lo + 0.09)
 end
 
+-- Format durasi detik -> "Xh Ym Zs" / "Xm Ys" / "Ys". nil/false -> "-" (start ga kecatat).
+local function fmtDuration(sec)
+	if sec == nil then return "-" end
+	sec = math.max(0, math.floor(tonumber(sec) or 0))
+	if sec >= 3600 then return string.format("%dh %dm %ds", math.floor(sec / 3600), math.floor((sec % 3600) / 60), sec % 60) end
+	if sec >= 60 then return string.format("%dm %ds", math.floor(sec / 60), sec % 60) end
+	return string.format("%ds", sec)
+end
+
 local function reqFn()
 	return (syn and syn.request) or (http and http.request) or http_request or request
 end
@@ -175,6 +184,56 @@ function elephantWebhook.onFinished(ctx, petType, weight)
 	elseif ctx.sendWebhook then
 		pcall(function() ctx.sendWebhook(CFG.webhookUrl, HttpService:JSONDecode(body), ctx) end)
 	end
+end
+
+-- Kartu PER-PET saat 1 pet capai Max KG. Dikirim TIAP pet beres (pesan baru),
+-- pelengkap statistik agregat. durationSec = nil -> "Duration: -" (start ga kecatat).
+function elephantWebhook.sendFinished(ctx, petType, weight, mutation, age, durationSec)
+	local CFG = ctx.CFG
+	if not CFG.webhookUrl or CFG.webhookUrl == "" then return end
+	local mutDisplay = (ctx.reg and ctx.reg.mutDisplay and ctx.reg.mutDisplay(mutation)) or mutation or "None"
+	local _, _, remains = scanTargets(ctx)
+
+	local payload = {
+		username = USERNAME,
+		avatar_url = AVATAR,
+		embeds = {
+			{
+				title = "\240\159\144\152 Growth \226\128\162 Elephant", -- 🐘
+				color = 3066993, -- Green
+				fields = {
+					{
+						name = "Profile :",
+						value = string.format("> Username : ||%s||", ctx.LP.Name),
+						inline = false
+					},
+					{
+						name = "Max KG Reached",
+						value = string.format(
+							"> Pet Type: `%s`\n" ..
+							"> Mutation: `%s`\n" ..
+							"> Weight: `%.2f KG`\n" ..
+							"> Age: `%s`\n" ..
+							"> Duration: `%s`\n" ..
+							"> Remains Queue: `%s`",
+							tostring(petType or "?"),
+							tostring(mutDisplay),
+							tonumber(weight) or 0,
+							tostring(age or "-"),
+							fmtDuration(durationSec),
+							tostring(remains)
+						),
+						inline = false
+					}
+				},
+				footer = {
+					text = os.date("%B %d | %I:%M %p"),
+					icon_url = "https://i.imgur.com/H1Zh6V6.png"
+				}
+			}
+		}
+	}
+	if ctx.sendWebhook then ctx.sendWebhook(CFG.webhookUrl, payload, ctx) end
 end
 
 return elephantWebhook
