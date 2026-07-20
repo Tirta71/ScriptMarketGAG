@@ -29,7 +29,11 @@ return function(ctx)
 			knob.BackgroundColor3 = on and C.acc or C.panel
 			dot.BackgroundColor3 = on and Color3.new(1, 1, 1) or C.sub
 		end
-		knob.MouseButton1Click:Connect(function() setv(not getv()); render() end)
+		knob.MouseButton1Click:Connect(function()
+			local nv = not getv()
+			setv(nv); render()
+			if ctx.log then ctx.log(title .. (nv and " -> ON" or " -> OFF")) end
+		end)
 		render()
 		return render
 	end
