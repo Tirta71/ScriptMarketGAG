@@ -87,6 +87,19 @@ return function(ctx)
 		local gajah, switch = CFG.elephantV2Gajah, CFG.elephantV2Switch
 		local gajahIn = isEquipped(eq, gajah)
 
+		-- A. FIRST RUN (pas enable): cabut SEMUA pet aktif dulu, baru cycle berikutnya pasang team
+		if ctx.state.elephantV2FirstRun then
+			ctx.state.elephantV2FirstRun = false
+			if #eq > 0 then
+				ctx.state.elephantV2Status = "Reset garden (cabut semua pet)..."
+				for _, uuid in ipairs(eq) do
+					pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
+					task.wait(0.2)
+				end
+			end
+			return
+		end
+
 		local localEq, localEqCount = {}, 0
 		for _, uuid in ipairs(eq) do localEq[uuid] = true; localEqCount = localEqCount + 1 end
 
@@ -149,21 +162,37 @@ return function(ctx)
 	end
 
 	----------------------------------------------------- SWAP GAJAH (cepat)
-	local function anyTargetReady(inv)
+	-- Cuma trigger kalau ada target yang LAGI KE-EQUIP, masih growing (weight < target),
+	-- dan level >= ambang. Pet maxed / yang cuma nganggur di inventory TIDAK dihitung.
+	local function anyTargetReady(eq, inv)
 		local types = CFG.elephantV2Types or {}
 		local thr = CFG.elephantV2Level or 40
-		for _, v in pairs(inv) do
-			if v.PetType and types[v.PetType] and ((v.PetData or {}).Level or 0) >= thr then return true end
+		local targetW = CFG.elephantV2Weight or 5.5
+		for _, u in ipairs(eq) do
+			local v = inv[u]
+			if v and types[v.PetType] then
+				local pd = v.PetData or {}
+				if (pd.BaseWeight or 0) < targetW and (pd.Level or 0) >= thr then return true end
+			end
 		end
 		return false
 	end
+	-- Swap: cabut outUuid, PASTIIN kecabut dulu, baru masukin inUuid (cegah dobel/overslot).
 	local function swap(outUuid, inUuid)
 		if not inUuid or inUuid == "" then return false end
 		local pos = getPos(inUuid)
 		for _ = 1, 3 do
-			if outUuid and outUuid ~= "" then pcall(function() PetsService:FireServer("UnequipPet", outUuid) end) end
+			if outUuid and outUuid ~= "" then
+				pcall(function() PetsService:FireServer("UnequipPet", outUuid) end)
+				-- tunggu sampai outUuid beneran kecabut (max ~0.24s)
+				for _ = 1, 6 do
+					task.wait(0.04)
+					local eqc = snapshot()
+					if not isEquipped(eqc, outUuid) then break end
+				end
+			end
 			if pos then pcall(function() PetsService:FireServer("EquipPet", inUuid, CFrame.new(pos)) end) end
-			task.wait(0.12)
+			task.wait(0.1)
 			local eq = snapshot()
 			if isEquipped(eq, inUuid) then return true end
 		end
@@ -186,7 +215,7 @@ return function(ctx)
 				local eq, inv = snapshot()
 				if eq then
 					local gajahIn = isEquipped(eq, gajah)
-					local ready = anyTargetReady(inv)
+					local ready = anyTargetReady(eq, inv)
 					if ready and not gajahIn then
 						swap(switch, gajah)
 						ctx.state.elephantV2Status = "Gajah MASUK (target lvl " .. tostring(CFG.elephantV2Level or 40) .. ")"
@@ -205,6 +234,7 @@ return function(ctx)
 	function ctx.startElephantV2()
 		ctx.state.elephantV2Id = (ctx.state.elephantV2Id or 0) + 1
 		local myId = ctx.state.elephantV2Id
+		ctx.state.elephantV2FirstRun = true -- pas enable: reset garden dulu (cabut semua)
 		ctx.elevate()
 		task.spawn(function() rotationLoop(myId) end)
 		task.spawn(function() swapLoop(myId) end)
