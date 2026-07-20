@@ -125,16 +125,36 @@ return function(ctx)
 				local pd = pInfo and pInfo.PetData or {}
 				local pt = pInfo and pInfo.PetType
 				if pt and targetTypes[pt] then
-					if (pd.BaseWeight or 0) < targetW then table.insert(currentGrowing, uuid)
+					if (pd.BaseWeight or 0) < targetW then
+						table.insert(currentGrowing, uuid)
+						ctx.state.elephantV2StartTime = ctx.state.elephantV2StartTime or {}
+						if not ctx.state.elephantV2StartTime[uuid] then ctx.state.elephantV2StartTime[uuid] = os.time() end
 					else table.insert(finishedMax, uuid) end
 				end
 			end
 		end
 
-		-- D. LEPAS target yang sudah MAX KG
+		-- D. LEPAS target yang sudah MAX KG (+ webhook agregat + kartu per-pet)
 		for _, uuid in ipairs(finishedMax) do
+			local pInfo = inv[uuid]
+			local pd = pInfo and pInfo.PetData or {}
+			local pt = pInfo and pInfo.PetType or "?"
+			local w = pd.BaseWeight or 0
+			local duration
+			if ctx.state.elephantV2StartTime and ctx.state.elephantV2StartTime[uuid] then
+				duration = os.time() - ctx.state.elephantV2StartTime[uuid]
+				ctx.state.elephantV2StartTime[uuid] = nil
+			end
 			pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
 			localEq[uuid] = nil; localEqCount = localEqCount - 1
+			if ctx.webhookElephant then
+				if ctx.webhookElephant.onFinished then
+					pcall(function() ctx.webhookElephant.onFinished(ctx, pt, w) end)
+				end
+				if ctx.webhookElephant.sendFinished then
+					pcall(function() ctx.webhookElephant.sendFinished(ctx, pt, w, pd.MutationType, pd.Level or 0, duration) end)
+				end
+			end
 			task.wait(0.2)
 		end
 
@@ -155,6 +175,8 @@ return function(ctx)
 					pcall(function() PetsService:FireServer("EquipPet", pool[i].uuid, CFrame.new(pos)) end)
 					localEq[pool[i].uuid] = true; localEqCount = localEqCount + 1
 					table.insert(currentGrowing, pool[i].uuid)
+					ctx.state.elephantV2StartTime = ctx.state.elephantV2StartTime or {}
+					ctx.state.elephantV2StartTime[pool[i].uuid] = os.time()
 					task.wait(0.3)
 				end
 			end
@@ -255,6 +277,11 @@ return function(ctx)
 		ctx.state.elephantV2Id = (ctx.state.elephantV2Id or 0) + 1
 		local myId = ctx.state.elephantV2Id
 		ctx.state.elephantV2FirstRun = true -- pas enable: reset garden dulu (cabut semua)
+		-- Webhook pakai config V2 (override), lalu kirim pesan "enabled" (aggregate awal)
+		ctx.state.elephantCfgOverride = { team = CFG.elephantV2Team, types = CFG.elephantV2Types, weight = CFG.elephantV2Weight }
+		if ctx.webhookElephant and ctx.webhookElephant.sendEnabled then
+			task.spawn(function() pcall(function() ctx.webhookElephant.sendEnabled(ctx) end) end)
+		end
 		ctx.elevate()
 		task.spawn(function() rotationLoop(myId) end)
 		task.spawn(function() swapLoop(myId) end)
@@ -262,6 +289,7 @@ return function(ctx)
 	function ctx.stopElephantV2()
 		ctx.state.elephantV2Id = (ctx.state.elephantV2Id or 0) + 1
 		ctx.state.elephantV2FirstRun = false
+		ctx.state.elephantCfgOverride = nil -- balikin webhook elephant ke config standalone
 		ctx.state.elephantV2Status = "Cabut semua pet (bersihin garden)..."
 		-- Cabut SEMUA pet aktif di garden sampai bener2 bersih (multi-pass, kebal delay replikasi)
 		task.spawn(function()
