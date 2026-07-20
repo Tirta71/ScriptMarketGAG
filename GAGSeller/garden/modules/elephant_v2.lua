@@ -177,26 +177,46 @@ return function(ctx)
 		end
 		return false
 	end
-	-- Swap: cabut outUuid, PASTIIN kecabut dulu, baru masukin inUuid (cegah dobel/overslot).
-	local function swap(outUuid, inUuid)
-		if not inUuid or inUuid == "" then return false end
-		local pos = getPos(inUuid)
-		for _ = 1, 3 do
-			if outUuid and outUuid ~= "" then
-				pcall(function() PetsService:FireServer("UnequipPet", outUuid) end)
-				-- tunggu sampai outUuid beneran kecabut (max ~0.24s)
-				for _ = 1, 6 do
-					task.wait(0.04)
-					local eqc = snapshot()
-					if not isEquipped(eqc, outUuid) then break end
-				end
+	local function eqCount(eq) return eq and #eq or 0 end
+
+	-- Masukin GAJAH dengan AMAN: gajah HANYA boleh nuker SWITCH, atau pakai slot yang
+	-- beneran kosong. Kalau Switch lagi ga ke-equip DAN garden penuh -> SKIP (biar
+	-- ga bump pet lain sembarangan). Ini kunci: slot bebas WAJIB dari switch dulu.
+	local function swapInGajah(gajah, switch)
+		local eq = snapshot()
+		if isEquipped(eq, gajah) then return true end
+		local pos = farmCenter()
+		if isEquipped(eq, switch) then
+			-- cabut switch, TUNGGU beneran kecabut (slot bebas), baru masukin gajah
+			pcall(function() PetsService:FireServer("UnequipPet", switch) end)
+			for _ = 1, 8 do
+				task.wait(0.04)
+				eq = snapshot()
+				if not isEquipped(eq, switch) then break end
 			end
-			if pos then pcall(function() PetsService:FireServer("EquipPet", inUuid, CFrame.new(pos)) end) end
-			task.wait(0.1)
-			local eq = snapshot()
-			if isEquipped(eq, inUuid) then return true end
+			if isEquipped(eq, switch) then return false end -- gagal cabut switch, jangan equip
+		elseif eqCount(eq) >= 8 then
+			return false -- switch ga ada & garden penuh -> jangan bump pet lain
 		end
+		-- slot dijamin ada (dari switch / emang kosong)
+		if pos then pcall(function() PetsService:FireServer("EquipPet", gajah, CFrame.new(pos)) end) end
+		for _ = 1, 3 do task.wait(0.06); if isEquipped(snapshot(), gajah) then return true end end
 		return false
+	end
+
+	-- Keluarin GAJAH: cabut gajah, balikin SWITCH ke slot yang bebas.
+	local function swapOutGajah(gajah, switch)
+		local eq = snapshot()
+		if not isEquipped(eq, gajah) then return true end
+		local pos = farmCenter()
+		pcall(function() PetsService:FireServer("UnequipPet", gajah) end)
+		for _ = 1, 8 do
+			task.wait(0.04)
+			eq = snapshot()
+			if not isEquipped(eq, gajah) then break end
+		end
+		if pos then pcall(function() PetsService:FireServer("EquipPet", switch, CFrame.new(pos)) end) end
+		return true
 	end
 
 	local function rotationLoop(myId)
@@ -217,10 +237,10 @@ return function(ctx)
 					local gajahIn = isEquipped(eq, gajah)
 					local ready = anyTargetReady(eq, inv)
 					if ready and not gajahIn then
-						swap(switch, gajah)
+						swapInGajah(gajah, switch)
 						ctx.state.elephantV2Status = "Gajah MASUK (target lvl " .. tostring(CFG.elephantV2Level or 40) .. ")"
 					elseif not ready and gajahIn then
-						swap(gajah, switch)
+						swapOutGajah(gajah, switch)
 						ctx.state.elephantV2Status = "Standby (gajah keluar)"
 					else
 						ctx.state.elephantV2Status = gajahIn and "Gajah aktif" or "Standby"
@@ -244,7 +264,7 @@ return function(ctx)
 		local gajah, switch = CFG.elephantV2Gajah, CFG.elephantV2Switch
 		if gajah ~= "" and switch ~= "" then
 			local eq = snapshot()
-			if isEquipped(eq, gajah) then task.spawn(function() swap(gajah, switch) end) end
+			if isEquipped(eq, gajah) then task.spawn(function() swapOutGajah(gajah, switch) end) end
 		end
 		ctx.state.elephantV2Status = "Idle"
 	end
