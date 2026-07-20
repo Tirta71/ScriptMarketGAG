@@ -140,6 +140,14 @@ return function(ctx)
 		elephantTargetWeight = 5.5,
 		elephantMaxPets     = 2,
 		elephantEnabled     = false,
+		-- Elephant V2: swap gajah keluar-masuk saat target hit level 40 (barengan PNP)
+		elephantV2Team      = {},   -- sumber pet Switch (team standby di garden)
+		elephantV2Types     = {},   -- tipe pet target yg dipantau levelnya
+		elephantV2Gajah     = "",   -- uuid pet gajah (booster berat)
+		elephantV2Switch    = "",   -- uuid pet team yg ditukar sama gajah
+		elephantV2Level     = 40,   -- ambang level target buat masukin gajah
+		elephantV2Interval  = 0.1,  -- interval baca level (detik)
+		elephantV2Enabled   = false,
 
 		-- Automation Event (Sam The Clam)
 		summerEventEnabled = false,
@@ -286,6 +294,13 @@ return function(ctx)
 			CFG.elephantTargetWeight = tonumber(st.elephantTargetWeight) or 5.5
 			CFG.elephantMaxPets     = tonumber(st.elephantMaxPets) or 2
 			CFG.elephantEnabled     = st.elephantEnabled or false
+			CFG.elephantV2Team      = (type(st.elephantV2Team) == "table") and st.elephantV2Team or {}
+			CFG.elephantV2Types     = (type(st.elephantV2Types) == "table") and st.elephantV2Types or {}
+			CFG.elephantV2Gajah     = (type(st.elephantV2Gajah) == "string") and st.elephantV2Gajah or ""
+			CFG.elephantV2Switch    = (type(st.elephantV2Switch) == "string") and st.elephantV2Switch or ""
+			CFG.elephantV2Level     = tonumber(st.elephantV2Level) or 40
+			CFG.elephantV2Interval  = tonumber(st.elephantV2Interval) or 0.1
+			CFG.elephantV2Enabled   = st.elephantV2Enabled or false
 
 			CFG.summerEventEnabled = st.summerEventEnabled or false
 			CFG.summerPetTypes     = (type(st.summerPetTypes) == "table") and st.summerPetTypes or {}

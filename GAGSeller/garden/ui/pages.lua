@@ -319,6 +319,56 @@ return function(ctx)
 				CFG.elephantEnabled = v; persist()
 				if v then ctx.startElephant() else ctx.stopElephant() end
 			end, 6)
+
+		-- ===================== ELEPHANT V2 (swap gajah on lvl 40) =====================
+		local acc2 = makeAccordion(elephantPage, "Automation Elephant V2", 2, false)
+
+		local v2Lbl = mk("TextLabel", {
+			Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
+			BackgroundTransparency = 1, Text = "Loading...",
+			Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = C.txt,
+			TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true,
+			LineHeight = 1.35, RichText = true, LayoutOrder = 0
+		}, acc2)
+		mk("Frame", { Size = UDim2.new(1, 0, 0, 12), BackgroundTransparency = 1, LayoutOrder = 1 }, acc2)
+		task.spawn(function()
+			while ctx.alive() do
+				if not onScreen(elephantPage) then task.wait(1) continue end
+				local ok, s = pcall(function() return ctx.getElephantV2Summary() end)
+				if ok and s then
+					local col = s.status == "ACTIVE" and "#5acc78" or "#dc5050"
+					v2Lbl.Text = string.format(
+						"Status: <font color=\"%s\"><b>%s</b></font>  |  <font color=\"#f5c82d\">%s</font>\n\n" ..
+						"Gajah: <font color=\"#8c929e\">%s</font>\n" ..
+						"Switch: <font color=\"#8c929e\">%s</font>\n" ..
+						"Masuk saat target Age >= <font color=\"#f5c82d\"><b>%s</b></font>",
+						col, s.status, s.info, s.gajah, s.switch, s.level)
+				end
+				task.wait(0.5)
+			end
+		end)
+
+		makeMultiDropdownDyn(acc2, "V2 Elephant Team", "Team standby di garden (sumber pilihan Pet Switch)",
+			function() return ctx.inventoryPetOptions(CFG.elephantV2Team) end, CFG.elephantV2Team, function() persist() end, 2)
+		makeMultiDropdown(acc2, "V2 Target Pet Types", "Tipe pet target yg dipantau levelnya (yg di-level PNP)",
+			reg.PET_OPTIONS, CFG.elephantV2Types, function() persist() end, 3)
+		makeSingleDropdown(acc2, "Pet Gajah", "Pet booster berat yg di-swap masuk pas target lvl 40",
+			function() return ctx.elephantV2GajahOptions() end,
+			function() return ctx.elephantV2Label(CFG.elephantV2Gajah) end,
+			function(uuid) CFG.elephantV2Gajah = uuid; persist() end, 4)
+		makeSingleDropdown(acc2, "Pet Switch", "Pet team yg ditukar sama gajah (dari V2 Elephant Team)",
+			function() return ctx.elephantV2SwitchOptions() end,
+			function() return ctx.elephantV2Label(CFG.elephantV2Switch) end,
+			function(uuid) CFG.elephantV2Switch = uuid; persist() end, 5)
+		makeInput(acc2, "Trigger Level", "Level target buat masukin gajah (default 40)",
+			function() return tostring(CFG.elephantV2Level) end,
+			function(txt) CFG.elephantV2Level = tonumber(txt) or 40; persist() end, 6)
+		makeToggle(acc2, "Enable Elephant V2", "Swap gajah otomatis saat ada target lvl 40. Jalan barengan PNP.",
+			function() return CFG.elephantV2Enabled end,
+			function(v)
+				CFG.elephantV2Enabled = v; persist()
+				if v then ctx.startElephantV2() else ctx.stopElephantV2() end
+			end, 7)
 	end
 
 	------------------------------------------------------------------ LEVELING

@@ -81,6 +81,7 @@ local MODULES = {
 	"modules/leveling.lua",
 	"modules/leveling_v2.lua",
 	"modules/elephant.lua",
+	"modules/elephant_v2.lua",
 	"modules/growth.lua",
 	"modules/hatch.lua",
 	"modules/chesthunt.lua",
