@@ -261,12 +261,21 @@ return function(ctx)
 	end
 	function ctx.stopElephantV2()
 		ctx.state.elephantV2Id = (ctx.state.elephantV2Id or 0) + 1
-		local gajah, switch = CFG.elephantV2Gajah, CFG.elephantV2Switch
-		if gajah ~= "" and switch ~= "" then
-			local eq = snapshot()
-			if isEquipped(eq, gajah) then task.spawn(function() swapOutGajah(gajah, switch) end) end
-		end
-		ctx.state.elephantV2Status = "Idle"
+		ctx.state.elephantV2FirstRun = false
+		ctx.state.elephantV2Status = "Cabut semua pet (bersihin garden)..."
+		-- Cabut SEMUA pet aktif di garden sampai bener2 bersih (multi-pass, kebal delay replikasi)
+		task.spawn(function()
+			for _ = 1, 5 do
+				local eq = snapshot()
+				if not eq or #eq == 0 then break end
+				for _, uuid in ipairs(eq) do
+					pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
+					task.wait(0.12)
+				end
+				task.wait(0.2)
+			end
+			ctx.state.elephantV2Status = "Idle (garden bersih)"
+		end)
 	end
 
 	----------------------------------------------------- UI helpers
