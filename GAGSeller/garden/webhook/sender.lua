@@ -19,6 +19,10 @@ local function sendWebhook(url, payload, ctx)
 	proxiedUrl = proxiedUrl:gsub("discordapp.com/api/webhooks/", "webhook.lewis.es/api/webhooks/")
 	
 	local jsonPayload = HttpService:JSONEncode(payload)
+
+	-- Kirim di thread TERPISAH (fire-and-forget) supaya request HTTP yg blocking
+	-- (~100-500ms) TIDAK nge-freeze loop automation yg manggil -> cegah stutter.
+	task.spawn(function()
 	local sent = false
 	local reqErr = ""
 
@@ -72,6 +76,7 @@ local function sendWebhook(url, payload, ctx)
 			end
 		end
 	end
+	end)
 end
 
 return sendWebhook

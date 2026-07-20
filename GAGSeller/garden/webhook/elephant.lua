@@ -174,16 +174,19 @@ function elephantWebhook.onFinished(ctx, petType, weight)
 	if not f then return end
 	local body = HttpService:JSONEncode(buildPayload(ctx))
 	local postMode = ctx.state and ctx.state.elephantWebhookPost
-	if ctx.state.elephantMsgId and not postMode then
-		pcall(function()
-			f({
-				Url = CFG.webhookUrl .. "/messages/" .. ctx.state.elephantMsgId, Method = "PATCH",
-				Headers = { ["Content-Type"] = "application/json" }, Body = body,
-			})
-		end)
-	elseif ctx.sendWebhook then
-		pcall(function() ctx.sendWebhook(CFG.webhookUrl, HttpService:JSONDecode(body), ctx) end)
-	end
+	-- Request HTTP di thread terpisah (non-blocking) biar ga nge-freeze loop automation
+	task.spawn(function()
+		if ctx.state.elephantMsgId and not postMode then
+			pcall(function()
+				f({
+					Url = CFG.webhookUrl .. "/messages/" .. ctx.state.elephantMsgId, Method = "PATCH",
+					Headers = { ["Content-Type"] = "application/json" }, Body = body,
+				})
+			end)
+		elseif ctx.sendWebhook then
+			pcall(function() ctx.sendWebhook(CFG.webhookUrl, HttpService:JSONDecode(body), ctx) end)
+		end
+	end)
 end
 
 -- Kartu PER-PET saat 1 pet capai Max KG. Dikirim TIAP pet beres (pesan baru),
