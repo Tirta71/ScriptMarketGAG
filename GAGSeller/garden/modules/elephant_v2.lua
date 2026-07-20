@@ -46,6 +46,25 @@ return function(ctx)
 		return false
 	end
 
+	local function equipPet(uuid)
+		if not uuid or uuid == "" then return end
+		local pos = equipPos()
+		if pos then pcall(function() PetsService:FireServer("EquipPet", uuid, CFrame.new(pos)) end) end
+	end
+
+	-- Pastikan semua anggota Team ke-equip di garden (kondisi standby). Gajah TIDAK
+	-- di-equip di sini (dia cuma masuk pas target lvl 40). Switch di-skip kalau gajah
+	-- lagi in (switch sengaja keluar biar slot dipakai gajah).
+	local function ensureTeam(eq, gajahIn)
+		local team = CFG.elephantV2Team or {}
+		local switch = CFG.elephantV2Switch
+		for uuid in pairs(team) do
+			if uuid ~= CFG.elephantV2Gajah and not (gajahIn and uuid == switch) then
+				if not isEquipped(eq, uuid) then equipPet(uuid) end
+			end
+		end
+	end
+
 	-- Swap: cabut outUuid, masukin inUuid — back-to-back (nol wait di jalur fire).
 	-- Verifikasi read-back + retry ringan biar aman dari slot-drop pas garden 8/8.
 	local function swap(outUuid, inUuid)
@@ -75,6 +94,7 @@ return function(ctx)
 				if eq then
 					local gajahIn = isEquipped(eq, gajah)
 					local ready = anyTargetReady(inv)
+					ensureTeam(eq, gajahIn) -- jaga team standby ke-equip di garden
 					if ready and not gajahIn then
 						swap(switch, gajah) -- gajah MASUK, switch keluar
 						ctx.state.elephantV2Status = "Gajah MASUK (ada target lvl " .. tostring(CFG.elephantV2Level or 40) .. ")"
