@@ -95,6 +95,40 @@ return function(ctx)
 		return n
 	end
 
+	-- PRE-PASS: unfavorite SEMUA pet favorite yang lolos filter dulu (dipanggil di awal
+	-- trade). Biar ga ke-race pas add item (unfav satu-satu tiap batch rawan gagal).
+	local function unfavoriteAllMatching()
+		if not (CFG.autoUnfavorite and FavoriteItem) then return end
+		local d = getData()
+		local pinv = d and d.PetsData and d.PetsData.PetInventory and d.PetsData.PetInventory.Data
+		if not pinv then return end
+		local equipped = {}
+		if d.PetsData.EquippedPets then for _, u in ipairs(d.PetsData.EquippedPets) do equipped[u] = true end end
+		local favSet, favCount = {}, 0
+		for uuid, v in pairs(pinv) do
+			if not equipped[uuid] and petPasses(v) and v.PetData.IsFavorite then
+				favSet[uuid] = true; favCount = favCount + 1
+			end
+		end
+		if favCount == 0 then return end
+		setStatus(("Unfavorite %d pet target dulu..."):format(favCount))
+		local Favorite_Item_BE = game:GetService("ReplicatedStorage").GameEvents:FindFirstChild("Favorite_Item_BE")
+		local done = 0
+		for _, src in ipairs({ LP:FindFirstChildOfClass("Backpack"), LP.Character }) do
+			if src then for _, t in ipairs(src:GetChildren()) do
+				local u = t:IsA("Tool") and t:GetAttribute("PET_UUID")
+				if u and favSet[u] then
+					pcall(function() FavoriteItem:FireServer(t) end)
+					if Favorite_Item_BE then pcall(function() Favorite_Item_BE:Fire(t) end) end
+					favSet[u] = nil; done = done + 1
+					task.wait(0.1)
+				end
+			end end
+		end
+		if done > 0 then task.wait(0.5) end -- kasih waktu sync sebelum mulai trade
+	end
+	ctx.unfavoriteAllMatching = unfavoriteAllMatching
+
 	----------------------------------------------------------------- trade-state read
 	local function replicatorData()
 		if not (TC and TC.CurrentTradeReplicator) then return nil end
@@ -290,6 +324,7 @@ return function(ctx)
 	----------------------------------------------------------------- loop
 	local function tradeLoop()
 		ctx.elevate()
+		unfavoriteAllMatching() -- unfav semua target favorite dulu, baru mulai trade
 		while ctx.state.tradeRunning do
 			if ctx.state.completed >= CFG.totalTrades then
 				ctx.state.status = "DONE"
