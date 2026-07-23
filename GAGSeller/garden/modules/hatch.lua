@@ -537,8 +537,7 @@ return function(ctx)
 		local recHatchCycle = math.floor(rec.koiPct / 100 * periodHatched + 0.5)
 		local recSellCycle = sellDone and math.floor(rec.sealPct / 100 * periodSold + 0.5) or 0
 		local sellPctShown = sellDone and rec.sealPct or 0
-		ctx.state.recTotal = (ctx.state.recTotal or 0) + recHatchCycle + recSellCycle
-		local totalRecovery = ctx.state.recTotal
+		local totalRecovery = recHatchCycle + recSellCycle -- per cycle (Hatch + Sell laporan ini)
 		local maxBp = 0
 		local d = getData(); if d then maxBp = tonumber(d.PetsData.MutableStats.MaxPetsInInventory) or 0 end
 		local hatchCycles = ctx.state.hatchRounds or 0
