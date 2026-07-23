@@ -456,6 +456,22 @@ return function(ctx)
 		end
 	end
 	ctx.hatchTotalEggCount = totalEggCount
+	-- Recovery egg balik dari server sering TELAT replikasi (bisa 1-4 detik).
+	-- Poll: tungguin egg naik dari baseline, ambil PUNCAK (bukan snapshot sekejap)
+	-- biar egg balik yg telat ga ke-miss. Berhenti awal kalau udah stabil.
+	local function measureRecovery(baseline, maxSec)
+		local hi = totalEggCount()
+		if hi < baseline then hi = baseline end
+		local stable = 0
+		local steps = math.max(1, math.floor((maxSec or 4) / 0.4))
+		for _ = 1, steps do
+			task.wait(0.4)
+			local n = totalEggCount()
+			if n > hi then hi = n; stable = 0 else stable = stable + 1 end
+			if stable >= 3 then break end -- 1.2s ga nambah = udah selesai balik
+		end
+		return hi - baseline
+	end
 	function ctx.getProcStats()
 		local s = ctx.state
 		local kr, kh = s.procKoiRolls or 0, s.procKoiHits or 0
@@ -591,8 +607,7 @@ return function(ctx)
 			-- ukur recovery Seal: egg total sebelum vs sesudah sell (nunggu server sync)
 			local eggBeforeSell = totalEggCount()
 			local sold = doSell()
-			task.wait(1.2)
-			recordProc("seal", sold or 0, totalEggCount() - eggBeforeSell)
+			recordProc("seal", sold or 0, measureRecovery(eggBeforeSell, 5))
 			ctx.state.hatchLastSellCycle = cycle
 			task.spawn(sendCycleStats) -- summary per sell cycle
 			return
@@ -643,8 +658,7 @@ return function(ctx)
 				-- ukur recovery Koi: egg total naik selama pass hatch = egg balik dari Koi
 				local eggBeforeHatch = totalEggCount()
 				hatchList(normal)
-				task.wait(0.8)
-				recordProc("koi", #normal, totalEggCount() - eggBeforeHatch)
+				recordProc("koi", #normal, measureRecovery(eggBeforeHatch, 5))
 			end
 			-- pass BRONTO -> Bronto Team (+30% berat) + kirim Hatch Alert per pet
 			if #bronto > 0 then
