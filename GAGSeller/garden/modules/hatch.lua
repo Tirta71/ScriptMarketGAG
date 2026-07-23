@@ -482,45 +482,14 @@ return function(ctx)
 		}
 	end
 
-	-- Hitung egg balik (recovery) tiap fase: total egg naik = egg yg balik.
-	-- Server telat replikasi -> poll ambil puncak (max 4s, stop kalau stabil).
-	local function totalEggCount()
-		local n = 0
-		for _, src in ipairs({ LP:FindFirstChildOfClass("Backpack"), LP.Character }) do
-			if src then for _, t in ipairs(src:GetChildren()) do
-				if t:IsA("Tool") and not t:GetAttribute("PET_UUID") and tostring(t.Name):find("Egg") then
-					local _, cnt = tostring(t.Name):match("^(.-)%s*x(%d+)$")
-					n = n + (tonumber(cnt) or 1)
-				end
-			end end
-		end
-		return n
-	end
-	local function measureRecovery(baseline, maxSec)
-		local hi = math.max(baseline, totalEggCount())
-		local stable = 0
-		for _ = 1, math.floor((maxSec or 4) / 0.4) do
-			task.wait(0.4)
-			local n = totalEggCount()
-			if n > hi then hi = n; stable = 0 else stable = stable + 1 end
-			if stable >= 3 then break end
-		end
-		return math.max(0, hi - baseline)
-	end
-	-- catat recovery (hatch/sell): akumulasi total + per-laporan (reset tiap webhook)
-	local function addRecovery(kind, amt)
-		amt = math.max(0, math.floor((amt or 0) + 0.5))
+	-- Recovery dihitung deterministik dari % Koi/Seal aktif × jumlah aksi periode ini.
+	-- (Bukan ukur egg-delta: egg balik server telat replikasi -> salah atribusi.)
+	local function addPeriod(kind, n)
 		local s = ctx.state
-		if kind == "hatch" then
-			s.recHatchTotal = (s.recHatchTotal or 0) + amt
-			s.recHatchCycle = (s.recHatchCycle or 0) + amt
-		else
-			s.recSellTotal = (s.recSellTotal or 0) + amt
-			s.recSellCycle = (s.recSellCycle or 0) + amt
-			s.sellDoneThisReport = true
-		end
+		n = math.max(0, n or 0)
+		if kind == "hatch" then s.periodHatched = (s.periodHatched or 0) + n
+		else s.periodSold = (s.periodSold or 0) + n; s.sellDoneThisReport = true end
 	end
-	ctx.hatchTotalEggCount = totalEggCount
 
 	local function fmtDur(sec)
 		sec = math.max(0, math.floor(sec))
@@ -553,20 +522,23 @@ return function(ctx)
 				local t = bucket[pt]; tierN = tierN + t.n; totalPets = totalPets + t.n
 				local rng = (t.minW == t.maxW) and ("%.2f kg"):format(t.maxW)
 					or ("%.2f-%.2f kg"):format(t.minW == math.huge and 0 or t.minW, t.maxW)
-				lines[#lines + 1] = ("\u{2022} %s x%d (%s)"):format(pt, t.n, rng)
+				lines[#lines + 1] = ("> \u{2022} %s x%d (%s)"):format(pt, t.n, rng)
 			end
-			-- selalu tampil kategori (walau 0); bullet cuma kalau ada
-			local head = ("%s **%s: %d**"):format(TIER_ICON[tier] or "", tier, tierN)
+			-- selalu tampil kategori (walau 0); bullet cuma kalau ada. Style '>' samain field lain
+			local head = ("> %s %s: %d"):format(TIER_ICON[tier] or "", tier, tierN)
 			huntParts[#huntParts + 1] = #lines > 0 and (head .. "\n" .. table.concat(lines, "\n")) or head
 		end
 		local hunt = table.concat(huntParts, "\n"):sub(1, 1020)
-		-- Recovery counts (dari egg delta) + % live dari Koi/Seal aktif
+		-- Recovery deterministik: % Koi/Seal aktif × jumlah aksi periode ini
 		local rec = ctx.getRecoveryStat()
-		local recHatchCycle = ctx.state.recHatchCycle or 0
+		local periodHatched = ctx.state.periodHatched or 0
 		local sellDone = ctx.state.sellDoneThisReport == true
-		local recSellCycle = sellDone and (ctx.state.recSellCycle or 0) or 0
+		local periodSold = sellDone and (ctx.state.periodSold or 0) or 0
+		local recHatchCycle = math.floor(rec.koiPct / 100 * periodHatched + 0.5)
+		local recSellCycle = sellDone and math.floor(rec.sealPct / 100 * periodSold + 0.5) or 0
 		local sellPctShown = sellDone and rec.sealPct or 0
-		local totalRecovery = (ctx.state.recHatchTotal or 0) + (ctx.state.recSellTotal or 0)
+		ctx.state.recTotal = (ctx.state.recTotal or 0) + recHatchCycle + recSellCycle
+		local totalRecovery = ctx.state.recTotal
 		local maxBp = 0
 		local d = getData(); if d then maxBp = tonumber(d.PetsData.MutableStats.MaxPetsInInventory) or 0 end
 		local hatchCycles = ctx.state.hatchRounds or 0
@@ -591,8 +563,8 @@ return function(ctx)
 		} } }
 		pcall(function() ctx.sendWebhook(url, payload, ctx) end)
 		ctx.state.hatchCycleStartTime = os.time()
-		-- reset counter per-laporan (Lucky Hatch/Sell dihitung ulang tiap webhook)
-		ctx.state.recHatchCycle, ctx.state.recSellCycle, ctx.state.sellDoneThisReport = 0, 0, false
+		-- reset counter periode (Lucky Hatch/Sell dihitung ulang tiap webhook)
+		ctx.state.periodHatched, ctx.state.periodSold, ctx.state.sellDoneThisReport = 0, 0, false
 	end
 	ctx.hatchSendCycleStats = sendCycleStats
 	ctx.hatchTrack = trackHatch
@@ -652,9 +624,8 @@ return function(ctx)
 			ctx.state.hatchPhase = "Selling Pets"
 			if next(CFG.hatchSellTeam or {}) and not equipTeam(CFG.hatchSellTeam, "Sell Team") then return end -- team wajib lengkap
 			task.wait(CFG.sellTeamDelay or 5)
-			local eggBeforeSell = totalEggCount()
-			doSell()
-			addRecovery("sell", measureRecovery(eggBeforeSell, 5)) -- egg balik dari Seal
+			local sold = doSell()
+			addPeriod("sell", tonumber(sold) or 0) -- jumlah pet dijual (buat Lucky Sell)
 			ctx.state.hatchLastSellCycle = cycle
 			task.spawn(sendCycleStats) -- summary per sell cycle
 			return
@@ -702,9 +673,8 @@ return function(ctx)
 			if #normal > 0 then
 				if next(CFG.hatchHatchTeam or {}) and not equipTeam(CFG.hatchHatchTeam, "Hatch Team") then return end
 				ctx.state.hatchPhase = ("Hatching Hatch-team (%d)"):format(#normal)
-				local eggBeforeHatch = totalEggCount()
 				hatchList(normal)
-				addRecovery("hatch", measureRecovery(eggBeforeHatch, 5)) -- egg balik dari Koi
+				addPeriod("hatch", #normal) -- jumlah hatch pakai Koi (buat Lucky Hatch)
 			end
 			-- pass BRONTO -> Bronto Team (+30% berat) + kirim Hatch Alert per pet
 			if #bronto > 0 then
