@@ -104,14 +104,19 @@ return function(ctx)
 	-- filter disimpan pakai label "Pet - Egg"; cocokin pakai label yg sama.
 	local petEggLabel = (ctx.reg and ctx.reg.petEggLabel) or function(p) return p end
 	-- apakah pet ini termasuk yg DIJUAL (cocok filter)?
+	-- Pakai berat TAMPIL (BaseWeight*(1+0.1*Level)) — sama kaya yg keliatan di game/dropdown,
+	-- BUKAN BaseWeight mentah. Weight + Age = AND (harus dua-duanya, 0 = ga difilter).
 	local function shouldSell(petType, pd)
 		pd = pd or {}
-		local w = pd.BaseWeight or 0
 		local age = pd.Level or 0
+		local w = (pd.BaseWeight or 0) * (1 + 0.1 * age)
 		local key = petEggLabel(petType)
 		if (CFG.sellPetTypes or {})[key] then
-			if w < (CFG.sellWeightThreshold or 0) then return true end
-			if age < (CFG.sellAgeThreshold or 0) then return true end
+			local wt = CFG.sellWeightThreshold or 0
+			local at = CFG.sellAgeThreshold or 0
+			local wOk = wt <= 0 or w < wt
+			local aOk = at <= 0 or age < at
+			if (wt > 0 or at > 0) and wOk and aOk then return true end
 		end
 		if (CFG.sellSpecialTypes or {})[key] then
 			local sw = CFG.sellSpecialWeight or 0
@@ -682,7 +687,8 @@ return function(ctx)
 				for _, e in ipairs(bronto) do
 					if not CFG.hatchEnabled then break end
 					local pt, w = eggPending(e)
-					if pt then trackHatch(pt, w, isBrontoSpecial(pt, w)); task.spawn(function() sendHatchAlert(pt, CFG.hatchEggName or "Rare Egg", w) end) end
+					-- pet ini di-hatch pakai Bronto team -> berat aktual +30% (buat tier Hunt)
+					if pt then trackHatch(pt, w * 1.3, isBrontoSpecial(pt, w)); task.spawn(function() sendHatchAlert(pt, CFG.hatchEggName or "Rare Egg", w) end) end
 					pcall(function() EggRemote:FireServer("HatchPet", e) end)
 					ctx.state.hatchEggsHatched = (ctx.state.hatchEggsHatched or 0) + 1
 					task.wait(CFG.hatchSpeed or 0.2)
