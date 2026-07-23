@@ -104,14 +104,20 @@ return function(ctx)
 	-- filter disimpan pakai label "Pet - Egg"; cocokin pakai label yg sama.
 	local petEggLabel = (ctx.reg and ctx.reg.petEggLabel) or function(p) return p end
 	-- apakah pet ini termasuk yg DIJUAL (cocok filter)?
+	-- PENTING: pakai berat TAMPIL (BaseWeight*(1+0.1*Level)) = yg keliatan di game/dropdown,
+	-- BUKAN BaseWeight mentah (beda angka -> salah keep/favorite). Weight & Age = AND
+	-- (harus dua-duanya kepenuhi; 0 = filter itu dimatiin).
 	local function shouldSell(petType, pd)
 		pd = pd or {}
-		local w = pd.BaseWeight or 0
 		local age = pd.Level or 0
+		local w = (pd.BaseWeight or 0) * (1 + 0.1 * age)
 		local key = petEggLabel(petType)
 		if (CFG.sellPetTypes or {})[key] then
-			if w < (CFG.sellWeightThreshold or 0) then return true end
-			if age < (CFG.sellAgeThreshold or 0) then return true end
+			local wt = CFG.sellWeightThreshold or 0
+			local at = CFG.sellAgeThreshold or 0
+			local wOk = wt <= 0 or w < wt
+			local aOk = at <= 0 or age < at
+			if (wt > 0 or at > 0) and wOk and aOk then return true end
 		end
 		if (CFG.sellSpecialTypes or {})[key] then
 			local sw = CFG.sellSpecialWeight or 0
