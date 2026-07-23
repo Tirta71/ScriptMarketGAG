@@ -406,11 +406,24 @@ return function(ctx)
 	end
 	ctx.hatchTeamNames = teamNames
 
-	-- akumulasi pet ke-hatch per tipe (buat Hunt Statistics)
+	-- Tier berat: Special <5 | Huge 5-6.9 | Titan 7-8.9 | Godly 9-9.9 | Colossal 10+
+	local TIER_ORDER = { "Colossal", "Godly", "Titan", "Huge", "Special" }
+	local function weightTier(w)
+		w = tonumber(w) or 0
+		if w >= 10 then return "Colossal"
+		elseif w >= 9 then return "Godly"
+		elseif w >= 7 then return "Titan"
+		elseif w >= 5 then return "Huge"
+		else return "Special" end
+	end
+	-- akumulasi pet ke-hatch per TIER -> per tipe (buat Hunt Statistics)
 	local function trackHatch(petType, dispW)
-		ctx.state.hatchByType = ctx.state.hatchByType or {}
-		local t = ctx.state.hatchByType[petType]
-		if not t then t = { n = 0, minW = math.huge, maxW = 0 }; ctx.state.hatchByType[petType] = t end
+		ctx.state.hatchTiers = ctx.state.hatchTiers or {}
+		local tier = weightTier(dispW)
+		local bucket = ctx.state.hatchTiers[tier]
+		if not bucket then bucket = {}; ctx.state.hatchTiers[tier] = bucket end
+		local t = bucket[petType]
+		if not t then t = { n = 0, minW = math.huge, maxW = 0 }; bucket[petType] = t end
 		t.n = t.n + 1
 		if dispW < t.minW then t.minW = dispW end
 		if dispW > t.maxW then t.maxW = dispW end
@@ -459,6 +472,46 @@ return function(ctx)
 		}
 	end
 
+	-- Hitung egg balik (recovery) tiap fase: total egg naik = egg yg balik.
+	-- Server telat replikasi -> poll ambil puncak (max 4s, stop kalau stabil).
+	local function totalEggCount()
+		local n = 0
+		for _, src in ipairs({ LP:FindFirstChildOfClass("Backpack"), LP.Character }) do
+			if src then for _, t in ipairs(src:GetChildren()) do
+				if t:IsA("Tool") and not t:GetAttribute("PET_UUID") and tostring(t.Name):find("Egg") then
+					local _, cnt = tostring(t.Name):match("^(.-)%s*x(%d+)$")
+					n = n + (tonumber(cnt) or 1)
+				end
+			end end
+		end
+		return n
+	end
+	local function measureRecovery(baseline, maxSec)
+		local hi = math.max(baseline, totalEggCount())
+		local stable = 0
+		for _ = 1, math.floor((maxSec or 4) / 0.4) do
+			task.wait(0.4)
+			local n = totalEggCount()
+			if n > hi then hi = n; stable = 0 else stable = stable + 1 end
+			if stable >= 3 then break end
+		end
+		return math.max(0, hi - baseline)
+	end
+	-- catat recovery (hatch/sell): akumulasi total + per-laporan (reset tiap webhook)
+	local function addRecovery(kind, amt)
+		amt = math.max(0, math.floor((amt or 0) + 0.5))
+		local s = ctx.state
+		if kind == "hatch" then
+			s.recHatchTotal = (s.recHatchTotal or 0) + amt
+			s.recHatchCycle = (s.recHatchCycle or 0) + amt
+		else
+			s.recSellTotal = (s.recSellTotal or 0) + amt
+			s.recSellCycle = (s.recSellCycle or 0) + amt
+			s.sellDoneThisReport = true
+		end
+	end
+	ctx.hatchTotalEggCount = totalEggCount
+
 	local function fmtDur(sec)
 		sec = math.max(0, math.floor(sec))
 		local h = math.floor(sec / 3600); local m = math.floor((sec % 3600) / 60); local s = sec % 60
@@ -477,17 +530,33 @@ return function(ctx)
 		local hatched = ctx.state.hatchEggsHatched or 0
 		local eggBefore = ctx.state.hatchEggBefore or 0
 		local curAmt = eggAmount(eggName)
-		local consumed = eggBefore - curAmt
-		local recovery = math.max(0, hatched - consumed)
-		local luckyHatch = hatched > 0 and (recovery / hatched * 100) or 0
-		-- Hunt Statistics: pet per tipe + range berat
-		local huntLines, totalPets = {}, 0
-		for pt, t in pairs(ctx.state.hatchByType or {}) do
-			totalPets = totalPets + t.n
-			huntLines[#huntLines + 1] = ("`%s x%d` (%.2f-%.2f kg)"):format(pt, t.n, t.minW == math.huge and 0 or t.minW, t.maxW)
+		-- Hunt Statistics: grup per TIER berat -> per tipe (count + range berat)
+		local TIER_ICON = { Colossal = "\u{1F30B}", Godly = "\u{1F396}\u{FE0F}", Titan = "\u{1F3C6}", Huge = "\u{1F525}", Special = "\u{2B50}" }
+		local tiers = ctx.state.hatchTiers or {}
+		local huntParts, totalPets = {}, 0
+		for _, tier in ipairs(TIER_ORDER) do
+			local bucket = tiers[tier]
+			if bucket then
+				local lines, tierN, keys = {}, 0, {}
+				for pt in pairs(bucket) do keys[#keys + 1] = pt end
+				table.sort(keys)
+				for _, pt in ipairs(keys) do
+					local t = bucket[pt]; tierN = tierN + t.n; totalPets = totalPets + t.n
+					local rng = (t.minW == t.maxW) and ("%.2f kg"):format(t.maxW)
+						or ("%.2f-%.2f kg"):format(t.minW == math.huge and 0 or t.minW, t.maxW)
+					lines[#lines + 1] = ("\u{2022} %s x%d (%s)"):format(pt, t.n, rng)
+				end
+				huntParts[#huntParts + 1] = ("%s **%s: %d**\n%s"):format(TIER_ICON[tier] or "", tier, tierN, table.concat(lines, "\n"))
+			end
 		end
-		table.sort(huntLines)
-		local hunt = #huntLines > 0 and table.concat(huntLines, "\n") or "-"
+		local hunt = #huntParts > 0 and table.concat(huntParts, "\n"):sub(1, 1020) or "-"
+		-- Recovery counts (dari egg delta) + % live dari Koi/Seal aktif
+		local rec = ctx.getRecoveryStat()
+		local recHatchCycle = ctx.state.recHatchCycle or 0
+		local sellDone = ctx.state.sellDoneThisReport == true
+		local recSellCycle = sellDone and (ctx.state.recSellCycle or 0) or 0
+		local sellPctShown = sellDone and rec.sealPct or 0
+		local totalRecovery = (ctx.state.recHatchTotal or 0) + (ctx.state.recSellTotal or 0)
 		local maxBp = 0
 		local d = getData(); if d then maxBp = tonumber(d.PetsData.MutableStats.MaxPetsInInventory) or 0 end
 		local hatchCycles = ctx.state.hatchRounds or 0
@@ -500,13 +569,10 @@ return function(ctx)
 				{ name = "Teams :", value = ("> Core: %s\n> Hatch: %s\n> Bronto: %s\n> Sell: %s")
 					:format(teamNames(CFG.hatchCoreTeam), teamNames(CFG.hatchHatchTeam), teamNames(CFG.hatchBrontoTeam), teamNames(CFG.hatchSellTeam)):sub(1, 1020), inline = false },
 				{ name = ("Hunt Statistics (%d):"):format(totalPets), value = hunt, inline = false },
-				{ name = "Egg Statistics :", value = ("> Egg Before: `%d`\n> Current Amount: `%d`\n> Net Result: `%d`\n> Lucky Hatch: `%d` ( %.2f%% )\n> Total Recovery: `%d`")
-					:format(eggBefore, curAmt, curAmt - eggBefore, recovery, luckyHatch, recovery), inline = false },
-				{ name = "Recovery Stat (Team) :", value = (function()
-					local p = ctx.getRecoveryStat()
-					return ("> Koi (hatch): `%d ekor` \226\134\146 `%.1f%%`\n> Seal (sell): `%d ekor` \226\134\146 `%.1f%%`")
-						:format(p.koiCount, p.koiPct, p.sealCount, p.sealPct)
-				end)(), inline = false },
+				{ name = "Egg Statistics :", value = ("> Egg Before: `%d`\n> Current Amount: `%d`\n> Net Result: `%d`\n> Lucky Hatch: `%d` ( %.2f%% )\n> Lucky Sell: `%d` ( %.2f%% )\n> Total Recovery: `%d`")
+					:format(eggBefore, curAmt, curAmt - eggBefore, recHatchCycle, rec.koiPct, recSellCycle, sellPctShown, totalRecovery), inline = false },
+				{ name = "Recovery Stat (Team) :", value = ("> Koi (hatch): `%d ekor` \226\134\146 `%.1f%%`\n> Seal (sell): `%d ekor` \226\134\146 `%.1f%%`")
+					:format(rec.koiCount, rec.koiPct, rec.sealCount, rec.sealPct), inline = false },
 				{ name = "Hatch Statistics :", value = ("> Hatch Cycles: `%d`\n> Total Hatched: `%d`\n> Sell Cycle: `%d / %d`\n> Cycle Duration: `%s`\n> All Time Duration: `%s`")
 					:format(hatchCycles, hatched, ((ctx.state.hatchRounds or 0) - (ctx.state.hatchLastSellCycle or 0)), CFG.sellEveryNCycles or 1,
 						fmtDur(os.time() - (ctx.state.hatchCycleStartTime or os.time())), fmtDur(os.time() - (ctx.state.hatchStartTime or os.time()))), inline = false },
@@ -515,6 +581,8 @@ return function(ctx)
 		} } }
 		pcall(function() ctx.sendWebhook(url, payload, ctx) end)
 		ctx.state.hatchCycleStartTime = os.time()
+		-- reset counter per-laporan (Lucky Hatch/Sell dihitung ulang tiap webhook)
+		ctx.state.recHatchCycle, ctx.state.recSellCycle, ctx.state.sellDoneThisReport = 0, 0, false
 	end
 	ctx.hatchSendCycleStats = sendCycleStats
 	ctx.hatchTrack = trackHatch
@@ -574,7 +642,9 @@ return function(ctx)
 			ctx.state.hatchPhase = "Selling Pets"
 			if next(CFG.hatchSellTeam or {}) and not equipTeam(CFG.hatchSellTeam, "Sell Team") then return end -- team wajib lengkap
 			task.wait(CFG.sellTeamDelay or 5)
+			local eggBeforeSell = totalEggCount()
 			doSell()
+			addRecovery("sell", measureRecovery(eggBeforeSell, 5)) -- egg balik dari Seal
 			ctx.state.hatchLastSellCycle = cycle
 			task.spawn(sendCycleStats) -- summary per sell cycle
 			return
@@ -622,7 +692,9 @@ return function(ctx)
 			if #normal > 0 then
 				if next(CFG.hatchHatchTeam or {}) and not equipTeam(CFG.hatchHatchTeam, "Hatch Team") then return end
 				ctx.state.hatchPhase = ("Hatching Hatch-team (%d)"):format(#normal)
+				local eggBeforeHatch = totalEggCount()
 				hatchList(normal)
+				addRecovery("hatch", measureRecovery(eggBeforeHatch, 5)) -- egg balik dari Koi
 			end
 			-- pass BRONTO -> Bronto Team (+30% berat) + kirim Hatch Alert per pet
 			if #bronto > 0 then
