@@ -548,8 +548,8 @@ return function(ctx)
 		local maxP = CFG.hatchMaxPlaced or 9
 		local hatched = ctx.state.hatchEggsHatched or 0
 		local eggBefore = ctx.state.hatchEggBefore or 0
-		-- Current Amount = egg di backpack + yg udah ke-PLACE di garden (biar Net Result akurat)
-		local curAmt = eggAmount(eggName) + placedEggCount()
+		-- Current Amount = snapshot egg backpack saat sell (placed=0 -> total bener, ga kena race place)
+		local curAmt = ctx.state.hatchEggSnapshot or eggAmount(eggName)
 		-- Hunt Statistics: grup per TIER berat -> per tipe (count + range berat)
 		local TIER_ICON = { Colossal = "\u{1F30B}", Godly = "\u{1F396}\u{FE0F}", Titan = "\u{1F3C6}", Huge = "\u{1F525}", Special = "\u{2B50}" }
 		local tiers = ctx.state.hatchTiers or {}
@@ -635,7 +635,7 @@ return function(ctx)
 			core = nm(CFG.hatchCoreTeam), hatch = nm(CFG.hatchHatchTeam),
 			bronto = nm(CFG.hatchBrontoTeam), sell = nm(CFG.hatchSellTeam),
 			backpack = backpackPetCount(), maxBackpack = maxBp,
-			currentEgg = eggName, eggBefore = ctx.state.hatchEggBefore or curEgg, currentAmount = curEgg + placedEggCount(),
+			currentEgg = eggName, eggBefore = ctx.state.hatchEggBefore or curEgg, currentAmount = curEgg,
 			eggsHatched = ctx.state.hatchEggsHatched or 0,
 			sellCycles = ctx.state.hatchSellCycles or 0,
 			ready = #readyEggs(),
@@ -672,6 +672,8 @@ return function(ctx)
 			ctx.state.sellDoneThisReport = true
 			ctx.state.hatchLastSellCycle = cycle
 			task.wait(3) -- tunggu notif "Lucky Pet" (egg balik dari sell) nyusul dulu
+			-- snapshot jumlah egg SEKARANG (placed=0 di fase sell) -> Current Amount akurat, ga kena race place
+			ctx.state.hatchEggSnapshot = eggAmount(CFG.hatchEggName or "Rare Egg") + placedEggCount()
 			task.spawn(sendCycleStats) -- summary per sell cycle
 			return
 		end
@@ -782,7 +784,8 @@ return function(ctx)
 				end
 			end end
 		end
-		ctx.state.hatchEggBefore = (ctx.state.hatchEggBefore or 0) + placedEggCount() -- + egg yg udah ke-place
+		ctx.state.hatchEggBefore = (ctx.state.hatchEggBefore or 0) + placedEggCount() -- + egg yg udah ke-place saat start
+		ctx.state.hatchEggSnapshot = nil
 		ctx.state.hatchStartTime = os.time()
 		ctx.state.hatchCycleStartTime = os.time()
 		task.spawn(loop)
