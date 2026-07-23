@@ -406,20 +406,29 @@ return function(ctx)
 	end
 	ctx.hatchTeamNames = teamNames
 
-	-- Tier berat: Special <5 | Huge 5-6.9 | Titan 7-8.9 | Godly 9-9.9 | Colossal 10+
-	local TIER_ORDER = { "Colossal", "Godly", "Titan", "Huge", "Special" }
+	-- Kategori Hunt: Special (dari filter Bronto Config) + tier berat.
+	-- Huge 5-6.9 | Titan 7-8.9 | Godly 9-9.9 | Colossal 10+. Urutan tampil (selalu muncul).
+	local TIER_ORDER = { "Special", "Huge", "Titan", "Godly", "Colossal" }
 	local function weightTier(w)
 		w = tonumber(w) or 0
 		if w >= 10 then return "Colossal"
 		elseif w >= 9 then return "Godly"
 		elseif w >= 7 then return "Titan"
 		elseif w >= 5 then return "Huge"
-		else return "Special" end
+		else return nil end -- <5kg & bukan special: ga masuk kategori manapun
 	end
-	-- akumulasi pet ke-hatch per TIER -> per tipe (buat Hunt Statistics)
-	local function trackHatch(petType, dispW)
+	-- Apakah pet masuk filter Special di Bronto Configuration?
+	local function isBrontoSpecial(petType, w)
+		local key = petEggLabel(petType)
+		if (CFG.brontoSpecialPets or {})[key] ~= true then return false end
+		if (CFG.brontoSpecialWeight or 0) > 0 and (w or 0) <= CFG.brontoSpecialWeight then return false end
+		return true
+	end
+	-- akumulasi pet ke-hatch per KATEGORI -> per tipe (buat Hunt Statistics)
+	local function trackHatch(petType, dispW, special)
 		ctx.state.hatchTiers = ctx.state.hatchTiers or {}
-		local tier = weightTier(dispW)
+		local tier = special and "Special" or weightTier(dispW)
+		if not tier then return end -- <5kg non-special: skip dari Hunt
 		local bucket = ctx.state.hatchTiers[tier]
 		if not bucket then bucket = {}; ctx.state.hatchTiers[tier] = bucket end
 		local t = bucket[petType]
@@ -428,6 +437,7 @@ return function(ctx)
 		if dispW < t.minW then t.minW = dispW end
 		if dispW > t.maxW then t.maxW = dispW end
 	end
+	ctx.hatchIsBrontoSpecial = isBrontoSpecial
 
 	local function eggAmount(eggName)
 		local n = 0
@@ -535,21 +545,21 @@ return function(ctx)
 		local tiers = ctx.state.hatchTiers or {}
 		local huntParts, totalPets = {}, 0
 		for _, tier in ipairs(TIER_ORDER) do
-			local bucket = tiers[tier]
-			if bucket then
-				local lines, tierN, keys = {}, 0, {}
-				for pt in pairs(bucket) do keys[#keys + 1] = pt end
-				table.sort(keys)
-				for _, pt in ipairs(keys) do
-					local t = bucket[pt]; tierN = tierN + t.n; totalPets = totalPets + t.n
-					local rng = (t.minW == t.maxW) and ("%.2f kg"):format(t.maxW)
-						or ("%.2f-%.2f kg"):format(t.minW == math.huge and 0 or t.minW, t.maxW)
-					lines[#lines + 1] = ("\u{2022} %s x%d (%s)"):format(pt, t.n, rng)
-				end
-				huntParts[#huntParts + 1] = ("%s **%s: %d**\n%s"):format(TIER_ICON[tier] or "", tier, tierN, table.concat(lines, "\n"))
+			local bucket = tiers[tier] or {}
+			local lines, tierN, keys = {}, 0, {}
+			for pt in pairs(bucket) do keys[#keys + 1] = pt end
+			table.sort(keys)
+			for _, pt in ipairs(keys) do
+				local t = bucket[pt]; tierN = tierN + t.n; totalPets = totalPets + t.n
+				local rng = (t.minW == t.maxW) and ("%.2f kg"):format(t.maxW)
+					or ("%.2f-%.2f kg"):format(t.minW == math.huge and 0 or t.minW, t.maxW)
+				lines[#lines + 1] = ("\u{2022} %s x%d (%s)"):format(pt, t.n, rng)
 			end
+			-- selalu tampil kategori (walau 0); bullet cuma kalau ada
+			local head = ("%s **%s: %d**"):format(TIER_ICON[tier] or "", tier, tierN)
+			huntParts[#huntParts + 1] = #lines > 0 and (head .. "\n" .. table.concat(lines, "\n")) or head
 		end
-		local hunt = #huntParts > 0 and table.concat(huntParts, "\n"):sub(1, 1020) or "-"
+		local hunt = table.concat(huntParts, "\n"):sub(1, 1020)
 		-- Recovery counts (dari egg delta) + % live dari Koi/Seal aktif
 		local rec = ctx.getRecoveryStat()
 		local recHatchCycle = ctx.state.recHatchCycle or 0
@@ -682,7 +692,7 @@ return function(ctx)
 				for _, e in ipairs(list) do
 					if not CFG.hatchEnabled then break end
 					local pt, w = eggPending(e)
-					if pt then trackHatch(pt, w) end
+					if pt then trackHatch(pt, w, isBrontoSpecial(pt, w)) end
 					pcall(function() EggRemote:FireServer("HatchPet", e) end)
 					ctx.state.hatchEggsHatched = (ctx.state.hatchEggsHatched or 0) + 1
 					task.wait(CFG.hatchSpeed or 0.2)
@@ -703,7 +713,7 @@ return function(ctx)
 				for _, e in ipairs(bronto) do
 					if not CFG.hatchEnabled then break end
 					local pt, w = eggPending(e)
-					if pt then trackHatch(pt, w); task.spawn(function() sendHatchAlert(pt, CFG.hatchEggName or "Rare Egg", w) end) end
+					if pt then trackHatch(pt, w, isBrontoSpecial(pt, w)); task.spawn(function() sendHatchAlert(pt, CFG.hatchEggName or "Rare Egg", w) end) end
 					pcall(function() EggRemote:FireServer("HatchPet", e) end)
 					ctx.state.hatchEggsHatched = (ctx.state.hatchEggsHatched or 0) + 1
 					task.wait(CFG.hatchSpeed or 0.2)
