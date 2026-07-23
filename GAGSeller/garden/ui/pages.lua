@@ -159,12 +159,21 @@ return function(ctx)
 						"Pet on Backpack: <font color=\"%s\">%d/%d</font>\n\n" ..
 						"Current Egg: <font color=\"%s\">%s</font>\nEgg Before: <font color=\"%s\">%d</font>\n" ..
 						"Current Amount: <font color=\"%s\">%d</font>\nPlaced: <font color=\"%s\">%d/%d</font>\n" ..
-						"Eggs Hatched: <font color=\"%s\">%d</font>\nSell Cycle: <font color=\"%s\">%d/%d</font>",
+						"Eggs Hatched: <font color=\"%s\">%d</font>\nSell Cycle: <font color=\"%s\">%d/%d</font>\n\n" ..
+						"<b>Recovery Proc (Real)</b>\n" ..
+						"Koi (hatch): <font color=\"%s\">%d/%d (%.1f%%)</font>\n" ..
+						"Seal (sell): <font color=\"%s\">%d/%d (%.1f%%)</font>\n" ..
+						"Net per egg: <font color=\"%s\"><b>%+.2f</b></font> %s",
 						col, s.status, s.phase,
 						gr, s.core, gr, s.hatch, gr, s.bronto, gr, s.sell,
 						gr, s.backpack, s.maxBackpack,
 						gr, s.currentEgg, gr, s.eggBefore, gr, s.currentAmount, gr, s.placed, s.maxPlaced,
-						gr, s.eggsHatched, gr, s.cycleProg, s.cycleTarget)
+						gr, s.eggsHatched, gr, s.cycleProg, s.cycleTarget,
+						gr, (s.proc or {}).koiHits or 0, (s.proc or {}).koiRolls or 0, (s.proc or {}).koiPct or 0,
+						gr, (s.proc or {}).sealHits or 0, (s.proc or {}).sealRolls or 0, (s.proc or {}).sealPct or 0,
+						((s.proc or {}).netPerEgg or 0) >= 0 and "#5acc78" or "#dc5050",
+						(s.proc or {}).netPerEgg or 0,
+						((s.proc or {}).netPerEgg or 0) >= 0 and "\u{2705}" or "\u{26A0} bocor")
 				end
 				task.wait(1.0)
 			end
@@ -174,6 +183,8 @@ return function(ctx)
 			function(v) CFG.hatchEnabled = v; persist(); if v then ctx.startHatch() else ctx.stopHatch() end end, 2)
 		makeToggle(hCtrl, "Auto Sell", "Auto jual pet pas backpack penuh (filter + favorite proteksi)",
 			function() return CFG.autoSellEnabled end, function(v) CFG.autoSellEnabled = v; persist() end, 3)
+		makeButton(hCtrl, "Reset Proc Stats", "Reset counter empiris Koi/Seal recovery (mulai ukur dari 0)",
+			function() pcall(ctx.resetProcStats) end, 4)
 
 		-- Teams
 		local hTeam = makeAccordion(hatchPage, "Teams (Core / Hatch / Bronto / Sell)", 2, true)

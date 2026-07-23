@@ -427,6 +427,51 @@ return function(ctx)
 		end
 		return n
 	end
+	-- Total SEMUA egg di backpack+character (buat ukur recovery real, egg apa pun).
+	-- Egg tanpa suffix "xN" = 1 biji.
+	local function totalEggCount()
+		local n = 0
+		for _, src in ipairs({ LP:FindFirstChildOfClass("Backpack"), LP.Character }) do
+			if src then for _, t in ipairs(src:GetChildren()) do
+				if t:IsA("Tool") and not t:GetAttribute("PET_UUID") and tostring(t.Name):find("Egg") then
+					local _, cnt = tostring(t.Name):match("^(.-)%s*x(%d+)$")
+					n = n + (tonumber(cnt) or 1)
+				end
+			end end
+		end
+		return n
+	end
+	-- Empirical proc: catat berapa lemparan (rolls) & berapa yg balik egg (hits).
+	-- Koi = recovery pas hatch; Seal = recovery pas sell. Beda fase = beda sumber.
+	local function recordProc(kind, rolls, hits)
+		local s = ctx.state
+		hits = math.max(0, math.floor((hits or 0) + 0.5))
+		rolls = math.max(0, rolls or 0)
+		if kind == "koi" then
+			s.procKoiRolls = (s.procKoiRolls or 0) + rolls
+			s.procKoiHits  = (s.procKoiHits or 0) + hits
+		else
+			s.procSealRolls = (s.procSealRolls or 0) + rolls
+			s.procSealHits  = (s.procSealHits or 0) + hits
+		end
+	end
+	ctx.hatchTotalEggCount = totalEggCount
+	function ctx.getProcStats()
+		local s = ctx.state
+		local kr, kh = s.procKoiRolls or 0, s.procKoiHits or 0
+		local sr, sh = s.procSealRolls or 0, s.procSealHits or 0
+		return {
+			koiRolls = kr, koiHits = kh, koiPct = kr > 0 and (kh / kr * 100) or 0,
+			sealRolls = sr, sealHits = sh, sealPct = sr > 0 and (sh / sr * 100) or 0,
+			-- net egg estimasi per egg placed: (Koi% + Seal%)/100 - 1
+			netPerEgg = ((kr > 0 and kh / kr or 0) + (sr > 0 and sh / sr or 0)) - 1,
+		}
+	end
+	function ctx.resetProcStats()
+		ctx.state.procKoiRolls, ctx.state.procKoiHits = 0, 0
+		ctx.state.procSealRolls, ctx.state.procSealHits = 0, 0
+	end
+
 	local function fmtDur(sec)
 		sec = math.max(0, math.floor(sec))
 		local h = math.floor(sec / 3600); local m = math.floor((sec % 3600) / 60); local s = sec % 60
@@ -470,6 +515,12 @@ return function(ctx)
 				{ name = ("Hunt Statistics (%d):"):format(totalPets), value = hunt, inline = false },
 				{ name = "Egg Statistics :", value = ("> Egg Before: `%d`\n> Current Amount: `%d`\n> Net Result: `%d`\n> Lucky Hatch: `%d` ( %.2f%% )\n> Total Recovery: `%d`")
 					:format(eggBefore, curAmt, curAmt - eggBefore, recovery, luckyHatch, recovery), inline = false },
+				{ name = "Recovery Proc (Real) :", value = (function()
+					local p = ctx.getProcStats()
+					return ("> Koi (hatch): `%d/%d` ( %.1f%% )\n> Seal (sell): `%d/%d` ( %.1f%% )\n> Net per egg: `%+.2f` %s")
+						:format(p.koiHits, p.koiRolls, p.koiPct, p.sealHits, p.sealRolls, p.sealPct, p.netPerEgg,
+							p.netPerEgg >= 0 and "\u{2705}" or "\u{26A0}\u{FE0F} bocor")
+				end)(), inline = false },
 				{ name = "Hatch Statistics :", value = ("> Hatch Cycles: `%d`\n> Total Hatched: `%d`\n> Sell Cycle: `%d / %d`\n> Cycle Duration: `%s`\n> All Time Duration: `%s`")
 					:format(hatchCycles, hatched, ((ctx.state.hatchRounds or 0) - (ctx.state.hatchLastSellCycle or 0)), CFG.sellEveryNCycles or 1,
 						fmtDur(os.time() - (ctx.state.hatchCycleStartTime or os.time())), fmtDur(os.time() - (ctx.state.hatchStartTime or os.time()))), inline = false },
@@ -514,6 +565,7 @@ return function(ctx)
 			sellMode = CFG.sellMode or "Cycle",
 			cycleProg = (ctx.state.hatchRounds or 0) - (ctx.state.hatchLastSellCycle or 0),
 			cycleTarget = CFG.sellEveryNCycles or 1,
+			proc = ctx.getProcStats(),
 		}
 	end
 
@@ -536,7 +588,11 @@ return function(ctx)
 			ctx.state.hatchPhase = "Selling Pets"
 			if next(CFG.hatchSellTeam or {}) and not equipTeam(CFG.hatchSellTeam, "Sell Team") then return end -- team wajib lengkap
 			task.wait(CFG.sellTeamDelay or 5)
-			doSell()
+			-- ukur recovery Seal: egg total sebelum vs sesudah sell (nunggu server sync)
+			local eggBeforeSell = totalEggCount()
+			local sold = doSell()
+			task.wait(1.2)
+			recordProc("seal", sold or 0, totalEggCount() - eggBeforeSell)
 			ctx.state.hatchLastSellCycle = cycle
 			task.spawn(sendCycleStats) -- summary per sell cycle
 			return
@@ -584,7 +640,11 @@ return function(ctx)
 			if #normal > 0 then
 				if next(CFG.hatchHatchTeam or {}) and not equipTeam(CFG.hatchHatchTeam, "Hatch Team") then return end
 				ctx.state.hatchPhase = ("Hatching Hatch-team (%d)"):format(#normal)
+				-- ukur recovery Koi: egg total naik selama pass hatch = egg balik dari Koi
+				local eggBeforeHatch = totalEggCount()
 				hatchList(normal)
+				task.wait(0.8)
+				recordProc("koi", #normal, totalEggCount() - eggBeforeHatch)
 			end
 			-- pass BRONTO -> Bronto Team (+30% berat) + kirim Hatch Alert per pet
 			if #bronto > 0 then
