@@ -580,6 +580,10 @@ return function(ctx)
 		local koiPctShown = rec.koiPct
 		local sellPctShown = sellDone and rec.sealPct or 0
 		local totalRecovery = recHatchCycle + recSellCycle -- per cycle (Hatch + Sell laporan ini)
+		-- Egg Placed = Max Place - Lucky Hatch (egg yg diambil dari stok, sisanya dari recovery).
+		-- Current Amount yg dilaporin = egg sekarang - Egg Placed.
+		local eggPlaced = math.max(0, maxP - recHatchCycle)
+		local curAdj = curAmt - eggPlaced
 		local maxBp = 0
 		local d = getData(); if d then maxBp = tonumber(d.PetsData.MutableStats.MaxPetsInInventory) or 0 end
 		local hatchCycles = ctx.state.hatchRounds or 0
@@ -593,7 +597,7 @@ return function(ctx)
 					:format(teamNames(CFG.hatchCoreTeam), teamNames(CFG.hatchHatchTeam), teamNames(CFG.hatchBrontoTeam), teamNames(CFG.hatchSellTeam)):sub(1, 1020), inline = false },
 				{ name = ("Hunt Statistics (%d):"):format(totalPets), value = hunt, inline = false },
 				{ name = "Egg Statistics :", value = ("> Egg Before: `%d`\n> Current Amount: `%d`\n> Net Result: `%d`\n> Egg Placed: `%d`\n> Lucky Hatch: `%d` ( %.2f%% )\n> Lucky Sell: `%d` ( %.2f%% )\n> Total Recovery: `%d`")
-					:format(eggBefore, curAmt, curAmt - eggBefore, math.max(0, periodHatched - recHatchCycle), recHatchCycle, koiPctShown, recSellCycle, sellPctShown, totalRecovery), inline = false },
+					:format(eggBefore, curAdj, curAdj - eggBefore, eggPlaced, recHatchCycle, koiPctShown, recSellCycle, sellPctShown, totalRecovery), inline = false },
 				{ name = "Recovery Stat (Team) :", value = ("> Koi (hatch): `%d ekor` \226\134\146 `%.1f%%`\n> Seal (sell): `%d ekor` \226\134\146 `%.1f%%`")
 					:format(rec.koiCount, rec.koiPct, rec.sealCount, rec.sealPct), inline = false },
 				{ name = "Hatch Statistics :", value = ("> Hatch Cycles: `%d`\n> Total Hatched: `%d`\n> Sell Cycle: `%d / %d`\n> Cycle Duration: `%s`\n> All Time Duration: `%s`")
@@ -604,6 +608,8 @@ return function(ctx)
 		} } }
 		pcall(function() ctx.sendWebhook(url, payload, ctx) end)
 		ctx.state.hatchCycleStartTime = os.time()
+		-- Egg Before report berikutnya = Current Amount report ini (nyambung antar cycle)
+		ctx.state.hatchEggBefore = curAdj
 		-- reset counter periode (Lucky Hatch/Sell dihitung ulang tiap webhook)
 		ctx.state.periodHatched, ctx.state.periodSold, ctx.state.sellDoneThisReport = 0, 0, false
 		ctx.state.periodHatchRec, ctx.state.periodSellRec = 0, 0
