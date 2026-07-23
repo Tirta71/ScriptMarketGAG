@@ -39,6 +39,8 @@ return function(ctx)
 	end
 
 	----------------------------------------------------------------- TEAM + GUARD
+	-- ActivePetsService: sumber pet yg beneran AKTIF (model spawn + passive kebaca).
+	local ActivePets; pcall(function() ActivePets = require(RS.Modules.PetServices.ActivePetsService) end)
 	-- teamSet = { [uuid]=true }. Return true kalau equipped PERSIS == teamSet.
 	local function teamMatches(teamSet)
 		if not next(teamSet or {}) then return true end -- team kosong = ga usah proses
@@ -48,6 +50,15 @@ return function(ctx)
 		local tN = 0
 		for u in pairs(teamSet) do if not eqSet[u] then return false end; tN = tN + 1 end
 		return eqN == tN
+	end
+	-- Semua anggota team udah AKTIF di garden (ClientPetState) -> passive-nya kebaca.
+	local function teamActive(teamSet)
+		if not next(teamSet or {}) then return true end
+		if not ActivePets or not ActivePets.ClientPetState then return true end -- ga bisa cek -> anggap ok
+		local cps = ActivePets.ClientPetState[LP.Name]
+		if not cps then return false end
+		for u in pairs(teamSet) do if cps[u] == nil then return false end end
+		return true
 	end
 
 	-- 1 pass: cabut non-team, pasang anggota team yg belum ke-equip.
@@ -70,17 +81,26 @@ return function(ctx)
 		end
 	end
 
-	-- Equip team dgn guard: skip kalau udah sesuai. BLOK sampai team LENGKAP (retry).
+	-- Equip team dgn guard: BLOK sampai team LENGKAP (data-equipped) DAN AKTIF (passive kebaca).
+	-- Bukan pakai delay tetap: langsung baca ClientPetState, begitu pet aktif lgs lanjut.
 	local function equipTeam(teamSet, label)
 		if not next(teamSet or {}) then return true end
-		if teamMatches(teamSet) then return true end -- GUARD
+		if teamMatches(teamSet) and teamActive(teamSet) then return true end -- GUARD
 		ctx.state.hatchStatus = (label or "Team") .. ": equipping..."
+		-- 1) pasang sampai data-equipped lengkap
 		for _ = 1, 6 do
-			if teamMatches(teamSet) then return true end
+			if teamMatches(teamSet) then break end
 			equipTeamOnce(teamSet)
 			task.wait(0.2)
 		end
-		return teamMatches(teamSet)
+		if not teamMatches(teamSet) then return false end
+		-- 2) tunggu sampai pet-nya AKTIF (model spawn, passive bronto/koi/seal kebaca) — poll max ~5s
+		for _ = 1, 25 do
+			if teamActive(teamSet) then return true end
+			ctx.state.hatchStatus = (label or "Team") .. ": nunggu pet aktif..."
+			task.wait(0.2)
+		end
+		return teamActive(teamSet)
 	end
 
 	----------------------------------------------------------------- FAVORITE / SELL
