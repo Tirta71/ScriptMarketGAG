@@ -185,6 +185,8 @@ return function(ctx)
 			function() return CFG.autoSellEnabled end, function(v) CFG.autoSellEnabled = v; persist() end, 3)
 		makeButton(hCtrl, "Reset Proc Stats", "Reset counter empiris Koi/Seal recovery (mulai ukur dari 0)",
 			function() pcall(ctx.resetProcStats) end, 4)
+		makeToggle(hCtrl, "Re-equip Trick (eksperimen)", "Cabut-pasang Koi tiap hatch & Seal tiap sell. Bandingin proc% vs normal.",
+			function() return CFG.hatchReequipTrick end, function(v) CFG.hatchReequipTrick = v; persist() end, 5)
 
 		-- Teams
 		local hTeam = makeAccordion(hatchPage, "Teams (Core / Hatch / Bronto / Sell)", 2, true)

@@ -83,6 +83,21 @@ return function(ctx)
 		return teamMatches(teamSet)
 	end
 
+	-- EKSPERIMEN: cabut lalu pasang lagi anggota team dengan CEPAT (biar berakhir ke-equip).
+	-- Dipakai buat nguji teori "re-equip pas hatch/sell ngaruh ke recovery" (default off).
+	local function quickReequip(teamSet)
+		if not next(teamSet or {}) then return end
+		for u in pairs(teamSet) do
+			pcall(function() PetsRemote:FireServer("UnequipPet", u) end)
+		end
+		task.wait(0.06)
+		for u in pairs(teamSet) do
+			local pos = getPos(u)
+			if pos then pcall(function() PetsRemote:FireServer("EquipPet", u, CFrame.new(pos)) end) end
+		end
+		task.wait(0.12) -- pastiin balik ke-equip sebelum aksi (hatch/sell) di-fire
+	end
+
 	----------------------------------------------------------------- FAVORITE / SELL
 	local function petTools()
 		local out = {}
@@ -162,6 +177,7 @@ return function(ctx)
 				ctx.state.hatchStatus = "Sell DIBATALIN: ada keep-pet belum favorit (aman, ga jadi jual)"
 				return 0
 			end
+			if CFG.hatchReequipTrick then quickReequip(CFG.hatchSellTeam) end -- eksperimen: cabut-pasang Seal
 			if SellAll then pcall(function() SellAll:FireServer() end) end
 			ctx.state.hatchSellCycles = (ctx.state.hatchSellCycles or 0) + 1
 			ctx.state.hatchStatus = ("Sold all-at-once (%d matched)"):format(#sells)
@@ -172,6 +188,7 @@ return function(ctx)
 			for _, t in ipairs(sells) do
 				if t.Parent then
 					setFav(t, false)
+					if CFG.hatchReequipTrick then quickReequip(CFG.hatchSellTeam) end -- eksperimen: cabut-pasang Seal
 					if SellPet then pcall(function() SellPet:FireServer(t, true) end) end
 					task.wait(0.1)
 				end
@@ -646,6 +663,7 @@ return function(ctx)
 					if not CFG.hatchEnabled then break end
 					local pt, w = eggPending(e)
 					if pt then trackHatch(pt, w) end
+					if CFG.hatchReequipTrick then quickReequip(CFG.hatchHatchTeam) end -- eksperimen: cabut-pasang Koi
 					pcall(function() EggRemote:FireServer("HatchPet", e) end)
 					ctx.state.hatchEggsHatched = (ctx.state.hatchEggsHatched or 0) + 1
 					task.wait(CFG.hatchSpeed or 0.2)
