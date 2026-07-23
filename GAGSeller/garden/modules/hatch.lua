@@ -608,8 +608,6 @@ return function(ctx)
 		} } }
 		pcall(function() ctx.sendWebhook(url, payload, ctx) end)
 		ctx.state.hatchCycleStartTime = os.time()
-		-- Egg Before report berikutnya = Current Amount report ini (nyambung antar cycle)
-		ctx.state.hatchEggBefore = curAdj
 		-- reset counter periode (Lucky Hatch/Sell dihitung ulang tiap webhook)
 		ctx.state.periodHatched, ctx.state.periodSold, ctx.state.sellDoneThisReport = 0, 0, false
 		ctx.state.periodHatchRec, ctx.state.periodSellRec = 0, 0
