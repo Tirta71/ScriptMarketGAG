@@ -593,7 +593,7 @@ return function(ctx)
 					:format(teamNames(CFG.hatchCoreTeam), teamNames(CFG.hatchHatchTeam), teamNames(CFG.hatchBrontoTeam), teamNames(CFG.hatchSellTeam)):sub(1, 1020), inline = false },
 				{ name = ("Hunt Statistics (%d):"):format(totalPets), value = hunt, inline = false },
 				{ name = "Egg Statistics :", value = ("> Egg Before: `%d`\n> Current Amount: `%d`\n> Net Result: `%d`\n> Lucky Hatch: `%d` ( %.2f%% )\n> Lucky Sell: `%d` ( %.2f%% )\n> Total Recovery: `%d`")
-					:format(eggBefore, curAmt, curAmt - eggBefore, recHatchCycle, koiPctShown, recSellCycle, sellPctShown, totalRecovery), inline = false },
+					:format(eggBefore, curAmt, totalRecovery - periodHatched, recHatchCycle, koiPctShown, recSellCycle, sellPctShown, totalRecovery), inline = false },
 				{ name = "Recovery Stat (Team) :", value = ("> Koi (hatch): `%d ekor` \226\134\146 `%.1f%%`\n> Seal (sell): `%d ekor` \226\134\146 `%.1f%%`")
 					:format(rec.koiCount, rec.koiPct, rec.sealCount, rec.sealPct), inline = false },
 				{ name = "Hatch Statistics :", value = ("> Hatch Cycles: `%d`\n> Total Hatched: `%d`\n> Sell Cycle: `%d / %d`\n> Cycle Duration: `%s`\n> All Time Duration: `%s`")
