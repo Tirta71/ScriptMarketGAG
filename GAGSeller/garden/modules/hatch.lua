@@ -719,8 +719,18 @@ return function(ctx)
 
 	function ctx.startHatch()
 		if ctx.cancelClearGarden then ctx.cancelClearGarden() end
+		-- RESET semua statistik: tiap nyalain ulang mulai dari awal (webhook + live status)
+		ctx.state.hatchEggsHatched = 0
+		ctx.state.hatchRounds = 0
+		ctx.state.hatchLastSellCycle = 0
+		ctx.state.hatchSellCycles = 0
+		ctx.state.hatchTiers = {}
+		ctx.state.periodHatched = 0
+		ctx.state.periodSold = 0
+		ctx.state.sellDoneThisReport = false
 		-- catat jumlah egg terpilih di awal (buat "Egg Before") — scan Backpack + Character
 		local eggName = CFG.hatchEggName or "Rare Egg"
+		ctx.state.hatchEggBefore = 0
 		for _, src in ipairs({ LP:FindFirstChildOfClass("Backpack"), LP.Character }) do
 			if src then for _, t in ipairs(src:GetChildren()) do
 				if t:IsA("Tool") and not t:GetAttribute("PET_UUID") and tostring(t.Name):find(eggName, 1, true) then
@@ -728,7 +738,7 @@ return function(ctx)
 				end
 			end end
 		end
-		ctx.state.hatchStartTime = ctx.state.hatchStartTime or os.time()
+		ctx.state.hatchStartTime = os.time()
 		ctx.state.hatchCycleStartTime = os.time()
 		task.spawn(loop)
 	end
