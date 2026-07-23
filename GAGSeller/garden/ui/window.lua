@@ -75,7 +75,22 @@ return function(ctx)
 
 	minBtn.MouseButton1Click:Connect(function() main.Visible = false; maxIcon.Visible = true end)
 	maxIcon.MouseButton1Click:Connect(function() maxIcon.Visible = false; main.Visible = true end)
-	closeBtn.MouseButton1Click:Connect(function() gui:Destroy() end)
+
+	-- Konfirmasi sebelum close (Yes/No). Overlay modal di atas window.
+	local function confirmClose()
+		local overlay = mk("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, BorderSizePixel = 0, ZIndex = 50, Active = true }, main)
+		local box = mk("Frame", { Size = UDim2.fromOffset(300, 150), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), BackgroundColor3 = C.panel, BorderSizePixel = 0, ZIndex = 51 }, overlay)
+		corner(box, 12); stroke(box, C.stroke, 1)
+		mk("TextLabel", { Size = UDim2.new(1, -24, 0, 36), Position = UDim2.fromOffset(12, 16), BackgroundTransparency = 1, Text = "Close AllegiaanHub?", Font = Enum.Font.GothamBold, TextSize = 16, TextColor3 = C.acc, ZIndex = 51 }, box)
+		mk("TextLabel", { Size = UDim2.new(1, -24, 0, 24), Position = UDim2.fromOffset(12, 52), BackgroundTransparency = 1, Text = "Yakin mau nutup hub ini?", Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = C.txt, ZIndex = 51 }, box)
+		local noBtn = mk("TextButton", { Size = UDim2.fromOffset(120, 38), Position = UDim2.new(0, 18, 1, -50), BackgroundColor3 = C.row, Text = "No", Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = C.txt, ZIndex = 51 }, box)
+		corner(noBtn, 8)
+		local yesBtn = mk("TextButton", { Size = UDim2.fromOffset(120, 38), Position = UDim2.new(1, -138, 1, -50), BackgroundColor3 = C.red, Text = "Yes", Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = Color3.new(1, 1, 1), ZIndex = 51 }, box)
+		corner(yesBtn, 8)
+		noBtn.MouseButton1Click:Connect(function() overlay:Destroy() end)
+		yesBtn.MouseButton1Click:Connect(function() gui:Destroy() end)
+	end
+	closeBtn.MouseButton1Click:Connect(confirmClose)
 	do
 		local dragging, ds, sp
 		maxIcon.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging = true; ds = i.Position; sp = maxIcon.Position end end)
