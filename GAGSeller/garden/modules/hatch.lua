@@ -548,7 +548,8 @@ return function(ctx)
 		local maxP = CFG.hatchMaxPlaced or 9
 		local hatched = ctx.state.hatchEggsHatched or 0
 		local eggBefore = ctx.state.hatchEggBefore or 0
-		local curAmt = eggAmount(eggName)
+		-- Current Amount = egg di backpack + yg udah ke-PLACE di garden (biar Net Result akurat)
+		local curAmt = eggAmount(eggName) + placedEggCount()
 		-- Hunt Statistics: grup per TIER berat -> per tipe (count + range berat)
 		local TIER_ICON = { Colossal = "\u{1F30B}", Godly = "\u{1F396}\u{FE0F}", Titan = "\u{1F3C6}", Huge = "\u{1F525}", Special = "\u{2B50}" }
 		local tiers = ctx.state.hatchTiers or {}
@@ -576,9 +577,9 @@ return function(ctx)
 		local periodSold = sellDone and (ctx.state.periodSold or 0) or 0
 		local recHatchCycle = math.floor((ctx.state.periodHatchRec or 0) + 0.5)
 		local recSellCycle = sellDone and math.floor((ctx.state.periodSellRec or 0) + 0.5) or 0
-		-- % efektif (rata2 recovery real, udah capped) buat ditampilin
-		local koiPctShown = periodHatched > 0 and ((ctx.state.periodHatchRec or 0) / periodHatched * 100) or math.min(50, rec.koiPct)
-		local sellPctShown = (sellDone and periodSold > 0) and ((ctx.state.periodSellRec or 0) / periodSold * 100) or 0
+		-- % = PASSIVE Koi/Seal yg aktif di garden (bukan rate balik). Sell 0 kalau blm sell.
+		local koiPctShown = rec.koiPct
+		local sellPctShown = sellDone and rec.sealPct or 0
 		local totalRecovery = recHatchCycle + recSellCycle -- per cycle (Hatch + Sell laporan ini)
 		local maxBp = 0
 		local d = getData(); if d then maxBp = tonumber(d.PetsData.MutableStats.MaxPetsInInventory) or 0 end
@@ -634,7 +635,7 @@ return function(ctx)
 			core = nm(CFG.hatchCoreTeam), hatch = nm(CFG.hatchHatchTeam),
 			bronto = nm(CFG.hatchBrontoTeam), sell = nm(CFG.hatchSellTeam),
 			backpack = backpackPetCount(), maxBackpack = maxBp,
-			currentEgg = eggName, eggBefore = ctx.state.hatchEggBefore or curEgg, currentAmount = curEgg,
+			currentEgg = eggName, eggBefore = ctx.state.hatchEggBefore or curEgg, currentAmount = curEgg + placedEggCount(),
 			eggsHatched = ctx.state.hatchEggsHatched or 0,
 			sellCycles = ctx.state.hatchSellCycles or 0,
 			ready = #readyEggs(),
@@ -781,6 +782,7 @@ return function(ctx)
 				end
 			end end
 		end
+		ctx.state.hatchEggBefore = (ctx.state.hatchEggBefore or 0) + placedEggCount() -- + egg yg udah ke-place
 		ctx.state.hatchStartTime = os.time()
 		ctx.state.hatchCycleStartTime = os.time()
 		task.spawn(loop)
