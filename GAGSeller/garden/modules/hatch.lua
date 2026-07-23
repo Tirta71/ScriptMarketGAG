@@ -508,20 +508,30 @@ return function(ctx)
 		}
 	end
 
-	-- Recovery deterministik: rate = min(50%, %pet aktif) × jumlah aksi. Cap 50% = MAX recovery game.
-	-- Koi bisa ada di Hatch team ATAU Bronto team -> pakai team yg dipakai pass itu.
-	local function addHatchRec(n, teamSet)
-		n = math.max(0, n or 0); if n == 0 then return end
-		local _, kp = passivePct(teamSet, "Koi", 1, 0.22, 10)
-		ctx.state.periodHatched = (ctx.state.periodHatched or 0) + n
-		ctx.state.periodHatchRec = (ctx.state.periodHatchRec or 0) + math.min(50, kp) / 100 * n
+	-- Recovery ASLI: jumlah egg naik = egg yg balik (Koi pas hatch / Seal pas sell).
+	-- Server telat replikasi -> poll ambil PUNCAK (stop kalau stabil 1.6s, max ~7s).
+	local function totalEggCount()
+		local n = 0
+		for _, src in ipairs({ LP:FindFirstChildOfClass("Backpack"), LP.Character }) do
+			if src then for _, t in ipairs(src:GetChildren()) do
+				if t:IsA("Tool") and not t:GetAttribute("PET_UUID") and tostring(t.Name):find("Egg") then
+					local _, cnt = tostring(t.Name):match("^(.-)%s*x(%d+)$")
+					n = n + (tonumber(cnt) or 1)
+				end
+			end end
+		end
+		return n
 	end
-	local function addSellRec(n, teamSet)
-		n = math.max(0, n or 0)
-		local _, sp = passivePct(teamSet, "Seal", 1, 0.05, 10)
-		ctx.state.periodSold = (ctx.state.periodSold or 0) + n
-		ctx.state.periodSellRec = (ctx.state.periodSellRec or 0) + math.min(50, sp) / 100 * n
-		ctx.state.sellDoneThisReport = true
+	local function measureRecovery(baseline, maxSec)
+		local hi = math.max(baseline, totalEggCount())
+		local stable = 0
+		for _ = 1, math.floor((maxSec or 7) / 0.4) do
+			task.wait(0.4)
+			local c = totalEggCount()
+			if c > hi then hi = c; stable = 0 else stable = stable + 1 end
+			if stable >= 4 then break end -- 1.6s ga nambah = selesai balik
+		end
+		return math.max(0, hi - baseline)
 	end
 
 	local function fmtDur(sec)
@@ -659,8 +669,11 @@ return function(ctx)
 			ctx.state.hatchPhase = "Selling Pets"
 			if next(CFG.hatchSellTeam or {}) and not equipTeam(CFG.hatchSellTeam, "Sell Team") then return end -- team wajib lengkap
 			task.wait(CFG.sellTeamDelay or 5)
+			local eggB4Sell = totalEggCount()
 			local sold = doSell()
-			addSellRec(tonumber(sold) or 0, CFG.hatchSellTeam) -- recovery Seal @ Sell team (cap 50%)
+			ctx.state.periodSold = (ctx.state.periodSold or 0) + (tonumber(sold) or 0)
+			ctx.state.periodSellRec = (ctx.state.periodSellRec or 0) + measureRecovery(eggB4Sell, 7) -- egg balik ASLI (Seal)
+			ctx.state.sellDoneThisReport = true
 			ctx.state.hatchLastSellCycle = cycle
 			task.spawn(sendCycleStats) -- summary per sell cycle
 			return
@@ -687,6 +700,7 @@ return function(ctx)
 		-- 3) HATCH: HANYA kalau SEMUA egg (yg ke-place) udah READY (jangan switch selama timer jalan)
 		if placed > 0 and #ready >= placed then
 			ctx.state.hatchPhase = "Hatching"
+			local eggB4Hatch = totalEggCount() -- baseline buat ukur egg balik (Koi)
 			-- klasifikasi tiap egg: normal (Hatch team) / bronto (Bronto team) / skip
 			local normal, bronto = {}, {}
 			for _, e in ipairs(ready) do
@@ -709,7 +723,6 @@ return function(ctx)
 				if next(CFG.hatchHatchTeam or {}) and not equipTeam(CFG.hatchHatchTeam, "Hatch Team") then return end
 				ctx.state.hatchPhase = ("Hatching Hatch-team (%d)"):format(#normal)
 				hatchList(normal)
-				addHatchRec(#normal, CFG.hatchHatchTeam) -- recovery Koi @ Hatch team
 			end
 			-- pass BRONTO -> Bronto Team (+30% berat) + kirim Hatch Alert per pet
 			if #bronto > 0 then
@@ -724,8 +737,10 @@ return function(ctx)
 					ctx.state.hatchEggsHatched = (ctx.state.hatchEggsHatched or 0) + 1
 					task.wait(CFG.hatchSpeed or 0.2)
 				end
-				addHatchRec(#bronto, CFG.hatchBrontoTeam) -- recovery Koi @ Bronto team (koi di bronto team juga)
 			end
+			-- ukur egg balik ASLI (Koi dari Hatch+Bronto pass), poll sampai stabil
+			ctx.state.periodHatched = (ctx.state.periodHatched or 0) + #normal + #bronto
+			ctx.state.periodHatchRec = (ctx.state.periodHatchRec or 0) + measureRecovery(eggB4Hatch, 7)
 			-- 1 batch (normal+bronto) selesai = 1 ronde/cycle
 			ctx.state.hatchRounds = (ctx.state.hatchRounds or 0) + 1
 			return
