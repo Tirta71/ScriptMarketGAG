@@ -162,18 +162,14 @@ return function(ctx)
 						"Eggs Hatched: <font color=\"%s\">%d</font>\nSell Cycle: <font color=\"%s\">%d/%d</font>\n\n" ..
 						"<b>Recovery Stat (dari Team)</b>\n" ..
 						"Koi (hatch): <font color=\"%s\">%d ekor \226\134\146 %.1f%%</font>\n" ..
-						"Seal (sell): <font color=\"%s\">%d ekor \226\134\146 %.1f%%</font>\n" ..
-						"Net per egg: <font color=\"%s\"><b>%+.2f</b></font> %s",
+						"Seal (sell): <font color=\"%s\">%d ekor \226\134\146 %.1f%%</font>",
 						col, s.status, s.phase,
 						gr, s.core, gr, s.hatch, gr, s.bronto, gr, s.sell,
 						gr, s.backpack, s.maxBackpack,
 						gr, s.currentEgg, gr, s.eggBefore, gr, s.currentAmount, gr, s.placed, s.maxPlaced,
 						gr, s.eggsHatched, gr, s.cycleProg, s.cycleTarget,
 						gr, (s.proc or {}).koiCount or 0, (s.proc or {}).koiPct or 0,
-						gr, (s.proc or {}).sealCount or 0, (s.proc or {}).sealPct or 0,
-						((s.proc or {}).netPerEgg or 0) >= 0 and "#5acc78" or "#dc5050",
-						(s.proc or {}).netPerEgg or 0,
-						((s.proc or {}).netPerEgg or 0) >= 0 and "\u{2705}" or "\u{26A0} bocor")
+						gr, (s.proc or {}).sealCount or 0, (s.proc or {}).sealPct or 0)
 				end
 				task.wait(1.0)
 			end

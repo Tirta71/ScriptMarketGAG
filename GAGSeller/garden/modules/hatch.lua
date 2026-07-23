@@ -436,7 +436,7 @@ return function(ctx)
 		elseif lv <= 120 then return (lv - 100) * 0.25 + 100
 		else return (lv - 120) * 0.1 + 105 end
 	end
-	local function passivePct(teamSet, typeMatch, base, scale, maxPer, capTotal)
+	local function passivePct(teamSet, typeMatch, base, scale, maxPer)
 		local inv = inventory()
 		local n, total = 0, 0
 		for u in pairs(teamSet or {}) do
@@ -444,19 +444,18 @@ return function(ctx)
 			if v and tostring(v.PetType):find(typeMatch) then
 				n = n + 1
 				local val = base + scale * scaledLevel((v.PetData or {}).Level or 0)
-				total = total + math.clamp(val, 0, maxPer)
+				total = total + math.clamp(val, 0, maxPer) -- per-pet asli (Max 10), total ga di-cap
 			end
 		end
-		return n, math.min(capTotal, total)
+		return n, total
 	end
-	-- Koi (Fish of Fortune): Base1 Scale0.22 Max10, cap 50. Seal (Seal the Deal): Base1 Scale0.05 Max10.
+	-- Koi (Fish of Fortune): Base1 Scale0.22 Max10. Seal (Seal the Deal): Base1 Scale0.05 Max10.
 	function ctx.getRecoveryStat()
-		local kn, kp = passivePct(CFG.hatchHatchTeam, "Koi", 1, 0.22, 10, 50)
-		local sn, sp = passivePct(CFG.hatchSellTeam, "Seal", 1, 0.05, 10, 50)
+		local kn, kp = passivePct(CFG.hatchHatchTeam, "Koi", 1, 0.22, 10)
+		local sn, sp = passivePct(CFG.hatchSellTeam, "Seal", 1, 0.05, 10)
 		return {
 			koiCount = kn, koiPct = kp,
 			sealCount = sn, sealPct = sp,
-			netPerEgg = (kp + sp) / 100 - 1, -- estimasi net egg per egg placed
 		}
 	end
 
@@ -505,9 +504,8 @@ return function(ctx)
 					:format(eggBefore, curAmt, curAmt - eggBefore, recovery, luckyHatch, recovery), inline = false },
 				{ name = "Recovery Stat (Team) :", value = (function()
 					local p = ctx.getRecoveryStat()
-					return ("> Koi (hatch): `%d ekor` \226\134\146 `%.1f%%`\n> Seal (sell): `%d ekor` \226\134\146 `%.1f%%`\n> Net per egg: `%+.2f` %s")
-						:format(p.koiCount, p.koiPct, p.sealCount, p.sealPct, p.netPerEgg,
-							p.netPerEgg >= 0 and "\u{2705}" or "\u{26A0}\u{FE0F} bocor")
+					return ("> Koi (hatch): `%d ekor` \226\134\146 `%.1f%%`\n> Seal (sell): `%d ekor` \226\134\146 `%.1f%%`")
+						:format(p.koiCount, p.koiPct, p.sealCount, p.sealPct)
 				end)(), inline = false },
 				{ name = "Hatch Statistics :", value = ("> Hatch Cycles: `%d`\n> Total Hatched: `%d`\n> Sell Cycle: `%d / %d`\n> Cycle Duration: `%s`\n> All Time Duration: `%s`")
 					:format(hatchCycles, hatched, ((ctx.state.hatchRounds or 0) - (ctx.state.hatchLastSellCycle or 0)), CFG.sellEveryNCycles or 1,
