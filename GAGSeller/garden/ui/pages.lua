@@ -889,7 +889,7 @@ return function(ctx)
 	local fav = makeAccordion(inv, "Automation Favourite Pets", 3, false)
 	makeToggle(fav, "Auto Favourite Pets", "Automatically favorite selected pet types",
 		function() return CFG.autoFavorite end,
-		function(v) CFG.autoFavorite = v; persist() end, 1)
+		function(v) CFG.autoFavorite = v; persist(); if v then ctx.startAutoFavorite() else ctx.stopAutoFavorite() end end, 1)
 	makeMultiDropdown(fav, "Favourite Pet Types", "Pet types to keep favorited",
 		reg.PET_OPTIONS, CFG.favoritePetTypes, function() persist() end, 2)
 

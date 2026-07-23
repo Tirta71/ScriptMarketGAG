@@ -104,19 +104,14 @@ return function(ctx)
 	-- filter disimpan pakai label "Pet - Egg"; cocokin pakai label yg sama.
 	local petEggLabel = (ctx.reg and ctx.reg.petEggLabel) or function(p) return p end
 	-- apakah pet ini termasuk yg DIJUAL (cocok filter)?
-	-- Pakai berat TAMPIL (BaseWeight*(1+0.1*Level)) — sama kaya yg keliatan di game/dropdown,
-	-- BUKAN BaseWeight mentah. Weight + Age = AND (harus dua-duanya, 0 = ga difilter).
 	local function shouldSell(petType, pd)
 		pd = pd or {}
+		local w = pd.BaseWeight or 0
 		local age = pd.Level or 0
-		local w = (pd.BaseWeight or 0) * (1 + 0.1 * age)
 		local key = petEggLabel(petType)
 		if (CFG.sellPetTypes or {})[key] then
-			local wt = CFG.sellWeightThreshold or 0
-			local at = CFG.sellAgeThreshold or 0
-			local wOk = wt <= 0 or w < wt
-			local aOk = at <= 0 or age < at
-			if (wt > 0 or at > 0) and wOk and aOk then return true end
+			if w < (CFG.sellWeightThreshold or 0) then return true end
+			if age < (CFG.sellAgeThreshold or 0) then return true end
 		end
 		if (CFG.sellSpecialTypes or {})[key] then
 			local sw = CFG.sellSpecialWeight or 0
@@ -734,5 +729,30 @@ return function(ctx)
 	function ctx.stopHatch()
 		ctx.state.hatchId = (ctx.state.hatchId or 0) + 1
 		ctx.state.hatchStatus = "Idle"
+	end
+
+	----------------------------------------------------------------- AUTO FAVORITE
+	-- Favoritin otomatis pet yg tipenya ada di CFG.favoritePetTypes (biar ga ke-sell).
+	-- favoritePetTypes = key PET_OPTIONS (nama pet polos); tool attribute "f" = nama pet.
+	function ctx.startAutoFavorite()
+		ctx.state.autoFavId = (ctx.state.autoFavId or 0) + 1
+		local my = ctx.state.autoFavId
+		ctx.elevate()
+		task.spawn(function()
+			while CFG.autoFavorite and ctx.alive() and ctx.state.autoFavId == my do
+				if next(CFG.favoritePetTypes or {}) then
+					for _, t in ipairs(petTools()) do
+						local pt = t:GetAttribute("f")
+						if pt and (CFG.favoritePetTypes)[pt] and not isFav(t) then
+							setFav(t, true)
+						end
+					end
+				end
+				task.wait(3)
+			end
+		end)
+	end
+	function ctx.stopAutoFavorite()
+		ctx.state.autoFavId = (ctx.state.autoFavId or 0) + 1
 	end
 end

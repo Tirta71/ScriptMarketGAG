@@ -81,6 +81,12 @@ return function(ctx)
 		ctx.log("Auto-resume: Auto Hatch ON.")
 	end
 
+	-- auto-resume Auto Favourite Pets kalau sebelumnya aktif
+	if CFG.autoFavorite and ctx.startAutoFavorite then
+		ctx.startAutoFavorite()
+		ctx.log("Auto-resume: Auto Favourite ON.")
+	end
+
 	-- auto-resume Growth kalau sebelumnya aktif
 	if CFG.growthEnabled and ctx.startGrowth then
 		task.wait(2.0)
