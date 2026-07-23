@@ -508,13 +508,20 @@ return function(ctx)
 		}
 	end
 
-	-- Recovery dihitung deterministik dari % Koi/Seal aktif × jumlah aksi periode ini.
-	-- (Bukan ukur egg-delta: egg balik server telat replikasi -> salah atribusi.)
-	local function addPeriod(kind, n)
-		local s = ctx.state
+	-- Recovery deterministik: rate = min(50%, %pet aktif) × jumlah aksi. Cap 50% = MAX recovery game.
+	-- Koi bisa ada di Hatch team ATAU Bronto team -> pakai team yg dipakai pass itu.
+	local function addHatchRec(n, teamSet)
+		n = math.max(0, n or 0); if n == 0 then return end
+		local _, kp = passivePct(teamSet, "Koi", 1, 0.22, 10)
+		ctx.state.periodHatched = (ctx.state.periodHatched or 0) + n
+		ctx.state.periodHatchRec = (ctx.state.periodHatchRec or 0) + math.min(50, kp) / 100 * n
+	end
+	local function addSellRec(n, teamSet)
 		n = math.max(0, n or 0)
-		if kind == "hatch" then s.periodHatched = (s.periodHatched or 0) + n
-		else s.periodSold = (s.periodSold or 0) + n; s.sellDoneThisReport = true end
+		local _, sp = passivePct(teamSet, "Seal", 1, 0.05, 10)
+		ctx.state.periodSold = (ctx.state.periodSold or 0) + n
+		ctx.state.periodSellRec = (ctx.state.periodSellRec or 0) + math.min(50, sp) / 100 * n
+		ctx.state.sellDoneThisReport = true
 	end
 
 	local function fmtDur(sec)
@@ -555,14 +562,16 @@ return function(ctx)
 			huntParts[#huntParts + 1] = #lines > 0 and (head .. "\n" .. table.concat(lines, "\n")) or head
 		end
 		local hunt = table.concat(huntParts, "\n"):sub(1, 1020)
-		-- Recovery deterministik: % Koi/Seal aktif × jumlah aksi periode ini
+		-- Recovery deterministik (cap 50%). Koi dari Hatch+Bronto team; Seal dari Sell team.
 		local rec = ctx.getRecoveryStat()
 		local periodHatched = ctx.state.periodHatched or 0
 		local sellDone = ctx.state.sellDoneThisReport == true
 		local periodSold = sellDone and (ctx.state.periodSold or 0) or 0
-		local recHatchCycle = math.floor(rec.koiPct / 100 * periodHatched + 0.5)
-		local recSellCycle = sellDone and math.floor(rec.sealPct / 100 * periodSold + 0.5) or 0
-		local sellPctShown = sellDone and rec.sealPct or 0
+		local recHatchCycle = math.floor((ctx.state.periodHatchRec or 0) + 0.5)
+		local recSellCycle = sellDone and math.floor((ctx.state.periodSellRec or 0) + 0.5) or 0
+		-- % efektif (rata2 recovery real, udah capped) buat ditampilin
+		local koiPctShown = periodHatched > 0 and ((ctx.state.periodHatchRec or 0) / periodHatched * 100) or math.min(50, rec.koiPct)
+		local sellPctShown = (sellDone and periodSold > 0) and ((ctx.state.periodSellRec or 0) / periodSold * 100) or 0
 		local totalRecovery = recHatchCycle + recSellCycle -- per cycle (Hatch + Sell laporan ini)
 		local maxBp = 0
 		local d = getData(); if d then maxBp = tonumber(d.PetsData.MutableStats.MaxPetsInInventory) or 0 end
@@ -577,7 +586,7 @@ return function(ctx)
 					:format(teamNames(CFG.hatchCoreTeam), teamNames(CFG.hatchHatchTeam), teamNames(CFG.hatchBrontoTeam), teamNames(CFG.hatchSellTeam)):sub(1, 1020), inline = false },
 				{ name = ("Hunt Statistics (%d):"):format(totalPets), value = hunt, inline = false },
 				{ name = "Egg Statistics :", value = ("> Egg Before: `%d`\n> Current Amount: `%d`\n> Net Result: `%d`\n> Lucky Hatch: `%d` ( %.2f%% )\n> Lucky Sell: `%d` ( %.2f%% )\n> Total Recovery: `%d`")
-					:format(eggBefore, curAmt, curAmt - eggBefore, recHatchCycle, rec.koiPct, recSellCycle, sellPctShown, totalRecovery), inline = false },
+					:format(eggBefore, curAmt, curAmt - eggBefore, recHatchCycle, koiPctShown, recSellCycle, sellPctShown, totalRecovery), inline = false },
 				{ name = "Recovery Stat (Team) :", value = ("> Koi (hatch): `%d ekor` \226\134\146 `%.1f%%`\n> Seal (sell): `%d ekor` \226\134\146 `%.1f%%`")
 					:format(rec.koiCount, rec.koiPct, rec.sealCount, rec.sealPct), inline = false },
 				{ name = "Hatch Statistics :", value = ("> Hatch Cycles: `%d`\n> Total Hatched: `%d`\n> Sell Cycle: `%d / %d`\n> Cycle Duration: `%s`\n> All Time Duration: `%s`")
@@ -590,6 +599,7 @@ return function(ctx)
 		ctx.state.hatchCycleStartTime = os.time()
 		-- reset counter periode (Lucky Hatch/Sell dihitung ulang tiap webhook)
 		ctx.state.periodHatched, ctx.state.periodSold, ctx.state.sellDoneThisReport = 0, 0, false
+		ctx.state.periodHatchRec, ctx.state.periodSellRec = 0, 0
 	end
 	ctx.hatchSendCycleStats = sendCycleStats
 	ctx.hatchTrack = trackHatch
@@ -650,7 +660,7 @@ return function(ctx)
 			if next(CFG.hatchSellTeam or {}) and not equipTeam(CFG.hatchSellTeam, "Sell Team") then return end -- team wajib lengkap
 			task.wait(CFG.sellTeamDelay or 5)
 			local sold = doSell()
-			addPeriod("sell", tonumber(sold) or 0) -- jumlah pet dijual (buat Lucky Sell)
+			addSellRec(tonumber(sold) or 0, CFG.hatchSellTeam) -- recovery Seal @ Sell team (cap 50%)
 			ctx.state.hatchLastSellCycle = cycle
 			task.spawn(sendCycleStats) -- summary per sell cycle
 			return
@@ -699,7 +709,7 @@ return function(ctx)
 				if next(CFG.hatchHatchTeam or {}) and not equipTeam(CFG.hatchHatchTeam, "Hatch Team") then return end
 				ctx.state.hatchPhase = ("Hatching Hatch-team (%d)"):format(#normal)
 				hatchList(normal)
-				addPeriod("hatch", #normal) -- jumlah hatch pakai Koi (buat Lucky Hatch)
+				addHatchRec(#normal, CFG.hatchHatchTeam) -- recovery Koi @ Hatch team
 			end
 			-- pass BRONTO -> Bronto Team (+30% berat) + kirim Hatch Alert per pet
 			if #bronto > 0 then
@@ -714,6 +724,7 @@ return function(ctx)
 					ctx.state.hatchEggsHatched = (ctx.state.hatchEggsHatched or 0) + 1
 					task.wait(CFG.hatchSpeed or 0.2)
 				end
+				addHatchRec(#bronto, CFG.hatchBrontoTeam) -- recovery Koi @ Bronto team (koi di bronto team juga)
 			end
 			-- 1 batch (normal+bronto) selesai = 1 ronde/cycle
 			ctx.state.hatchRounds = (ctx.state.hatchRounds or 0) + 1
@@ -747,6 +758,8 @@ return function(ctx)
 		ctx.state.hatchTiers = {}
 		ctx.state.periodHatched = 0
 		ctx.state.periodSold = 0
+		ctx.state.periodHatchRec = 0
+		ctx.state.periodSellRec = 0
 		ctx.state.sellDoneThisReport = false
 		-- catat jumlah egg terpilih di awal (buat "Egg Before") — scan Backpack + Character
 		local eggName = CFG.hatchEggName or "Rare Egg"
