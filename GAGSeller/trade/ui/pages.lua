@@ -80,15 +80,20 @@ return function(ctx)
 	makeButton(reloBody, "Relocate Now", C.acc, function() ctx.relocateNow() end, 5)
 
 	------------------------------------------------------------------ LISTING PROFILES (accordion di Sell)
+	-- simpan fungsi buka accordion + container biar bisa dinavigasi dari klik card Inventory
+	local profileOpen, profileCont, listingOpen = {}, {}, {}
+	ctx.ui.profileOpen, ctx.ui.profileCont, ctx.ui.listingOpen = profileOpen, profileCont, listingOpen
 	for i = 1, NUM_PROFILES do
 		local prof = CFG.profiles[i]
-		local profBody = makeAccordion(sellPage, "Profile " .. i, 4 + i)
+		local profBody, profSetOpen, profContainer = makeAccordion(sellPage, "Profile " .. i, 4 + i)
+		profileOpen[i], profileCont[i], listingOpen[i] = profSetOpen, profContainer, {}
 
 		local clearers = {} -- reset tiap listing (dipakai tombol Clear All)
 
 		for j = 1, NUM_LISTINGS do
 			local sub = prof.listings[j]
-			local listBody = makeAccordion(profBody, "Listing " .. j, j)
+			local listBody, listSetOpen = makeAccordion(profBody, "Listing " .. j, j)
+			listingOpen[i][j] = listSetOpen
 
 			local petRefresh = makeDropdown(listBody, "Pet Types [Listing " .. j .. "]", "Select pet types to list", reg.PET_OPTIONS, sub.pets, function() persistState() end, 1)
 			local mutRefresh = makeDropdown(listBody, "Mutation [Listing " .. j .. "]", "Empty = non-mutated only, select = must have mutation", reg.MUT_OPTIONS, sub.muts, function() persistState() end, 2)
@@ -206,6 +211,47 @@ return function(ctx)
 	mk("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, rowsHolder)
 	local emptyLbl = mk("TextLabel", { Size = UDim2.new(1, 0, 0, 26), BackgroundTransparency = 1, Text = "Belum ada pet target dipilih.", Font = Enum.Font.Gotham, TextSize = 12, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 1 }, rowsHolder)
 
+	-- cari (profil, listing) tempat pet type ini dikonfigurasi (ambil yg pertama ketemu)
+	local function findListing(pt)
+		for i = 1, NUM_PROFILES do
+			local prof = CFG.profiles[i]
+			if prof and type(prof.listings) == "table" then
+				for j = 1, NUM_LISTINGS do
+					local sub = prof.listings[j]
+					if sub and type(sub.pets) == "table" then
+						for petKey in pairs(sub.pets) do
+							if ((string.split(petKey, " - ")[1]) or petKey) == pt then return i, j end
+						end
+					end
+				end
+			end
+		end
+	end
+
+	-- klik card -> pindah ke tab Sell, buka Profile+Listing pet itu, scroll ke situ
+	local function gotoListing(pt)
+		local i, j = findListing(pt)
+		if not i then return end
+		if ctx.selectTab then ctx.selectTab("Sell") end
+		local po = ctx.ui.profileOpen and ctx.ui.profileOpen[i]
+		if po then po(true) end
+		local lo = ctx.ui.listingOpen and ctx.ui.listingOpen[i] and ctx.ui.listingOpen[i][j]
+		if lo then lo(true) end
+		-- scroll accordion Profile ke atas viewport (tunggu 1 frame biar layout update)
+		task.spawn(function()
+			local sf = ctx.ui.pages and ctx.ui.pages["Sell"]
+			local cont = ctx.ui.profileCont and ctx.ui.profileCont[i]
+			if sf and cont then
+				game:GetService("RunService").Heartbeat:Wait()
+				local ok = pcall(function()
+					local y = cont.AbsolutePosition.Y - sf.AbsolutePosition.Y + sf.CanvasPosition.Y
+					sf.CanvasPosition = Vector2.new(0, math.max(0, y - 8))
+				end)
+				return ok
+			end
+		end)
+	end
+
 	local petRows = {}
 	local function renderInventory()
 		local counts = ctx.inventoryCounts()
@@ -220,13 +266,18 @@ return function(ctx)
 		emptyLbl.Visible = (#types == 0)
 		for i, pt in ipairs(types) do
 			local c = counts[pt] or 0
-			local row = mk("Frame", { Size = UDim2.new(1, 0, 0, 34), BackgroundColor3 = C.panel, LayoutOrder = i + 1 }, rowsHolder)
+			local row = mk("TextButton", { Size = UDim2.new(1, 0, 0, 34), BackgroundColor3 = C.panel, LayoutOrder = i + 1, Text = "", AutoButtonColor = false }, rowsHolder)
 			corner(row, 8)
 			mk("Frame", { Size = UDim2.fromOffset(3, 16), Position = UDim2.new(0, 10, 0.5, -8), BackgroundColor3 = (c > 0 and C.acc or C.stroke), BorderSizePixel = 0 }, row)
-			mk("TextLabel", { Size = UDim2.new(1, -90, 1, 0), Position = UDim2.fromOffset(22, 0), BackgroundTransparency = 1, Text = pt, Font = Enum.Font.GothamMedium, TextSize = 12, TextColor3 = C.txt, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, row)
-			local pill = mk("Frame", { Size = UDim2.fromOffset(54, 22), Position = UDim2.new(1, -64, 0.5, -11), BackgroundColor3 = (c > 0 and C.acc or C.stroke), BorderSizePixel = 0 }, row)
+			mk("TextLabel", { Size = UDim2.new(1, -110, 1, 0), Position = UDim2.fromOffset(22, 0), BackgroundTransparency = 1, Text = pt, Font = Enum.Font.GothamMedium, TextSize = 12, TextColor3 = C.txt, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd }, row)
+			local pill = mk("Frame", { Size = UDim2.fromOffset(54, 22), Position = UDim2.new(1, -82, 0.5, -11), BackgroundColor3 = (c > 0 and C.acc or C.stroke), BorderSizePixel = 0 }, row)
 			corner(pill, 11)
 			mk("TextLabel", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = tostring(c), Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = Color3.new(1, 1, 1), TextXAlignment = Enum.TextXAlignment.Center }, pill)
+			-- chevron penanda bisa diklik -> ke listing profile
+			local chev = mk("TextLabel", { Size = UDim2.fromOffset(14, 34), Position = UDim2.new(1, -18, 0, 0), BackgroundTransparency = 1, Text = "›", Font = Enum.Font.GothamBold, TextSize = 16, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Center }, row)
+			row.MouseEnter:Connect(function() row.BackgroundColor3 = C.row; chev.TextColor3 = C.acc end)
+			row.MouseLeave:Connect(function() row.BackgroundColor3 = C.panel; chev.TextColor3 = C.sub end)
+			row.MouseButton1Click:Connect(function() gotoListing(pt) end)
 			petRows[#petRows + 1] = row
 		end
 	end

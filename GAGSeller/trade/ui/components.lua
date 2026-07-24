@@ -222,19 +222,38 @@ return function(ctx)
 			TS:Create(head, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 1 }):Play()
 		end)
 
-		head.MouseButton1Click:Connect(function()
-			body.Visible = not body.Visible
-			line.Visible = body.Visible
-			local open = body.Visible
+		-- setOpen: buka/tutup accordion (dipakai head click + navigasi dari luar).
+		local function setOpen(open)
+			body.Visible = open
+			line.Visible = open
 			local targetRotation = open and 180 or 0
 			TS:Create(arrow, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Rotation = targetRotation }):Play()
 			TS:Create(arrow, TweenInfo.new(0.2), { TextColor3 = open and C.acc or C.sub }):Play()
 			TS:Create(lbl, TweenInfo.new(0.2), { TextColor3 = open and C.acc or C.txt }):Play()
+		end
+
+		head.MouseButton1Click:Connect(function()
+			setOpen(not body.Visible)
 		end)
-		return body
+		-- return: body (Frame) + setOpen (fn) + container (buat scroll-into-view).
+		return body, setOpen, container
 	end
 
 	----------------------------------------------------------------- page + tab
+	-- selectTab: aktifin tab `name` (dipakai tab click + navigasi dari Inventory).
+	local function selectTab(name)
+		local pages   = ctx.ui.pages
+		local tabBtns = ctx.ui.tabBtns
+		for n, p in pairs(pages) do p.Visible = (n == name) end
+		for n, b in pairs(tabBtns) do
+			local on = (n == name)
+			TS:Create(b.btn, TweenInfo.new(0.18), { BackgroundTransparency = on and 0.86 or 1 }):Play()
+			b.btn.TextColor3 = on and C.txt or C.sub
+			b.line.Visible = on
+		end
+	end
+	ctx.selectTab = selectTab
+
 	local function makePage(name, titleText, iconLabel, order)
 		local tabButtonsFrame = ctx.ui.tabButtonsFrame
 		local content         = ctx.ui.content
@@ -266,15 +285,7 @@ return function(ctx)
 		local pageHeader = mk("Frame", { Size = UDim2.new(1, 0, 0, 38), BackgroundTransparency = 1, LayoutOrder = 0 }, pg)
 		mk("TextLabel", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = titleText, Font = Enum.Font.GothamBold, TextSize = 22, TextColor3 = C.txt, TextXAlignment = Enum.TextXAlignment.Left }, pageHeader)
 
-		btn.MouseButton1Click:Connect(function()
-			for n, p in pairs(pages) do p.Visible = (n == name) end
-			for n, b in pairs(tabBtns) do
-				local on = (n == name)
-				TS:Create(b.btn, TweenInfo.new(0.18), { BackgroundTransparency = on and 0.86 or 1 }):Play()
-				b.btn.TextColor3 = on and C.txt or C.sub
-				b.line.Visible = on
-			end
-		end)
+		btn.MouseButton1Click:Connect(function() selectTab(name) end)
 		return pg
 	end
 
