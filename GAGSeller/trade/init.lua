@@ -69,20 +69,21 @@ end
 
 --------------------------------------------------------------------- boot
 -- Urutan load penting: modul bawah bergantung pada modul di atasnya.
+-- Modul dikelompokkan per-menu: tiap fitur folder sendiri, infra bersama di core/.
 local MODULES = {
-	"modules/services.lua",   -- game services + deps require
-	"modules/registry.lua",   -- PET/MUT/SKIN options
-	"modules/config.lua",     -- CFG default + load/persist state
-	"ui/theme.lua",           -- warna + helper Instance
-	"modules/booth.lua",      -- booth claim / tokens
-	"modules/webhook.lua",    -- webhook + sell listener
-	"modules/listing.lua",    -- listPass / mainLoop / util
-	"ui/components.lua",      -- toggle/input/dropdown/accordion/tab
-	"ui/window.lua",          -- jendela utama + log + status
-	"modules/relocate.lua",   -- auto relocate sell (server-hop kalau booth idle)
-	"modules/sniper.lua",     -- auto snipe / auto buy (tab Buy)
-	"ui/pages.lua",           -- halaman Sell/Buy/Inventory/Misc
-	"app.lua",                -- init akhir + supervisor loop
+	"modules/core/services.lua",  -- game services + deps require
+	"modules/core/registry.lua",  -- PET/MUT/SKIN options
+	"modules/core/config.lua",    -- CFG default + load/persist state
+	"ui/theme.lua",               -- warna + helper Instance
+	"modules/booth/init.lua",     -- booth claim / tokens
+	"modules/core/webhook.lua",   -- webhook + sell listener
+	"modules/listing/init.lua",   -- listPass / mainLoop / util
+	"ui/components.lua",          -- toggle/input/dropdown/accordion/tab
+	"ui/window.lua",              -- jendela utama + log + status
+	"modules/relocate/init.lua",  -- auto relocate sell (server-hop kalau booth idle)
+	"modules/sniper/init.lua",    -- auto snipe / auto buy (tab Buy)
+	"ui/pages.lua",               -- halaman Sell/Buy/Inventory/Misc
+	"app.lua",                    -- init akhir + supervisor loop
 }
 
 for _, rel in ipairs(MODULES) do
