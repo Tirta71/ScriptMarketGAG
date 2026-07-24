@@ -8,7 +8,8 @@
 	  - selain itu   -> GAGSeller/garden/init.lua  (fitur garden)
 --]]
 
-local branch = _G.GAG_BRANCH or "main"
+-- Branch: "main" = production. Override buat dev: getgenv().GAG_BRANCH = "dev"
+local branch = (getgenv and getgenv().GAG_BRANCH) or _G.GAG_BRANCH or "main"
 local ROOT = "https://raw.githubusercontent.com/Tirta71/ScriptMarketGAG/" .. branch .. "/GAGSeller"
 
 -- ============================ ANALYTICS (siapa yang jalanin hub) ============================

@@ -15,8 +15,10 @@
 	Struktur logika 100% sama dengan GAGSeller.lua single-file, hanya dipecah.
 --]]
 
--- Base URL raw GitHub tempat semua modul berada.
-local BASE = "https://raw.githubusercontent.com/Tirta71/ScriptMarketGAG/main/GAGSeller/trade"
+-- Base URL raw GitHub tempat semua modul berada. Branch bisa di-override buat dev:
+--   getgenv().GAG_BRANCH = "dev"  (default "main" = production)
+local branch = (getgenv and getgenv().GAG_BRANCH) or _G.GAG_BRANCH or "main"
+local BASE = "https://raw.githubusercontent.com/Tirta71/ScriptMarketGAG/" .. branch .. "/GAGSeller/trade"
 
 --------------------------------------------------------------------- loader
 local function loadModule(relPath)
