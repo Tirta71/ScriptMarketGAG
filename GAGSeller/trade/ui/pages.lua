@@ -283,8 +283,7 @@ return function(ctx)
 	end
 	ctx.renderInventory = renderInventory
 
-	-- Refresh button (elegan, konsisten makeButton)
-	makeButton(invPage, "🔄  Refresh Inventory", C.acc, renderInventory, 3)
+	-- auto-refresh tiap tab Inventory diklik (tombol manual dihapus, redundan)
 	ctx.ui.tabBtns["Inventory"].btn.MouseButton1Click:Connect(renderInventory)
 
 	------------------------------------------------------------------ MISC PAGE
