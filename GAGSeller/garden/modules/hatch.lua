@@ -580,10 +580,10 @@ return function(ctx)
 		local koiPctShown = rec.koiPct
 		local sellPctShown = sellDone and rec.sealPct or 0
 		local totalRecovery = recHatchCycle + recSellCycle -- per cycle (Hatch + Sell laporan ini)
-		-- Egg Placed = Max Place - Lucky Hatch (egg yg diambil dari stok, sisanya dari recovery).
-		-- Current Amount yg dilaporin = egg sekarang - Egg Placed.
-		local eggPlaced = math.max(0, maxP - recHatchCycle)
-		local curAdj = curAmt - eggPlaced
+		-- Current Amount = total egg = egg di backpack + egg yg lagi ke-place di garden.
+		-- Diukur SETELAH garden ke-refill (egg balik udah nyampe & ke-place) -> ga ada yg miss.
+		-- Net Result = Current Amount - Egg Before (dua-duanya total, garden ikut kehitung).
+		local curAdj = curAmt + placedEggCount()
 		local maxBp = 0
 		local d = getData(); if d then maxBp = tonumber(d.PetsData.MutableStats.MaxPetsInInventory) or 0 end
 		local hatchCycles = ctx.state.hatchRounds or 0
@@ -676,8 +676,8 @@ return function(ctx)
 			-- simpan progress sell-cycle SEBELUM reset (biar webhook nampilin 2/2 bukan 0/2)
 			ctx.state.hatchReportSellProg = cycle - (ctx.state.hatchLastSellCycle or 0)
 			ctx.state.hatchLastSellCycle = cycle
-			task.wait(3) -- tunggu notif "Lucky Pet" (egg balik dari sell) nyusul dulu
-			task.spawn(sendCycleStats) -- summary per sell cycle
+			-- report DITUNDA: dikirim nanti setelah garden ke-refill (place egg lagi), biar
+			-- Current Amount stabil & Lucky Sell (egg balik) udah nyampe.
 			return
 		end
 		-- clamp target ke kapasitas farm biar ga nyangkut (mis. Max Placed > MaxEggsInFarm)
@@ -696,6 +696,13 @@ return function(ctx)
 			placed = placedEggCount()
 			if added > 0 and placed < maxP then return end -- masih nambah -> lanjut place tick berikut
 			-- added==0 (mentok) & belum penuh -> anti-stuck: lanjut proses egg yg udah ada
+		end
+
+		-- REPORT: garden udah ke-refill (place selesai). Kalau ada report pending dari
+		-- hatch/sell sebelumnya, KIRIM sekarang -> Current Amount = backpack + garden (stabil).
+		if ctx.state.hatchPendingReport then
+			ctx.state.hatchPendingReport = false
+			task.spawn(sendCycleStats)
 		end
 
 		local ready = readyEggs()
@@ -744,12 +751,10 @@ return function(ctx)
 			task.wait(1.5)
 			-- 1 batch (normal+bronto) selesai = 1 ronde/cycle
 			ctx.state.hatchRounds = (ctx.state.hatchRounds or 0) + 1
-			-- kirim webhook TIAP hatch cycle (per-cycle) -> Lucky Hatch/Egg Placed/Net Result
-			-- selalu akurat & match game, ga keakumulasi sepanjang interval sell.
-			-- JEDA dulu biar notif "Lucky Hatch" (egg balik) nyusul & kehitung di cycle ini.
-			ctx.state.hatchReportSellProg = nil
-			ctx.state.sellDoneThisReport = false
-			task.spawn(function() task.wait(3); sendCycleStats() end)
+			-- TANDAI report pending. Webhook ga dikirim di sini — ditunda sampai garden
+			-- ke-refill (place egg lagi) biar Current Amount stabil & Lucky Hatch keitung.
+			if not (ctx.state.sellDoneThisReport) then ctx.state.hatchReportSellProg = nil end
+			ctx.state.hatchPendingReport = true
 			return
 		end
 
@@ -784,7 +789,8 @@ return function(ctx)
 		ctx.state.periodHatchRec = 0
 		ctx.state.periodSellRec = 0
 		ctx.state.sellDoneThisReport = false
-		-- catat jumlah egg terpilih di awal (buat "Egg Before") — scan Backpack + Character
+		ctx.state.hatchPendingReport = false
+		-- catat TOTAL egg terpilih di awal (buat "Egg Before") = backpack + yg udah ke-place
 		local eggName = CFG.hatchEggName or "Rare Egg"
 		ctx.state.hatchEggBefore = 0
 		for _, src in ipairs({ LP:FindFirstChildOfClass("Backpack"), LP.Character }) do
@@ -794,6 +800,8 @@ return function(ctx)
 				end
 			end end
 		end
+		-- egg yg udah nangkring di garden pas start juga dihitung (biar konsisten sama Current Amount)
+		ctx.state.hatchEggBefore = ctx.state.hatchEggBefore + placedEggCount()
 		ctx.state.hatchStartTime = os.time()
 		ctx.state.hatchCycleStartTime = os.time()
 		task.spawn(loop)
