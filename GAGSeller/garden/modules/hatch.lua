@@ -580,10 +580,10 @@ return function(ctx)
 		local koiPctShown = rec.koiPct
 		local sellPctShown = sellDone and rec.sealPct or 0
 		local totalRecovery = recHatchCycle + recSellCycle -- per cycle (Hatch + Sell laporan ini)
-		-- Current Amount = total egg = egg di backpack + egg yg lagi ke-place di garden.
-		-- Diukur SETELAH garden ke-refill (egg balik udah nyampe & ke-place) -> ga ada yg miss.
-		-- Net Result = Current Amount - Egg Before (dua-duanya total, garden ikut kehitung).
-		local curAdj = curAmt + placedEggCount()
+		-- Current Amount = egg di backpack APA ADANYA (yg keliatan di game). Diukur SETELAH
+		-- garden ke-refill (place egg lagi) -> egg balik udah nyampe & ke-place, jadi ga miss.
+		-- Net Result = Current Amount - Egg Before (dua-duanya raw backpack, patokan konsisten).
+		local curAdj = curAmt
 		local maxBp = 0
 		local d = getData(); if d then maxBp = tonumber(d.PetsData.MutableStats.MaxPetsInInventory) or 0 end
 		local hatchCycles = ctx.state.hatchRounds or 0
@@ -790,7 +790,7 @@ return function(ctx)
 		ctx.state.periodSellRec = 0
 		ctx.state.sellDoneThisReport = false
 		ctx.state.hatchPendingReport = false
-		-- catat TOTAL egg terpilih di awal (buat "Egg Before") = backpack + yg udah ke-place
+		-- catat jumlah egg terpilih di awal (buat "Egg Before") = backpack apa adanya
 		local eggName = CFG.hatchEggName or "Rare Egg"
 		ctx.state.hatchEggBefore = 0
 		for _, src in ipairs({ LP:FindFirstChildOfClass("Backpack"), LP.Character }) do
@@ -800,8 +800,6 @@ return function(ctx)
 				end
 			end end
 		end
-		-- egg yg udah nangkring di garden pas start juga dihitung (biar konsisten sama Current Amount)
-		ctx.state.hatchEggBefore = ctx.state.hatchEggBefore + placedEggCount()
 		ctx.state.hatchStartTime = os.time()
 		ctx.state.hatchCycleStartTime = os.time()
 		task.spawn(loop)
