@@ -62,32 +62,34 @@ local function loadRaw(relPath)
 	local okr, val = pcall(chunk)
 	return okr and val or nil
 end
-ctx.sendWebhook     = loadRaw("webhook/sender.lua")      -- function(url, payload, ctx)
-ctx.webhookMutation = loadRaw("webhook/mutation.lua")    -- table {sendEnabled, sendSubmitted, sendClaimed}
-ctx.webhookLeveling = loadRaw("webhook/leveling.lua")    -- table leveling webhook
-ctx.webhookElephant = loadRaw("webhook/elephant.lua")    -- table elephant webhook
-ctx.webhookCleanse  = loadRaw("webhook/cleanse.lua")     -- table cleanse/mutation webhook
+ctx.sendWebhook     = loadRaw("modules/core/webhook.lua")     -- function(url, payload, ctx)
+ctx.webhookMutation = loadRaw("modules/mutation/webhook.lua") -- table {sendEnabled, sendSubmitted, sendClaimed}
+ctx.webhookLeveling = loadRaw("modules/leveling/webhook.lua") -- table leveling webhook
+ctx.webhookElephant = loadRaw("modules/elephant/webhook.lua") -- table elephant webhook
+ctx.webhookCleanse  = loadRaw("modules/cleanse/webhook.lua")  -- table cleanse/mutation webhook
 
+-- Modul dikelompokkan per-menu: tiap fitur punya folder sendiri (varian = v1/v2),
+-- infra bersama di modules/core/. Urutan load tetap dijaga (dependency).
 local MODULES = {
-	"modules/services.lua",
-	"modules/registry.lua",
-	"modules/config.lua",
+	"modules/core/services.lua",
+	"modules/core/registry.lua",
+	"modules/core/config.lua",
 	"ui/theme.lua",
-	"modules/trade.lua",
-	"modules/accept.lua",
-	"modules/pnp.lua",
-	"modules/boostpet.lua",
-	"modules/shop.lua",
-	"modules/leveling.lua",
-	"modules/leveling_v2.lua",
-	"modules/elephant.lua",
-	"modules/elephant_v2.lua",
-	"modules/growth.lua",
-	"modules/hatch.lua",
-	"modules/chesthunt.lua",
-	"modules/mutation.lua",
-	"modules/cleanse.lua",
-	"modules/summer.lua",
+	"modules/trade/init.lua",
+	"modules/accept/init.lua",
+	"modules/pnp/init.lua",
+	"modules/boostpet/init.lua",
+	"modules/shop/init.lua",
+	"modules/leveling/v1.lua",
+	"modules/leveling/v2.lua",
+	"modules/elephant/v1.lua",
+	"modules/elephant/v2.lua",
+	"modules/growth/init.lua",
+	"modules/hatch/init.lua",
+	"modules/chesthunt/init.lua",
+	"modules/mutation/init.lua",
+	"modules/cleanse/init.lua",
+	"modules/summer/init.lua",
 	"ui/components.lua",
 	"ui/esp.lua",
 	"ui/window.lua",
