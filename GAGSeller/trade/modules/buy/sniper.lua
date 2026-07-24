@@ -149,7 +149,7 @@ return function(ctx)
 	end
 
 	------------------------------------------------------------------ server hop (cari seller)
-	local HUB_FOLDER = "AllegiaanHUB"
+	local HUB_FOLDER = "AllegiaantHUB"
 	local function ensureHubFolder()
 		if type(makefolder) == "function" and (type(isfolder) ~= "function" or not isfolder(HUB_FOLDER)) then
 			pcall(function() makefolder(HUB_FOLDER) end)
