@@ -149,7 +149,14 @@ return function(ctx)
 	end
 
 	------------------------------------------------------------------ server hop (cari seller)
-	local HOP_FILE = "AllegiaanHub_snipehops.json"
+	local HUB_FOLDER = "AllegiaanHUB"
+	local function ensureHubFolder()
+		if type(makefolder) == "function" and (type(isfolder) ~= "function" or not isfolder(HUB_FOLDER)) then
+			pcall(function() makefolder(HUB_FOLDER) end)
+		end
+	end
+	ensureHubFolder()
+	local HOP_FILE = HUB_FOLDER .. "/snipehops.json"
 	local function revisitTTL() return math.max(5, math.floor(tonumber(CFG.snipeRevisitSec) or 120)) end
 	local visited  = {}
 	do
@@ -181,7 +188,7 @@ return function(ctx)
 
 	-- Ambil BANYAK server publik (paginate) + CACHE ke file (TTL 45s) biar ga fetch tiap
 	-- hop -> request ke games.roblox.com turun drastis -> ga kena rate-limit 429.
-	local SLIST_FILE, SLIST_TTL = "AllegiaanHub_serverlist.json", 45
+	local SLIST_FILE, SLIST_TTL = HUB_FOLDER .. "/serverlist.json", 45
 	local function fetchAllServers()
 		-- 1. pakai cache kalau masih fresh (< TTL)
 		if type(isfile) == "function" and isfile(SLIST_FILE) then

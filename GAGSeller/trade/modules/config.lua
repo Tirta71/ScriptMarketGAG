@@ -39,16 +39,28 @@ return function(ctx)
 		end
 	end
 
-	local STATE_FILE = "GAGSeller_state.json"
+	-- Semua data hub disimpan di folder AllegiaanHUB/ (biar rapih, ga berserakan di root).
+	local FOLDER = "AllegiaanHUB"
+	local STATE_FILE = FOLDER .. "/trade_state.json"
+	local OLD_FILE = "GAGSeller_state.json" -- lokasi lama (buat migrasi otomatis)
+
+	local function ensureFolder()
+		if type(makefolder) == "function" and (type(isfolder) ~= "function" or not isfolder(FOLDER)) then
+			pcall(function() makefolder(FOLDER) end)
+		end
+	end
 
 	local function persistState()
+		ensureFolder()
 		pcall(function() writefile(STATE_FILE, HttpService:JSONEncode(CFG)) end)
 	end
 
 	local function loadState()
-		if type(isfile) == "function" and isfile(STATE_FILE) then
-			local ok, t = pcall(function() return HttpService:JSONDecode(readfile(STATE_FILE)) end)
-			if ok and type(t) == "table" then return t end
+		for _, f in ipairs({ STATE_FILE, OLD_FILE }) do
+			if type(isfile) == "function" and isfile(f) then
+				local ok, t = pcall(function() return HttpService:JSONDecode(readfile(f)) end)
+				if ok and type(t) == "table" then return t end
+			end
 		end
 		return nil
 	end
