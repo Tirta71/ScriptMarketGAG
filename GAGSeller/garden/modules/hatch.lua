@@ -746,9 +746,10 @@ return function(ctx)
 			ctx.state.hatchRounds = (ctx.state.hatchRounds or 0) + 1
 			-- kirim webhook TIAP hatch cycle (per-cycle) -> Lucky Hatch/Egg Placed/Net Result
 			-- selalu akurat & match game, ga keakumulasi sepanjang interval sell.
+			-- JEDA dulu biar notif "Lucky Hatch" (egg balik) nyusul & kehitung di cycle ini.
 			ctx.state.hatchReportSellProg = nil
 			ctx.state.sellDoneThisReport = false
-			task.spawn(sendCycleStats)
+			task.spawn(function() task.wait(3); sendCycleStats() end)
 			return
 		end
 
