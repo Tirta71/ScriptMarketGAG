@@ -66,7 +66,7 @@ ctx.sendWebhook     = loadRaw("modules/core/webhook.lua")     -- function(url, p
 ctx.webhookMutation = loadRaw("modules/mutation/webhook.lua") -- table {sendEnabled, sendSubmitted, sendClaimed}
 ctx.webhookLeveling = loadRaw("modules/leveling/webhook.lua") -- table leveling webhook
 ctx.webhookElephant = loadRaw("modules/elephant/webhook.lua") -- table elephant webhook
-ctx.webhookCleanse  = loadRaw("modules/cleanse/webhook.lua")  -- table cleanse/mutation webhook
+ctx.webhookCleanse  = loadRaw("modules/mutation/cleanse_webhook.lua") -- table cleanse/mutation webhook
 
 -- Modul dikelompokkan per-menu: tiap fitur punya folder sendiri (varian = v1/v2),
 -- infra bersama di modules/core/. Urutan load tetap dijaga (dependency).
@@ -75,10 +75,10 @@ local MODULES = {
 	"modules/core/registry.lua",
 	"modules/core/config.lua",
 	"ui/theme.lua",
-	"modules/trade/init.lua",
-	"modules/accept/init.lua",
-	"modules/pnp/init.lua",
-	"modules/boostpet/init.lua",
+	"modules/inventory/trade.lua",
+	"modules/inventory/accept.lua",
+	"modules/pet/pnp.lua",
+	"modules/pet/boostpet.lua",
 	"modules/shop/init.lua",
 	"modules/leveling/v1.lua",
 	"modules/leveling/v2.lua",
@@ -86,12 +86,12 @@ local MODULES = {
 	"modules/elephant/v2.lua",
 	"modules/growth/init.lua",
 	"modules/hatch/init.lua",
-	"modules/chesthunt/init.lua",
+	"modules/event/chesthunt.lua",
 	"modules/mutation/init.lua",
-	"modules/cleanse/init.lua",
-	"modules/summer/init.lua",
+	"modules/mutation/cleanse.lua",
+	"modules/event/summer.lua",
 	"ui/components.lua",
-	"ui/esp.lua",
+	"modules/misc/esp.lua",
 	"ui/window.lua",
 	"ui/pages.lua",
 	"app.lua",
