@@ -290,6 +290,13 @@ return function(ctx)
 	------------------------------------------------------------------ MISC PAGE
 	local miscPage = makePage("Misc", "Miscellaneous Settings", "⚙️", 6)
 
+	-- Auto-Reconnect toggle
+	local reconCard = mk("Frame", { Size = UDim2.new(1, 0, 0, 60), BackgroundColor3 = C.row, LayoutOrder = 0 }, miscPage)
+	corner(reconCard, 8); stroke(reconCard); pad(reconCard, 12, 12, 0, 0)
+	makeToggle(reconCard, "Auto Reconnect", "Rejoin otomatis kalau ke-kick / disconnect",
+		function() return CFG.autoReconnect ~= false end,
+		function(v) CFG.autoReconnect = v; persistState() end, 1)
+
 	local webhookCard = mk("Frame", { Size = UDim2.new(1, 0, 0, 128), BackgroundColor3 = C.row, LayoutOrder = 1 }, miscPage)
 	corner(webhookCard, 8); stroke(webhookCard); pad(webhookCard, 12, 12, 8, 8)
 	mk("UIListLayout", { Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, webhookCard)

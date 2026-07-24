@@ -12,6 +12,7 @@ return function(ctx)
 		autoSell         = false,
 		autoClaim        = true,
 		autoSwitchPortal = false,
+		autoReconnect    = true,  -- auto rejoin kalau ke-kick/DC
 		boothSkin        = "Default",
 		profiles         = {},
 		webhookUrl       = "",
@@ -72,6 +73,7 @@ return function(ctx)
 		if st then
 			if st.autoClaim ~= nil then CFG.autoClaim = st.autoClaim end
 			if st.autoSwitchPortal ~= nil then CFG.autoSwitchPortal = st.autoSwitchPortal end
+			if st.autoReconnect ~= nil then CFG.autoReconnect = st.autoReconnect end
 			CFG.boothSkin       = st.boothSkin or "Default"
 			CFG.autoSell        = st.autoSell or false
 			CFG.webhookUrl      = st.webhookUrl or ""

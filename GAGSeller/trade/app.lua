@@ -34,6 +34,31 @@ return function(ctx)
 		log("Anti-AFK aktif.")
 	end)
 
+	------------------------------------------------------------------ Auto-Reconnect
+	-- Kalau ke-kick / DC / error (dialog Roblox muncul) -> otomatis rejoin ke game yg sama,
+	-- lalu hub di-load ulang di server baru (via queue_on_teleport). Ikut branch aktif.
+	pcall(function()
+		local GuiService = game:GetService("GuiService")
+		local TeleportService = game:GetService("TeleportService")
+		local branch = (getgenv and getgenv().GAG_BRANCH) or "main"
+		local RECON = ("getgenv().GAG_BRANCH='%s';loadstring(game:HttpGet('https://raw.githubusercontent.com/Tirta71/ScriptMarketGAG/%s/GAGSeller/init.lua'))()"):format(branch, branch)
+		local reconnecting = false
+		local function reconnect()
+			if reconnecting or CFG.autoReconnect == false then return end -- cek toggle real-time
+			reconnecting = true
+			log("Ke-DC/kick terdeteksi — auto reconnect...")
+			local q = queue_on_teleport or queueonteleport or (syn and syn.queue_on_teleport)
+			if q then pcall(function() q(RECON) end) end
+			task.wait(3)
+			pcall(function() TeleportService:Teleport(game.PlaceId, ctx.LP) end)
+			-- fallback: kalau teleport gagal (place instance), coba matchmaking biasa
+			task.wait(8)
+			pcall(function() TeleportService:Teleport(game.PlaceId, ctx.LP) end)
+		end
+		GuiService.ErrorMessageChanged:Connect(reconnect)
+		log("Auto-Reconnect aktif.")
+	end)
+
 	------------------------------------------------------------------ Auto Claim Supervisor Loop
 	task.spawn(function()
 		ctx.elevate()
