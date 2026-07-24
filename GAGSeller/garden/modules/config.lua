@@ -24,6 +24,7 @@ return function(ctx)
 		-- egg config
 		hatchEggName    = "Rare Egg", -- egg yg di-place & di-hatch
 		hatchMaxPlaced  = 9,          -- target egg ke-place di garden
+		hatchPlacePattern = "Grid",   -- pola taro egg: "Grid" (rapih) / "Random" (sebar acak)
 		hatchSpeed      = 0.2,        -- delay per hatch (detik); kecil = cepat
 		hatchWebhookUrl   = "",       -- webhook Discord buat Hatch Alert (bronto)
 		hatchAlertEnabled = false,    -- kirim alert pas pet masuk filter bronto
@@ -198,6 +199,7 @@ return function(ctx)
 			CFG.hatchSellTeam   = tbl(st.hatchSellTeam)
 			CFG.hatchEggName    = st.hatchEggName or "Rare Egg"
 			CFG.hatchMaxPlaced  = tonumber(st.hatchMaxPlaced) or 9
+			CFG.hatchPlacePattern = st.hatchPlacePattern or "Grid"
 			CFG.hatchSpeed      = tonumber(st.hatchSpeed) or 0.2
 			CFG.hatchWebhookUrl   = st.hatchWebhookUrl or ""
 			CFG.hatchAlertEnabled = st.hatchAlertEnabled or false

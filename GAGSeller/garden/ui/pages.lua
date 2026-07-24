@@ -199,8 +199,12 @@ return function(ctx)
 			function(code) CFG.hatchEggName = code; persist() end, 1)
 		makeInput(hEgg, "Max Placed", "Maksimal egg ke-place di garden",
 			function() return tostring(CFG.hatchMaxPlaced) end, function(t) CFG.hatchMaxPlaced = tonumber(t) or 9; persist() end, 2)
+		makeSingleDropdown(hEgg, "Placement Pattern", "Pola taro egg: Grid (rapih) / Random (sebar acak)",
+			function() return { "Grid", "Random" } end,
+			function() return CFG.hatchPlacePattern or "Grid" end,
+			function(code) CFG.hatchPlacePattern = code; persist() end, 3)
 		makeInput(hEgg, "Hatch Speed (delay/hatch, sec)", "Jeda per hatch; makin kecil makin cepat (mis. 0.1)",
-			function() return tostring(CFG.hatchSpeed) end, function(t) CFG.hatchSpeed = math.max(0.05, tonumber(t) or 0.2); persist() end, 3)
+			function() return tostring(CFG.hatchSpeed) end, function(t) CFG.hatchSpeed = math.max(0.05, tonumber(t) or 0.2); persist() end, 4)
 
 		-- Bronto Configuration (kapan pakai Bronto team buat +30% berat)
 		local hBr = makeAccordion(hatchPage, "Bronto Configuration", 4, true)

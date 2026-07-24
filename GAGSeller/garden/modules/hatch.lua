@@ -301,6 +301,27 @@ return function(ctx)
 		end
 		return out
 	end
+	-- Sebar egg ACAK di dalam area, tetap jaga jarak antar-egg biar ga "Too close".
+	local function randomPositions(n)
+		local p = plantLocPart(); if not p then return {} end
+		n = math.max(1, n or 9)
+		local SP = 4 -- jarak minimum antar egg
+		local halfX = math.max(SP, p.Size.X / 2 - 2)
+		local halfZ = math.max(SP, p.Size.Z / 2 - 2)
+		local y = p.Size.Y / 2 + 0.2
+		local out, tries = {}, 0
+		-- generate lebih banyak dari n (buffer) biar tetap bisa penuh walau ada yg bentrok
+		while #out < n * 2 and tries < n * 40 do
+			tries = tries + 1
+			local cand = p.Position + Vector3.new((math.random() * 2 - 1) * halfX, y, (math.random() * 2 - 1) * halfZ)
+			local ok = true
+			for _, e in ipairs(out) do
+				if (Vector3.new(e.X, 0, e.Z) - Vector3.new(cand.X, 0, cand.Z)).Magnitude < SP then ok = false; break end
+			end
+			if ok then out[#out + 1] = cand end
+		end
+		return out
+	end
 	local function currentEggs()
 		local GetFarm = require(RS.Modules.GetFarm); local farm = GetFarm(LP)
 		local t = {}
@@ -354,11 +375,13 @@ return function(ctx)
 		local eggName = CFG.hatchEggName or "Rare Egg"
 		if not equipEggTool(eggName) then ctx.state.hatchStatus = "Egg '" .. eggName .. "' ga ada di backpack"; return 0 end
 		local start = placedEggCount()
-		local grid = gridPositions(target)
+		local isRandom = (CFG.hatchPlacePattern == "Random")
 		-- isi slot kosong sampai TEPAT target; berhenti kalau 1 pass ga nambah (mentok)
 		for _ = 1, 3 do
 			if placedEggCount() >= target then break end
 			local before = placedEggCount()
+			-- Random: sebar ulang tiap pass (spot baru). Grid: pola tetap.
+			local grid = isRandom and randomPositions(target) or gridPositions(target)
 			local eggs = currentEggs()
 			for _, pos in ipairs(grid) do
 				if not CFG.hatchEnabled or placedEggCount() >= target then break end
