@@ -101,11 +101,14 @@ return function(ctx)
 		end
 	end
 
-	-- Equip team dgn guard: BLOK sampai team LENGKAP (data-equipped) DAN AKTIF (passive kebaca).
-	-- Bukan pakai delay tetap: langsung baca ClientPetState, begitu pet aktif lgs lanjut.
+	-- Equip team: BLOK sampai team LENGKAP ter-equip (data). Boost/passive (bronto/koi/seal)
+	-- diterapin server-side pas pet KE-EQUIP, BUKAN pas model kerender di client. ClientPetState
+	-- (spawn model) cuma dipake sbg sinyal cepat kalau kebaca — tapi di LOW PERFORMANCE MODE
+	-- model pet sering ga spawn, jadi JANGAN jadiin gate. Kalau ga kebaca aktif, tetap lanjut
+	-- setelah settle delay (team udah ke-equip = boost udah masuk server).
 	local function equipTeam(teamSet, label)
 		if not next(teamSet or {}) then return true end
-		if teamMatches(teamSet) and teamActive(teamSet) then return true end -- GUARD
+		if teamMatches(teamSet) and teamActive(teamSet) then return true end -- fast path
 		ctx.state.hatchStatus = (label or "Team") .. ": equipping..."
 		-- 1) pasang sampai data-equipped lengkap
 		for _ = 1, 6 do
@@ -113,14 +116,18 @@ return function(ctx)
 			equipTeamOnce(teamSet)
 			task.wait(0.2)
 		end
-		if not teamMatches(teamSet) then return false end
-		-- 2) tunggu sampai pet-nya AKTIF (model spawn, passive bronto/koi/seal kebaca) — poll max ~5s
-		for _ = 1, 25 do
+		if not teamMatches(teamSet) then return false end -- beneran ga bisa equip -> gagal
+		-- 2) best-effort tunggu pet aktif (model spawn) — poll max ~4s. Begitu kebaca, lanjut.
+		for _ = 1, 20 do
 			if teamActive(teamSet) then return true end
 			ctx.state.hatchStatus = (label or "Team") .. ": nunggu pet aktif..."
 			task.wait(0.2)
 		end
-		return teamActive(teamSet)
+		-- 3) ga kebaca aktif (kemungkinan low-perf, model ga spawn) TAPI udah ke-equip di data.
+		--    Boost server tetap kepasang -> LANJUT (jgn skip). Settle bentar buat jaga2.
+		ctx.state.hatchStatus = (label or "Team") .. ": ke-equip (settle)..."
+		task.wait(1.5)
+		return true
 	end
 
 	----------------------------------------------------------------- FAVORITE / SELL
