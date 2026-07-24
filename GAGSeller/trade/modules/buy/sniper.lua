@@ -129,7 +129,7 @@ return function(ctx)
 		local summary, total = buildSnipeSummary()
 		local tok = getTokens(); tok = (tok == math.huge) and "?" or tostring(tok)
 		ctx.sendWebhook({
-			username = "AllegiaanHub GAG Sniper",
+			username = "AllegiaantHub GAG Sniper",
 			embeds = {{
 				title = "✅ Pet Sniped!",
 				color = 3066993,

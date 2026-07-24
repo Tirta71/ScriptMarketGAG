@@ -467,7 +467,7 @@ return function(ctx)
 		local payload = {
 			content = "@everyone",
 			embeds = { {
-				title = "AllegiaanHub \u{2014} Hatch Alerts",
+				title = "AllegiaantHub \u{2014} Hatch Alerts",
 				color = 5814783,
 				fields = {
 					{ name = "Profile :", value = ("> Username : ||%s||"):format(LP.Name), inline = false },

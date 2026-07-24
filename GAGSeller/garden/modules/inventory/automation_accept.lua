@@ -64,7 +64,7 @@ return function(ctx)
 			end
 		end)
 	else
-		warn("[AllegiaanHub] GiftPet/AcceptPetGift remote tidak ketemu — auto accept gift nonaktif.")
+		warn("[AllegiaantHub] GiftPet/AcceptPetGift remote tidak ketemu — auto accept gift nonaktif.")
 	end
 
 	----------------------------------------------------------------- AUTO ACCEPT TRADE

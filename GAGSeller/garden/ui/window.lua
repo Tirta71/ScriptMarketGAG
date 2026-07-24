@@ -54,7 +54,7 @@ return function(ctx)
 
 	-- title bar
 	local titleBar = mk("Frame", { Size = UDim2.new(1, 0, 0, 44), BackgroundTransparency = 1 }, main)
-	mk("TextLabel", { Size = UDim2.new(1, -90, 1, 0), Position = UDim2.fromOffset(16, 0), BackgroundTransparency = 1, Text = "AllegiaanHub VIP | Grow a Garden", Font = Enum.Font.GothamBold, TextSize = 15, TextColor3 = C.acc, TextXAlignment = Enum.TextXAlignment.Left }, titleBar)
+	mk("TextLabel", { Size = UDim2.new(1, -90, 1, 0), Position = UDim2.fromOffset(16, 0), BackgroundTransparency = 1, Text = "AllegiaantHub VIP | Grow a Garden", Font = Enum.Font.GothamBold, TextSize = 15, TextColor3 = C.acc, TextXAlignment = Enum.TextXAlignment.Left }, titleBar)
 	do
 		local dragging, ds, sp
 		titleBar.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging = true; ds = i.Position; sp = main.Position end end)
@@ -81,7 +81,7 @@ return function(ctx)
 		local overlay = mk("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, BorderSizePixel = 0, ZIndex = 50, Active = true }, main)
 		local box = mk("Frame", { Size = UDim2.fromOffset(300, 150), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), BackgroundColor3 = C.panel, BorderSizePixel = 0, ZIndex = 51 }, overlay)
 		corner(box, 12); stroke(box, C.stroke, 1)
-		mk("TextLabel", { Size = UDim2.new(1, -24, 0, 36), Position = UDim2.fromOffset(12, 16), BackgroundTransparency = 1, Text = "Close AllegiaanHub?", Font = Enum.Font.GothamBold, TextSize = 16, TextColor3 = C.acc, ZIndex = 51 }, box)
+		mk("TextLabel", { Size = UDim2.new(1, -24, 0, 36), Position = UDim2.fromOffset(12, 16), BackgroundTransparency = 1, Text = "Close AllegiaantHub?", Font = Enum.Font.GothamBold, TextSize = 16, TextColor3 = C.acc, ZIndex = 51 }, box)
 		mk("TextLabel", { Size = UDim2.new(1, -24, 0, 24), Position = UDim2.fromOffset(12, 52), BackgroundTransparency = 1, Text = "Yakin mau nutup hub ini?", Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = C.txt, ZIndex = 51 }, box)
 		local noBtn = mk("TextButton", { Size = UDim2.fromOffset(120, 38), Position = UDim2.new(0, 18, 1, -50), BackgroundColor3 = C.row, Text = "No", Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = C.txt, ZIndex = 51 }, box)
 		corner(noBtn, 8)

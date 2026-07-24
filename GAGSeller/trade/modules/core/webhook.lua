@@ -114,7 +114,7 @@ return function(ctx)
 			}
 
 			sendWebhook({
-				username = "AllegiaanHub GAG Seller",
+				username = "AllegiaantHub GAG Seller",
 				embeds = { embed }
 			})
 		end

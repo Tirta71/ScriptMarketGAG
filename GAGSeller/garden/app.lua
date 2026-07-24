@@ -16,7 +16,7 @@ return function(ctx)
 	end
 	selectTab("Inventory")
 
-	ctx.log("AllegiaanHub Garden dimuat.")
+	ctx.log("AllegiaantHub Garden dimuat.")
 	ctx.setStatus("idle")
 
 	-- Anti-AFK: reset timer idle Roblox (kick ~20 menit) tiap Idled fire, via VirtualUser.

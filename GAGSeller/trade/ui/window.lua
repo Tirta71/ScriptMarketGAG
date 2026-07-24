@@ -74,7 +74,7 @@ return function(ctx)
 	corner(titleBar, 10)
 	mk("TextLabel", {
 		Size = UDim2.new(1, -80, 1, 0), Position = UDim2.fromOffset(14, 0), BackgroundTransparency = 1,
-		Text = "AllegiaanHub | GAG Trade", Font = Enum.Font.GothamBold, TextSize = 13, TextColor3 = C.acc,
+		Text = "AllegiaantHub | GAG Trade", Font = Enum.Font.GothamBold, TextSize = 13, TextColor3 = C.acc,
 		TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 2,
 	}, titleBar)
 	do

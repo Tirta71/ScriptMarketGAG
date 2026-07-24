@@ -8,7 +8,7 @@ local function sendWebhook(url, payload, ctx)
 	local cleanUrl = url:match("^%s*(.-)%s*$")
 	if not cleanUrl or cleanUrl == "" then return end
 
-	-- Nama & avatar pengirim webhook (override default). Semua notif tampil "AllegiaanHub".
+	-- Nama & avatar pengirim webhook (override default). Semua notif tampil "AllegiaantHub".
 	if type(payload) == "table" then
 		if not payload.username then payload.username = "AllegiaantHub" end
 		if not payload.avatar_url then payload.avatar_url = "https://i.pinimg.com/736x/52/0e/d5/520ed52b650b318e20e9460eca77ced8.jpg" end

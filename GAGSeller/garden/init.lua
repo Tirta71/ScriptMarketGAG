@@ -1,5 +1,5 @@
 --[[
-	AllegiaanHub — GARDEN app (loader)
+	AllegiaantHub — GARDEN app (loader)
 	Dipanggil router GAGSeller/init.lua saat berada di server Garden.
 	Pola sama seperti trade/: tiap modul `return function(ctx)`, berbagi tabel ctx.
 --]]
@@ -11,15 +11,15 @@ local function loadModule(relPath)
 	local full = BASE .. "/" .. relPath .. "?t=" .. os.time()
 	local ok, src = pcall(function() return game:HttpGet(full) end)
 	if not ok or type(src) ~= "string" or src == "" then
-		error(("[AllegiaanHub/garden] gagal ambil %s: %s"):format(full, tostring(src)))
+		error(("[AllegiaantHub/garden] gagal ambil %s: %s"):format(full, tostring(src)))
 	end
 	local chunk, err = loadstring(src, "@" .. relPath)
 	if not chunk then
-		error(("[AllegiaanHub/garden] gagal compile %s: %s"):format(full, tostring(err)))
+		error(("[AllegiaantHub/garden] gagal compile %s: %s"):format(full, tostring(err)))
 	end
 	local mod = chunk()
 	if type(mod) ~= "function" then
-		error(("[AllegiaanHub/garden] modul %s harus 'return function(ctx)'"):format(full))
+		error(("[AllegiaantHub/garden] modul %s harus 'return function(ctx)'"):format(full))
 	end
 	return mod
 end
