@@ -601,7 +601,7 @@ return function(ctx)
 				{ name = "Recovery Stat (Team) :", value = ("> Koi (hatch): `%d ekor` \226\134\146 `%.1f%%`\n> Seal (sell): `%d ekor` \226\134\146 `%.1f%%`")
 					:format(rec.koiCount, rec.koiPct, rec.sealCount, rec.sealPct), inline = false },
 				{ name = "Hatch Statistics :", value = ("> Hatch Cycles: `%d`\n> Total Hatched: `%d`\n> Sell Cycle: `%d / %d`\n> Cycle Duration: `%s`\n> All Time Duration: `%s`")
-					:format(hatchCycles, hatched, ((ctx.state.hatchRounds or 0) - (ctx.state.hatchLastSellCycle or 0)), CFG.sellEveryNCycles or 1,
+					:format(hatchCycles, hatched, (ctx.state.hatchReportSellProg or ((ctx.state.hatchRounds or 0) - (ctx.state.hatchLastSellCycle or 0))), CFG.sellEveryNCycles or 1,
 						fmtDur(os.time() - (ctx.state.hatchCycleStartTime or os.time())), fmtDur(os.time() - (ctx.state.hatchStartTime or os.time()))), inline = false },
 			},
 			footer = { text = os.date("%B %d | %I:%M %p") },
@@ -673,6 +673,8 @@ return function(ctx)
 			local sold = doSell()
 			ctx.state.periodSold = (ctx.state.periodSold or 0) + (tonumber(sold) or 0)
 			ctx.state.sellDoneThisReport = true
+			-- simpan progress sell-cycle SEBELUM reset (biar webhook nampilin 2/2 bukan 0/2)
+			ctx.state.hatchReportSellProg = cycle - (ctx.state.hatchLastSellCycle or 0)
 			ctx.state.hatchLastSellCycle = cycle
 			task.wait(3) -- tunggu notif "Lucky Pet" (egg balik dari sell) nyusul dulu
 			task.spawn(sendCycleStats) -- summary per sell cycle
@@ -742,6 +744,11 @@ return function(ctx)
 			task.wait(1.5)
 			-- 1 batch (normal+bronto) selesai = 1 ronde/cycle
 			ctx.state.hatchRounds = (ctx.state.hatchRounds or 0) + 1
+			-- kirim webhook TIAP hatch cycle (per-cycle) -> Lucky Hatch/Egg Placed/Net Result
+			-- selalu akurat & match game, ga keakumulasi sepanjang interval sell.
+			ctx.state.hatchReportSellProg = nil
+			ctx.state.sellDoneThisReport = false
+			task.spawn(sendCycleStats)
 			return
 		end
 
@@ -768,6 +775,7 @@ return function(ctx)
 		ctx.state.hatchEggsHatched = 0
 		ctx.state.hatchRounds = 0
 		ctx.state.hatchLastSellCycle = 0
+		ctx.state.hatchReportSellProg = nil
 		ctx.state.hatchSellCycles = 0
 		ctx.state.hatchTiers = {}
 		ctx.state.periodHatched = 0
