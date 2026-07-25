@@ -44,11 +44,15 @@ return function(ctx)
 		ctx.log("Auto-resume: ESP Label ON.")
 	end
 
-	-- auto-resume PNP kalau sebelumnya aktif
-	if CFG.pnpEnabled and ctx.startPnp then
+	-- auto-resume PNP kalau sebelumnya aktif (V1 polling / V2 event-driven, mutually exclusive)
+	if CFG.pnpEnabled and ctx.startPnpV1 then
 		task.wait(1)
-		ctx.startPnp()
-		ctx.log("Auto-resume: PNP ON.")
+		ctx.startPnpV1()
+		ctx.log("Auto-resume: PNP V1 ON.")
+	elseif CFG.pnpV2Enabled and ctx.startPnpV2 then
+		task.wait(1)
+		ctx.startPnpV2()
+		ctx.log("Auto-resume: PNP V2 ON.")
 	end
 
 	-- auto-resume kalau sebelumnya aktif

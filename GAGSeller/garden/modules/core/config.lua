@@ -61,11 +61,18 @@ return function(ctx)
 
 		-- PNP (Pick & Place) pet
 		pnpPetTypes = {},     -- (lama) filter per-tipe; kosong = semua equipped
+		-- PnP V1 (polling)
 		pnpUuids    = {},     -- filter per-UUID pet equipped; kosong = semua equipped
 		pickupDelay = 0.4,    -- jeda setelah place sebelum siklus berikutnya
 		equipDelay  = 0.3,   -- jeda antara unequip -> equip (aman dari race condition)
 		pnpScanInterval = 0.05, -- jeda antar-scan loop PNP (makin kecil = makin sering cek)
 		pnpEnabled  = false,
+		-- PnP V2 (event-driven, config terpisah dari V1)
+		pnpV2Uuids       = {},
+		pnpV2PickupDelay = 0.05,
+		pnpV2EquipDelay  = 0.03,
+		pnpV2ScanInterval = 0.05,
+		pnpV2Enabled     = false,
 		espEnabled  = false, -- label melayang (ESP) pet+egg di dunia
 
 		-- Automation Leveling
@@ -244,6 +251,11 @@ return function(ctx)
 			CFG.equipDelay  = tonumber(st.equipDelay) or 0.02
 			CFG.pnpScanInterval = tonumber(st.pnpScanInterval) or 0.05
 			CFG.pnpEnabled  = st.pnpEnabled or false
+			CFG.pnpV2Uuids       = (type(st.pnpV2Uuids) == "table") and st.pnpV2Uuids or {}
+			CFG.pnpV2PickupDelay = tonumber(st.pnpV2PickupDelay) or 0.05
+			CFG.pnpV2EquipDelay  = tonumber(st.pnpV2EquipDelay) or 0.03
+			CFG.pnpV2ScanInterval = tonumber(st.pnpV2ScanInterval) or 0.05
+			CFG.pnpV2Enabled     = st.pnpV2Enabled or false
 			CFG.espEnabled = st.espEnabled or false
 			
 			CFG.levelingTeamUuids   = (type(st.levelingTeamUuids) == "table") and st.levelingTeamUuids or {}

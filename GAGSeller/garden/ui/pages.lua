@@ -767,37 +767,64 @@ return function(ctx)
 
 	------------------------------------------------------------------ PET (PNP)
 	local pet = pageRef["Pet"]
-	local pnp = makeAccordion(pet, "Automation Pickup Pet", 1, true)
+	local v1Render, v2Render -- buat sync visual mutual-exclusion
 
-	-- Pilih pet PER-UUID dari INVENTORY/backpack (buka dropdown = auto-refresh daftarnya).
-	-- Cuma pet yang dicentang DAN sudah kamu taruh di garden yang bakal di-PNP.
-	makeMultiDropdownDyn(pnp, "Select Pets for Pickup", "Pilih pet dari backpack (kosong = semua yg di garden)",
+	------------------------------------------------------------------ PnP V1 (polling)
+	local pnp = makeAccordion(pet, "Automation Pickup Pet V1", 1, true)
+	makeMultiDropdownDyn(pnp, "Select Pets for Pickup [V1]", "Pilih pet dari backpack (kosong = semua yg di garden)",
 		function() return ctx.inventoryPetOptions(CFG.pnpUuids) end, CFG.pnpUuids, function() persist() end, 1)
-
-	makeInput(pnp, "Pickup Delay (Seconds)", "Jeda tiap siklus (idealnya = saat skill ready)",
+	makeInput(pnp, "Pickup Delay (Seconds) [V1]", "Jeda tiap siklus (idealnya = saat skill ready)",
 		function() return CFG.pickupDelay end,
 		function(txt) CFG.pickupDelay = tonumber(txt) or 0.4; persist() end, 2)
-
-	makeInput(pnp, "Equip Delay (Seconds)", "Jeda antara unequip -> equip",
+	makeInput(pnp, "Equip Delay (Seconds) [V1]", "Jeda antara unequip -> equip",
 		function() return CFG.equipDelay end,
 		function(txt) CFG.equipDelay = tonumber(txt) or 0.02; persist() end, 3)
-
-	makeInput(pnp, "Scan Interval (Seconds)", "Frekuensi cek cooldown (kecil = makin ketat, min 0.01)",
+	makeInput(pnp, "Scan Interval (Seconds) [V1]", "Frekuensi cek cooldown (kecil = makin ketat, min 0.01)",
 		function() return CFG.pnpScanInterval end,
-		function(txt)
-			local n = tonumber(txt) or 0.05
-			CFG.pnpScanInterval = math.max(0.01, n); persist()
-		end, 4)
-
-	makeToggle(pnp, "Enable Automation Pickup", "Pungut & taruh lagi pet buat reset/trigger skill",
+		function(txt) CFG.pnpScanInterval = math.max(0.01, tonumber(txt) or 0.05); persist() end, 4)
+	v1Render = makeToggle(pnp, "Enable Automation Pickup V1", "Polling GetPetCooldown (lama). Nyalain ini matiin V2.",
 		function() return CFG.pnpEnabled end,
 		function(v)
 			CFG.pnpEnabled = v; persist()
-			if v then ctx.startPnp() end
+			if v then
+				CFG.pnpV2Enabled = false; persist()
+				if ctx.stopPnpV2 then ctx.stopPnpV2() end
+				if v2Render then v2Render() end -- sync visual toggle V2 -> OFF
+				if ctx.startPnpV1 then ctx.startPnpV1() end
+			else
+				if ctx.stopPnpV1 then ctx.stopPnpV1() end
+			end
+		end, 5)
+
+	------------------------------------------------------------------ PnP V2 (event-driven)
+	local pnp2 = makeAccordion(pet, "Automation Pickup Pet V2", 2, false)
+	makeMultiDropdownDyn(pnp2, "Select Pets for Pickup [V2]", "Pilih pet dari backpack (kosong = semua yg di garden)",
+		function() return ctx.inventoryPetOptions(CFG.pnpV2Uuids) end, CFG.pnpV2Uuids, function() persist() end, 1)
+	makeInput(pnp2, "Pickup Delay (Seconds) [V2]", "Jeda sebelum tiap pickup",
+		function() return CFG.pnpV2PickupDelay end,
+		function(txt) CFG.pnpV2PickupDelay = tonumber(txt) or 0.05; persist() end, 2)
+	makeInput(pnp2, "Equip Delay (Seconds) [V2]", "Jeda antara unequip -> equip",
+		function() return CFG.pnpV2EquipDelay end,
+		function(txt) CFG.pnpV2EquipDelay = tonumber(txt) or 0.03; persist() end, 3)
+	makeInput(pnp2, "Scan Interval (Seconds) [V2]", "Frekuensi cek cd dari cache event (min 0.02)",
+		function() return CFG.pnpV2ScanInterval end,
+		function(txt) CFG.pnpV2ScanInterval = math.max(0.02, tonumber(txt) or 0.05); persist() end, 4)
+	v2Render = makeToggle(pnp2, "Enable Automation Pickup V2", "Event-driven (PetCooldownsUpdated), stabil. Nyalain ini matiin V1.",
+		function() return CFG.pnpV2Enabled end,
+		function(v)
+			CFG.pnpV2Enabled = v; persist()
+			if v then
+				CFG.pnpEnabled = false; persist()
+				if ctx.stopPnpV1 then ctx.stopPnpV1() end
+				if v1Render then v1Render() end -- sync visual toggle V1 -> OFF
+				if ctx.startPnpV2 then ctx.startPnpV2() end
+			else
+				if ctx.stopPnpV2 then ctx.stopPnpV2() end
+			end
 		end, 5)
 
 	-- Accordion: Automation Boost Pet
-	local boostAcc = makeAccordion(pet, "Automation Boost Pet", 2, false)
+	local boostAcc = makeAccordion(pet, "Automation Boost Pet", 3, false)
 	makeMultiDropdownDyn(boostAcc, "Select Pets to Boost", "Pilih pet yang mau di-boost (aktif di garden)",
 		function() return ctx.inventoryPetOptions(CFG.boostPetUuids) end, CFG.boostPetUuids, function() persist() end, 1)
 	makeMultiDropdownDyn(boostAcc, "Select Boost Items", "Pilih item boost (Pet Toy) yang dipakai",
