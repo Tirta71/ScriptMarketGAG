@@ -77,6 +77,15 @@ return function(ctx)
 	end
 
 	----------------------------------------------------- ROTASI (ala V1)
+	-- absentSince[uuid] = os.clock() sejak pet TERAKHIR kali kebaca ga ke-equip. Dipakai di
+	-- reserved mode: elephant cuma re-equip pet yg absent >= 5 detik (biar ga ngerebut PnP yg
+	-- cuma unequip sebentar pas pickup). Reset ke nil begitu pet kebaca ke-equip lagi.
+	local absentSince = {}
+	local ABSENT_GRACE = 5 -- detik
+	local function absentLongEnough(uuid)
+		absentSince[uuid] = absentSince[uuid] or os.clock()
+		return (os.clock() - absentSince[uuid]) >= ABSENT_GRACE
+	end
 	local function checkRotation()
 		local eq, inv = snapshot()
 		if not eq then return end
@@ -105,16 +114,23 @@ return function(ctx)
 
 		local localEq, localEqCount = {}, 0
 		for _, uuid in ipairs(eq) do localEq[uuid] = true; localEqCount = localEqCount + 1 end
+		-- pet yg lagi ke-equip -> reset timer absent-nya (dia lagi ada)
+		for uuid in pairs(localEq) do absentSince[uuid] = nil end
 
-		-- B. PERSISTENSI TEAM: pasang lagi team yg kecabut (skip gajah; skip switch pas gajah in)
+		-- B. PERSISTENSI TEAM: pasang lagi team yg kecabut (skip gajah; skip switch pas gajah in).
+		--    RESERVED mode: cuma re-equip kalau udah absent >= 5s -> ga ngerebut PnP yg unequip
+		--    sebentar pas pickup (PnP bakal balikin sendiri jauh sebelum 5s).
 		for uuid in pairs(teamSet) do
 			if uuid ~= gajah and not (gajahIn and uuid == switch) then
 				if not localEq[uuid] then
-					local pos = getPos(uuid)
-					if pos then
-						pcall(function() PetsService:FireServer("EquipPet", uuid, CFrame.new(pos)) end)
-						localEq[uuid] = true; localEqCount = localEqCount + 1
-						task.wait(0.25)
+					if (not reserved) or absentLongEnough(uuid) then
+						local pos = getPos(uuid)
+						if pos then
+							pcall(function() PetsService:FireServer("EquipPet", uuid, CFrame.new(pos)) end)
+							localEq[uuid] = true; localEqCount = localEqCount + 1
+							absentSince[uuid] = nil
+							task.wait(0.25)
+						end
 					end
 				end
 			end
@@ -153,12 +169,18 @@ return function(ctx)
 			end
 			table.sort(pool, function(a, b) return a.weight < b.weight end)
 			for i = 1, math.min(needed, #pool) do
-				local pos = getPos(pool[i].uuid)
-				if pos then
-					pcall(function() PetsService:FireServer("EquipPet", pool[i].uuid, CFrame.new(pos)) end)
-					localEq[pool[i].uuid] = true; localEqCount = localEqCount + 1
-					table.insert(currentGrowing, pool[i].uuid)
-					task.wait(0.3)
+				local uuid = pool[i].uuid
+				-- RESERVED: skip pet yg baru aja absent (<5s) -> kemungkinan cuma lagi di-PnP
+				-- (unequip sebentar). Cuma tambahin yg beneran nganggur/absent lama.
+				if (not reserved) or absentLongEnough(uuid) then
+					local pos = getPos(uuid)
+					if pos then
+						pcall(function() PetsService:FireServer("EquipPet", uuid, CFrame.new(pos)) end)
+						localEq[uuid] = true; localEqCount = localEqCount + 1
+						absentSince[uuid] = nil
+						table.insert(currentGrowing, uuid)
+						task.wait(0.3)
+					end
 				end
 			end
 		end
