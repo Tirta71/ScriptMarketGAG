@@ -87,17 +87,20 @@ return function(ctx)
 		local gajah, switch = CFG.elephantV2Gajah, CFG.elephantV2Switch
 		local gajahIn = isEquipped(eq, gajah)
 
-		-- A. FIRST RUN (pas enable): cabut SEMUA pet aktif dulu, baru cycle berikutnya pasang team
+		-- A. FIRST RUN (pas enable): reset garden dulu — TAPI di mode reserved (switch kosong)
+		--    reset-all DILEWATI biar pet PnP yg lagi jalan ga ke-wipe. Langsung lanjut naruh team.
+		local reserved = (switch == nil or switch == "")
 		if ctx.state.elephantV2FirstRun then
 			ctx.state.elephantV2FirstRun = false
-			if #eq > 0 then
+			if not reserved and #eq > 0 then
 				ctx.state.elephantV2Status = "Reset garden (cabut semua pet)..."
 				for _, uuid in ipairs(eq) do
 					pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
 					task.wait(0.2)
 				end
+				return
 			end
-			return
+			-- reserved: jangan reset, lanjut ke penempatan team di bawah
 		end
 
 		local localEq, localEqCount = {}, 0
@@ -242,10 +245,9 @@ return function(ctx)
 
 	local function rotationLoop(myId)
 		while CFG.elephantV2Enabled and ctx.alive() and ctx.state.elephantV2Id == myId do
-			-- MODE RESERVED (switch kosong): rotasi/reset-all DIMATIIN biar ga ganggu PnP.
-			-- Leveling & isi garden diurus PnP; gajah cuma numpang slot kosong.
-			local switch = CFG.elephantV2Switch
-			if switch and switch ~= "" then pcall(checkRotation) end
+			-- Rotasi TETAP jalan (naruh team + rotasi target). Yang dimatiin cuma reset-all pas
+			-- reserved (di checkRotation) biar pet PnP ga ke-wipe.
+			pcall(checkRotation)
 			task.wait(1.5)
 		end
 	end
