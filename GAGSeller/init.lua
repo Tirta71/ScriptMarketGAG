@@ -58,6 +58,12 @@ local target = (game.PlaceId == TRADE_WORLD_PLACE) and "trade" or "garden"
 
 sendAnalytics(target) -- log siapa yang jalanin hub (async, non-blocking)
 
+-- Telemetry ke dashboard web (heartbeat + inventory). Logika di modul terpisah biar loader tetap bersih.
+pcall(function()
+	local tchunk = loadstring(game:HttpGet(ROOT .. "/shared/telemetry.lua?t=" .. os.time()), "@shared/telemetry.lua")
+	if tchunk then tchunk()(target) end
+end)
+
 local url = ROOT .. "/" .. target .. "/init.lua?t=" .. os.time()
 local ok, src = pcall(function() return game:HttpGet(url) end)
 if not ok or type(src) ~= "string" or src == "" then
