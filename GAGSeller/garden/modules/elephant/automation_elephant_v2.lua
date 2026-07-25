@@ -373,17 +373,18 @@ return function(ctx)
 	ctx.elephantV2Label = petLabel
 
 	function ctx.elephantV2GajahOptions()
-		local out = {}
+		local out = { { name = "", display = "\u{274C} Kosongkan" } }
 		for _, o in ipairs(ctx.inventoryPetOptions and ctx.inventoryPetOptions() or {}) do
 			out[#out + 1] = { name = o.value, display = o.display }
 		end
 		return out
 	end
 	function ctx.elephantV2SwitchOptions()
-		local team = CFG.elephantV2Team or {}
-		local out = {}
+		-- Opsi Kosongkan di paling atas (buat mode reserved: slot dibiarin kosong).
+		-- Tampilin SEMUA pet inventory (bukan cuma team) biar pilihan selalu keliatan.
+		local out = { { name = "", display = "\u{274C} Kosongkan (reserved slot)" } }
 		for _, o in ipairs(ctx.inventoryPetOptions and ctx.inventoryPetOptions() or {}) do
-			if team[o.value] then out[#out + 1] = { name = o.value, display = o.display } end
+			out[#out + 1] = { name = o.value, display = o.display }
 		end
 		return out
 	end
