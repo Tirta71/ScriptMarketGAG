@@ -116,38 +116,57 @@ return function(ctx)
 		return hrp and hrp.Position or nil
 	end
 
-	----------------------------------------------------------------- loop utama (paralel per-pet)
-	-- Tiap pet target punya thread sendiri: cek GetPetCooldown -> PNP -> ulang.
-	-- Round-trip InvokeServer jadi overlap (paralel), bukan antri -> secepat script referensi.
-	local petThreads = {} -- uuid -> true (thread sedang jalan)
+	----------------------------------------------------------------- loop (decouple: reader + actor)
+	-- Masalah: query GetPetCooldown itu round-trip server dgn latency JITTER (58-465ms). Kalau
+	-- 1 thread query->act->ulang, jitter query nge-block eksekusi -> "kadang responsif kadang ngga".
+	-- Solusi: pisah dua peran per pet:
+	--   READER : query cd terus -> simpen ke cache. Jitter diserap di sini (ga ganggu act).
+	--            Pet cd-PANJANG di-throttle (query jarang) -> ngurangin flood; pet ready/low-cd
+	--            tetep query ngebut biar nangkep window ready.
+	--   ACTOR  : baca CACHE (instan, ga nunggu network) -> pickup-place di interval tetap.
+	--            -> eksekusi KONSISTEN, ga ke-gate jitter query. cd check TETAP (dari cache).
+	local cdCache = ctx.state.pnpCdCache or {}
+	ctx.state.pnpCdCache = cdCache
+	local spawned = {} -- uuid -> true (reader+actor udah dispawn)
 
-	local function runPetThread(uuid, myId)
-		petThreads[uuid] = true
+	local function isTarget(uuid)
+		for _, p in ipairs(targetPets()) do if p.uuid == uuid then return true end end
+		return false
+	end
+
+	local function runReader(uuid, myId)
 		while CFG.pnpEnabled and ctx.alive() and ctx.state.pnpId == myId do
-			-- Pastikan pet masih target (equipped + lolos filter pnpUuids)
-			local stillTarget = false
-			for _, p in ipairs(targetPets()) do
-				if p.uuid == uuid then stillTarget = true; break end
-			end
-			if not stillTarget then break end
+			if not isTarget(uuid) then break end
+			local cd = readMainCd(uuid) -- update cdMap (UI) + return mainCd
+			cdCache[uuid] = cd
+			-- throttle by cd: jauh -> santai (kurangi flood); low/ready -> ngebut (nangkep window)
+			local w
+			if cd == nil then w = 0.3
+			elseif cd > 20 then w = math.clamp(cd / 4, 1, 4)
+			else w = 0.05 end
+			task.wait(w)
+		end
+		cdCache[uuid] = nil
+		spawned[uuid] = nil
+	end
 
-			-- Tanya cooldown asli ke server
-			local mainCd = readMainCd(uuid)
+	local function runActor(uuid, myId)
+		while CFG.pnpEnabled and ctx.alive() and ctx.state.pnpId == myId do
+			if not isTarget(uuid) then break end
+			local cd = cdCache[uuid]
 			local pos = placePos()
-
-			if pos and mainCd ~= nil and mainCd <= READY_TH then
+			if pos and cd ~= nil and cd <= READY_TH then
 				if CFG.pickupDelay > 0 then task.wait(CFG.pickupDelay) end
-				if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
-				-- PICKUP -> PLACE (numpuk di center)
+				if not (CFG.pnpEnabled and ctx.state.pnpId == myId) then break end
 				pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
 				task.wait(math.max(0.01, CFG.equipDelay))
-				if not CFG.pnpEnabled or ctx.state.pnpId ~= myId then break end
+				if not (CFG.pnpEnabled and ctx.state.pnpId == myId) then break end
 				pcall(function() PetsService:FireServer("EquipPet", uuid, CFrame.new(pos)) end)
+				-- optimistic: anggap on-cd dulu sampai reader konfirmasi cd baru (anti spam re-equip)
+				cdCache[uuid] = math.huge
 			end
-
-			task.wait(math.max(0.01, tonumber(CFG.pnpScanInterval) or 0.05))
+			task.wait(math.max(0.03, tonumber(CFG.pnpScanInterval) or 0.05))
 		end
-		petThreads[uuid] = nil
 	end
 
 	local function pnpLoop()
@@ -155,20 +174,22 @@ return function(ctx)
 		local myId = ctx.state.pnpId
 		ctx.elevate()
 
-		-- Supervisor: spawn thread untuk tiap pet target yang belum punya thread
+		-- Supervisor: tiap pet target dapet 1 reader + 1 actor (sekali spawn)
 		while CFG.pnpEnabled and ctx.alive() and ctx.state.pnpId == myId do
 			local pets = targetPets()
 			if #pets == 0 then
 				setStatus("PNP: tidak ada pet target (equip pet dulu)")
 			else
 				for _, p in ipairs(pets) do
-					if not petThreads[p.uuid] then
-						task.spawn(runPetThread, p.uuid, myId)
+					if not spawned[p.uuid] then
+						spawned[p.uuid] = true
+						task.spawn(runReader, p.uuid, myId)
+						task.spawn(runActor, p.uuid, myId)
 					end
 				end
-				setStatus(("PNP jalan: %d pet (paralel)"):format(#pets))
+				setStatus(("PNP jalan: %d pet (reader+actor)"):format(#pets))
 			end
-			task.wait(1) -- supervisor cukup ngecek pet baru tiap 1 detik
+			task.wait(1) -- supervisor cek pet baru tiap 1 detik
 		end
 	end
 
