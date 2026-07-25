@@ -29,6 +29,12 @@ return function(target)
 		local DataService
 		pcall(function() DataService = require(RS.Modules.DataService) end)
 
+		-- map kode mutasi -> nama proper (mis. "A"->"Nightmare", "c"->"Rainbow")
+		local EnumToMut = {}
+		pcall(function()
+			EnumToMut = require(RS.Data.PetRegistry.PetMutationRegistry).EnumToPetMutation or {}
+		end)
+
 		-- snapshot inventory (best-effort, semua pcall). Relevan di garden.
 		local function buildInventory()
 			local inv = { pets = {}, eggs = {}, items = {}, stats = {} }
@@ -45,7 +51,8 @@ return function(target)
 					local pdata = v.PetData or {}
 					local lvl = pdata.Level or 0
 					local mut = pdata.MutationType
-					if mut == "" or mut == "Normal" then mut = nil end
+					if mut and mut ~= "" then mut = EnumToMut[mut] or mut else mut = nil end
+					if mut == "Normal" then mut = nil end
 					inv.pets[#inv.pets + 1] = {
 						type     = v.PetType or "?",
 						weight   = (pdata.BaseWeight or 0) * (1 + 0.1 * lvl),
