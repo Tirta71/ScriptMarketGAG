@@ -215,35 +215,97 @@ return function(ctx)
 			eq = snapshot()
 			if not isEquipped(eq, gajah) then break end
 		end
-		if pos then pcall(function() PetsService:FireServer("EquipPet", switch, CFrame.new(pos)) end) end
+		-- reserved mode (switch kosong): slot dibiarin kosong, JANGAN equip apa2 (biar PnP aman)
+		if switch and switch ~= "" and pos then pcall(function() PetsService:FireServer("EquipPet", switch, CFrame.new(pos)) end) end
 		return true
+	end
+
+	-- Cari 1 pet target yang lagi ke-equip, tipe cocok, weight < target, level >= ambang.
+	-- Return uuid + BaseWeight-nya. Dipakai buat mode reserved (boost by 0.1kg).
+	local function getReadyTarget(eq, inv)
+		local types = CFG.elephantV2Types or {}
+		local thr = CFG.elephantV2Level or 40
+		local targetW = CFG.elephantV2Weight or 5.5
+		for _, u in ipairs(eq) do
+			local v = inv[u]
+			if v and types[v.PetType] then
+				local pd = v.PetData or {}
+				if (pd.BaseWeight or 0) < targetW and (pd.Level or 0) >= thr then return u, (pd.BaseWeight or 0) end
+			end
+		end
+		return nil
+	end
+	local function baseWOf(inv, uuid)
+		local v = inv and inv[uuid]; local pd = v and v.PetData
+		return pd and (pd.BaseWeight or 0) or nil
 	end
 
 	local function rotationLoop(myId)
 		while CFG.elephantV2Enabled and ctx.alive() and ctx.state.elephantV2Id == myId do
-			pcall(checkRotation)
+			-- MODE RESERVED (switch kosong): rotasi/reset-all DIMATIIN biar ga ganggu PnP.
+			-- Leveling & isi garden diurus PnP; gajah cuma numpang slot kosong.
+			local switch = CFG.elephantV2Switch
+			if switch and switch ~= "" then pcall(checkRotation) end
 			task.wait(1.5)
 		end
 	end
+
 	local function swapLoop(myId)
 		while CFG.elephantV2Enabled and ctx.alive() and ctx.state.elephantV2Id == myId do
 			local gajah, switch = CFG.elephantV2Gajah, CFG.elephantV2Switch
-			if gajah == "" or switch == "" then
-				ctx.state.elephantV2Status = "Pilih Gajah & Switch dulu"
+			local reserved = (switch == nil or switch == "")
+			if gajah == "" or gajah == nil then
+				ctx.state.elephantV2Status = "Pilih Gajah dulu"
 				task.wait(1)
 			else
 				local eq, inv = snapshot()
 				if eq then
 					local gajahIn = isEquipped(eq, gajah)
-					local ready = anyTargetReady(eq, inv)
-					if ready and not gajahIn then
-						swapInGajah(gajah, switch)
-						ctx.state.elephantV2Status = "Gajah MASUK (target lvl " .. tostring(CFG.elephantV2Level or 40) .. ")"
-					elseif not ready and gajahIn then
-						swapOutGajah(gajah, switch)
-						ctx.state.elephantV2Status = "Standby (gajah keluar)"
+					if reserved then
+						-- ===== MODE RESERVED: gajah masuk pas ada target lvl 40, keluar pas target +0.1kg =====
+						local tUuid = getReadyTarget(eq, inv)
+						if not tUuid then
+							if gajahIn then
+								swapOutGajah(gajah, switch)
+								ctx.state.elephantV2TargetUuid = nil
+								ctx.state.elephantV2Status = "Standby (ga ada target lvl " .. tostring(CFG.elephantV2Level or 40) .. ")"
+							else
+								ctx.state.elephantV2Status = "Standby (nunggu target lvl " .. tostring(CFG.elephantV2Level or 40) .. ")"
+							end
+						else
+							if not gajahIn then
+								-- masuk pakai slot kosong yang kamu reserve; catat berat target saat masuk
+								if swapInGajah(gajah, switch) then
+									ctx.state.elephantV2TargetUuid = tUuid
+									ctx.state.elephantV2TargetW0 = baseWOf(inv, tUuid)
+									ctx.state.elephantV2Status = "Gajah MASUK (boost target)"
+								end
+							else
+								-- gajah in: cek target yg ditrack udah naik 0.1kg? kalau ya -> keluar
+								local trackU = ctx.state.elephantV2TargetUuid
+								local w0 = ctx.state.elephantV2TargetW0
+								local wc = trackU and baseWOf(inv, trackU) or nil
+								if (not trackU) or (not wc) or (w0 and wc >= w0 + 0.1) then
+									swapOutGajah(gajah, switch)
+									ctx.state.elephantV2TargetUuid = nil
+									ctx.state.elephantV2Status = "Gajah keluar (target +0.1kg)"
+								else
+									ctx.state.elephantV2Status = ("Boost... (+%.2f/0.10 kg)"):format(math.max(0, wc - (w0 or wc)))
+								end
+							end
+						end
 					else
-						ctx.state.elephantV2Status = gajahIn and "Gajah aktif" or "Standby"
+						-- ===== MODE NORMAL (pakai switch): perilaku lama =====
+						local ready = anyTargetReady(eq, inv)
+						if ready and not gajahIn then
+							swapInGajah(gajah, switch)
+							ctx.state.elephantV2Status = "Gajah MASUK (target lvl " .. tostring(CFG.elephantV2Level or 40) .. ")"
+						elseif not ready and gajahIn then
+							swapOutGajah(gajah, switch)
+							ctx.state.elephantV2Status = "Standby (gajah keluar)"
+						else
+							ctx.state.elephantV2Status = gajahIn and "Gajah aktif" or "Standby"
+						end
 					end
 				end
 				task.wait(CFG.elephantV2Interval or 0.1)
@@ -262,6 +324,24 @@ return function(ctx)
 	function ctx.stopElephantV2()
 		ctx.state.elephantV2Id = (ctx.state.elephantV2Id or 0) + 1
 		ctx.state.elephantV2FirstRun = false
+		ctx.state.elephantV2TargetUuid = nil
+		local switch = CFG.elephantV2Switch
+		local reserved = (switch == nil or switch == "")
+		if reserved then
+			-- MODE RESERVED: CUMA cabut gajah, JANGAN sentuh pet lain (PnP tetep aman jalan)
+			ctx.state.elephantV2Status = "Cabut gajah..."
+			task.spawn(function()
+				local gajah = CFG.elephantV2Gajah
+				for _ = 1, 5 do
+					local eq = snapshot()
+					if not eq or not isEquipped(eq, gajah) then break end
+					pcall(function() PetsService:FireServer("UnequipPet", gajah) end)
+					task.wait(0.12)
+				end
+				ctx.state.elephantV2Status = "Idle (gajah keluar, PnP jalan terus)"
+			end)
+			return
+		end
 		ctx.state.elephantV2Status = "Cabut semua pet (bersihin garden)..."
 		-- Cabut SEMUA pet aktif di garden sampai bener2 bersih (multi-pass, kebal delay replikasi)
 		task.spawn(function()
