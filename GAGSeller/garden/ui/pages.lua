@@ -763,6 +763,25 @@ return function(ctx)
 		makeToggle(chAcc, "Enable Auto Chest Hunt", "TP ke chest -> bawa ke garden -> ulang (auto pas event mulai)",
 			function() return CFG.chestHuntEnabled end,
 			function(v) CFG.chestHuntEnabled = v; persist(); if v then ctx.startChestHunt() else ctx.stopChestHunt() end end, 2)
+
+		------------------------------------------------------------------ Summer Shop (auto buy)
+		local shopAcc = makeAccordion(eventPage, "Summer Shop", 2, false)
+
+		-- Sub-accordion 1: Summer Seed Shop (beli seed pakai Sheckles)
+		local ssAcc = makeAccordion(shopAcc, "Summer Seed Shop", 1, true)
+		makeMultiDropdownDyn(ssAcc, "Pilih Seed (Summer Seed Shop)", "Seed yang di-auto-beli tiap restock. 'All' = beli semua yg ada stock.",
+			function() return ctx.getSummerSeedShopOptions() end, CFG.buySummerSeedNames, function() persist() end, 1)
+		makeToggle(ssAcc, "Enable Auto Buy Summer Seed", "Auto-beli seed terpilih dari Summer Seed Shop tiap restock",
+			function() return CFG.buySummerSeedEnabled end,
+			function(v) CFG.buySummerSeedEnabled = v; persist(); if v and ctx.startBuySummerSeed then ctx.startBuySummerSeed() end end, 2)
+
+		-- Sub-accordion 2: Tide Tokens (beli item pakai TideTokens)
+		local ttAcc = makeAccordion(shopAcc, "Tide Tokens", 2, true)
+		makeMultiDropdownDyn(ttAcc, "Pilih Item (Tide Token Shop)", "Item yang di-auto-beli pakai Tide Tokens tiap restock. 'All' = beli semua yg ada stock.",
+			function() return ctx.getTideTokenShopOptions() end, CFG.buyTideTokenNames, function() persist() end, 1)
+		makeToggle(ttAcc, "Enable Auto Buy Tide Token", "Auto-beli item terpilih dari Tide Token Shop tiap restock",
+			function() return CFG.buyTideTokenEnabled end,
+			function(v) CFG.buyTideTokenEnabled = v; persist(); if v and ctx.startBuyTideToken then ctx.startBuyTideToken() end end, 2)
 	end
 
 	------------------------------------------------------------------ PET (PNP)

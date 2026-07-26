@@ -88,6 +88,7 @@ local MODULES = {
 	"modules/growth/automation_growth.lua",
 	"modules/hatch/automation_hatch.lua",
 	"modules/event/auto_chest_hunt.lua",
+	"modules/event/automation_summer_shop.lua",
 	"modules/mutation/automation_mutation_machine.lua",
 	"modules/mutation/automation_mutation.lua",
 	"modules/event/automation_summer_event.lua",

@@ -130,6 +130,12 @@ return function(ctx)
 		buyGearNames   = {},
 		buyGearEnabled = false,
 
+		-- Automation Summer Shop (event: Summer Seed Shop + Tide Token Shop)
+		buySummerSeedNames   = {},
+		buySummerSeedEnabled = false,
+		buyTideTokenNames    = {},
+		buyTideTokenEnabled  = false,
+
 		-- Automation Cleanse Mutation (mutasi via aura + cleanse)
 		cleanseTeamUuids     = {},   -- Pet Team for Mutation (aura pemberi mutasi)
 		cleansePetTypes      = {},   -- Pet Types for Mutation (target)
@@ -307,6 +313,11 @@ return function(ctx)
 			CFG.buyEggEnabled  = st.buyEggEnabled or false
 			CFG.buyGearNames   = (type(st.buyGearNames) == "table") and st.buyGearNames or {}
 			CFG.buyGearEnabled = st.buyGearEnabled or false
+
+			CFG.buySummerSeedNames   = (type(st.buySummerSeedNames) == "table") and st.buySummerSeedNames or {}
+			CFG.buySummerSeedEnabled = st.buySummerSeedEnabled or false
+			CFG.buyTideTokenNames    = (type(st.buyTideTokenNames) == "table") and st.buyTideTokenNames or {}
+			CFG.buyTideTokenEnabled  = st.buyTideTokenEnabled or false
 
 			CFG.cleanseTeamUuids     = (type(st.cleanseTeamUuids) == "table") and st.cleanseTeamUuids or {}
 			CFG.cleansePetTypes      = (type(st.cleansePetTypes) == "table") and st.cleansePetTypes or {}
