@@ -776,7 +776,7 @@ return function(ctx)
 			function(v) CFG.buySummerSeedEnabled = v; persist(); if v and ctx.startBuySummerSeed then ctx.startBuySummerSeed() end end, 2)
 
 		-- Sub-accordion 2: Tide Tokens (beli item pakai TideTokens)
-		local ttAcc = makeAccordion(shopAcc, "Tide Tokens", 2, true)
+		local ttAcc = makeAccordion(shopAcc, "Tide Tokens Shop", 2, true)
 		makeMultiDropdownDyn(ttAcc, "Pilih Item", "'All' = beli semua yg ada stock.",
 			function() return ctx.getTideTokenShopOptions() end, CFG.buyTideTokenNames, function() persist() end, 1)
 		makeToggle(ttAcc, "Enable Auto Buy Tide Token", "Auto-beli tiap restock (Tide Tokens)",
