@@ -66,6 +66,8 @@ return function(target)
 				if pd and pd.MutableStats then
 					inv.stats.maxPets = tonumber(pd.MutableStats.MaxPetsInInventory) or nil
 				end
+				-- saldo Trade Token (koin hijau — UI "Buy Tokens")
+				if d.TradeData then inv.stats.tokens = tonumber(d.TradeData.Tokens) or 0 end
 			end)
 
 			-- eggs + seeds/gear/crops dari Backpack (Tool, skip pet uuid)
