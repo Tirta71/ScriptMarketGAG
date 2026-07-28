@@ -31,6 +31,7 @@ return function(ctx)
 	-- sidebar tabs (urut sesuai referensi)
 	local TABS = {
 		{ "Pet", "Pet", "🐾" },
+		{ "Farm", "Farm", "🌾" },
 		{ "Elephant", "Elephant", "🐘" },
 		{ "Growth", "Growth", "🌱" },
 		{ "Hatch", "Hatch", "🥚" },
@@ -52,6 +53,29 @@ return function(ctx)
 		corner(box, 8); stroke(box); pad(box, 14, 14, 12, 12)
 		mk("TextLabel", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = "Fitur untuk tab ini belum tersedia.", Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top }, box)
 	end
+	------------------------------------------------------------------ FARM (kerangka — accordion doang, belum diisi)
+	do
+		local farmPage = pageRef["Farm"]
+		local FARM_SECTIONS = {
+			"Automation Plants",
+			"Automation Sprinkler",
+			"Automation Water",
+			"Automation Shovel",
+			"Automation Collection",
+			"Automation Favorite",
+			"Automation Reclaimer",
+		}
+		for i, title in ipairs(FARM_SECTIONS) do
+			local body = makeAccordion(farmPage, title, i, false)
+			mk("TextLabel", {
+				Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
+				BackgroundTransparency = 1, Text = "Kerangka — fitur belum diisi.",
+				Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = C.sub,
+				TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, LayoutOrder = 1,
+			}, body)
+		end
+	end
+
 	------------------------------------------------------------------ GROWTH (pipeline batch per-step)
 	do
 		local growthPage = pageRef["Growth"]
