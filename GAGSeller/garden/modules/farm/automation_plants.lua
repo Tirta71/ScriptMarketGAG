@@ -68,8 +68,9 @@ return function(ctx)
 	function ctx.getPlantSeedOptions() return seedOptions() end
 
 	----------------------------------------------------------------- posisi
-	local STEP = 2
-	local function cellKey(x, z) return math.floor(x / STEP) .. "," .. math.floor(z / STEP) end
+	local STEP = 2      -- jarak antar tanaman (game izinin ~2 stud)
+	local MIND = 1.9    -- radius minimum ke plant lain biar ga ketolak/numpuk
+	local function bkey(x, z) return math.floor(x / STEP) .. "," .. math.floor(z / STEP) end
 
 	local function randomPos()
 		local parts = canPlantParts()
@@ -107,17 +108,35 @@ return function(ctx)
 		end
 		return cells
 	end
-	-- Sel grid yg udah keisi plant (biar Good Position ga numpuk).
-	local function occupancy()
-		local occ = {}
+	-- Spatial hash posisi plant yg ada -> cek cepat apakah suatu titik kosong.
+	local function buildBuckets()
+		local b = {}
 		local pf = plantsFolder()
 		if pf then
 			for _, m in ipairs(pf:GetChildren()) do
 				local p = m.PrimaryPart or m:FindFirstChildWhichIsA("BasePart")
-				if p then occ[cellKey(p.Position.X, p.Position.Z)] = true end
+				if p then
+					local k = bkey(p.Position.X, p.Position.Z)
+					b[k] = b[k] or {}
+					table.insert(b[k], Vector2.new(p.Position.X, p.Position.Z))
+				end
 			end
 		end
-		return occ
+		return b
+	end
+	local function isFree(buckets, x, z)
+		local cx, cz = math.floor(x / STEP), math.floor(z / STEP)
+		local pt = Vector2.new(x, z)
+		for dx = -1, 1 do for dz = -1, 1 do
+			local b = buckets[(cx + dx) .. "," .. (cz + dz)]
+			if b then for _, v in ipairs(b) do if (pt - v).Magnitude < MIND then return false end end end
+		end end
+		return true
+	end
+	local function markPlanted(buckets, x, z)
+		local k = bkey(x, z)
+		buckets[k] = buckets[k] or {}
+		table.insert(buckets[k], Vector2.new(x, z))
 	end
 
 	-- Tool seed di inventory namanya "<Nama> Seed [Xjumlah]". Server WAJIB kamu
@@ -150,17 +169,19 @@ return function(ctx)
 			if next(sel) then
 				local inv = seedInventory()
 				local mode = CFG.plantPosition or "Good Position"
-				local cells, occ, ci
-				if mode == "Good Position" then cells = goodCells(); occ = occupancy(); ci = 0 end
+				local cells, buckets, ci
+				if mode == "Good Position" then cells = goodCells(); buckets = buildBuckets(); ci = 0 end
 				local function nextPos()
 					if mode == "Random" then return randomPos() end
 					if mode == "Player Position" then return playerPos() end
-					-- Good Position: cell kosong berikutnya
+					-- Good Position: cell yg beneran kosong (radius) berikutnya
 					while ci < #cells do
 						ci = ci + 1
 						local c = cells[ci]
-						local k = cellKey(c.X, c.Z)
-						if not occ[k] then occ[k] = true; return c end
+						if isFree(buckets, c.X, c.Z) then
+							markPlanted(buckets, c.X, c.Z) -- reserve biar ga dipake 2x
+							return c
+						end
 					end
 					return nil
 				end
