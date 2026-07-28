@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 35 modul, di-generate 2026-07-28T20:37:04.004Z
+-- 35 modul, di-generate 2026-07-28T20:43:31.261Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — init akhir garden: default tab Inventory + auto-resume automation. ]]
@@ -8486,7 +8486,7 @@ return function(ctx)
 	makeInput(rcAcc, "Interval (menit)", "Auto reconnect/rejoin tiap sekian menit (mis. 1 = tiap 1 menit).",
 		function() return tostring(CFG.reconnectInterval) end,
 		function(t) CFG.reconnectInterval = tonumber(t) or 5; persist() end, 1)
-	makeToggle(rcAcc, "Auto Reconnect", "Auto rejoin tiap interval + pas kena disconnect/kick/shutdown. Stay di private server. Hub auto jalan lagi via queue.",
+	makeToggle(rcAcc, "Auto Reconnect", "Automatically rejoin server on disconnect",
 		function() return CFG.reconnectEnabled end,
 		function(v) CFG.reconnectEnabled = v; persist(); if v and ctx.startReconnect then ctx.startReconnect() end end, 2)
 
