@@ -62,7 +62,7 @@ return function(ctx)
 		makeMultiDropdownDyn(plAcc, "Select Seeds", "Pilih seed dari inventory (angka = jumlah).",
 			function() return ctx.getPlantSeedOptions() end, CFG.plantSeedNames, function() persist() end, 1)
 		makeSingleDropdown(plAcc, "Select Position", "Lokasi tanam di farm.",
-			function() return { "Random", "Player Position", "Good Position" } end,
+			function() return { "Random", "Player Position" } end,
 			function() return CFG.plantPosition end,
 			function(v) CFG.plantPosition = v; persist() end, 2)
 		makeInput(plAcc, "Delay To Plants", "Extra delay (detik) tiap tanam seed.",

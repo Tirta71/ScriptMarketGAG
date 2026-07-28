@@ -2,7 +2,8 @@
      Tanam seed dari inventory ke farm.
      Remote: Plant_RE:FireServer(Vector3 pos, "SeedName")
      Seed & jumlah dari DataService InventoryData (ItemType="Seed", ItemData.ItemName/Quantity).
-     Posisi: Random / Player Position / Good Position (grid rapi di Can_Plant, hindari numpuk).
+     WAJIB megang tool seed-nya pas Plant_RE -> equip ulang tiap mau tanam (kayak reclaimer).
+     Posisi: Random (titik acak di Can_Plant) / Player Position (posisi karakter).
      Fungsi: ctx.getPlantSeedOptions / ctx.startPlant. ]]
 return function(ctx)
 	local LP  = ctx.LP
@@ -22,7 +23,6 @@ return function(ctx)
 		return nil
 	end
 	local function important() local f = myFarm(); return f and f:FindFirstChild("Important") end
-	local function plantsFolder() local imp = important(); return imp and imp:FindFirstChild("Plants_Physical") end
 	local function canPlantParts()
 		local imp = important()
 		local pl = imp and imp:FindFirstChild("Plant_Locations")
@@ -51,7 +51,6 @@ return function(ctx)
 	-- Opsi dropdown seed: "Nama (jumlah)". Sekalian buang seed yg udah 0 dari selection.
 	local function seedOptions()
 		local inv = seedInventory()
-		-- prune selection yg udah abis
 		local sel = CFG.plantSeedNames
 		if type(sel) == "table" then
 			local changed = false
@@ -68,10 +67,6 @@ return function(ctx)
 	function ctx.getPlantSeedOptions() return seedOptions() end
 
 	----------------------------------------------------------------- posisi
-	local STEP = 2      -- jarak antar tanaman (game izinin ~2 stud)
-	local MIND = 1.9    -- radius minimum ke plant lain biar ga ketolak/numpuk
-	local function bkey(x, z) return math.floor(x / STEP) .. "," .. math.floor(z / STEP) end
-
 	local function randomPos()
 		local parts = canPlantParts()
 		if #parts == 0 then return nil end
@@ -81,7 +76,6 @@ return function(ctx)
 		local z = p.Position.Z + (math.random() * 2 - 1) * hz
 		return Vector3.new(x, p.Position.Y, z)
 	end
-
 	local function playerPos()
 		local hrp = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
 		if not hrp then return nil end
@@ -90,57 +84,9 @@ return function(ctx)
 		return Vector3.new(hrp.Position.X, y, hrp.Position.Z)
 	end
 
-	-- Grid titik-titik rapi di seluruh Can_Plant (buat "Good Position").
-	local function goodCells()
-		local cells = {}
-		for _, part in ipairs(canPlantParts()) do
-			local hx, hz = part.Size.X / 2 - 1, part.Size.Z / 2 - 1
-			local y = part.Position.Y
-			local x = part.Position.X - hx
-			while x <= part.Position.X + hx do
-				local z = part.Position.Z - hz
-				while z <= part.Position.Z + hz do
-					cells[#cells + 1] = Vector3.new(x, y, z)
-					z = z + STEP
-				end
-				x = x + STEP
-			end
-		end
-		return cells
-	end
-	-- Spatial hash posisi plant yg ada -> cek cepat apakah suatu titik kosong.
-	local function buildBuckets()
-		local b = {}
-		local pf = plantsFolder()
-		if pf then
-			for _, m in ipairs(pf:GetChildren()) do
-				local p = m.PrimaryPart or m:FindFirstChildWhichIsA("BasePart")
-				if p then
-					local k = bkey(p.Position.X, p.Position.Z)
-					b[k] = b[k] or {}
-					table.insert(b[k], Vector2.new(p.Position.X, p.Position.Z))
-				end
-			end
-		end
-		return b
-	end
-	local function isFree(buckets, x, z)
-		local cx, cz = math.floor(x / STEP), math.floor(z / STEP)
-		local pt = Vector2.new(x, z)
-		for dx = -1, 1 do for dz = -1, 1 do
-			local b = buckets[(cx + dx) .. "," .. (cz + dz)]
-			if b then for _, v in ipairs(b) do if (pt - v).Magnitude < MIND then return false end end end
-		end end
-		return true
-	end
-	local function markPlanted(buckets, x, z)
-		local k = bkey(x, z)
-		buckets[k] = buckets[k] or {}
-		table.insert(buckets[k], Vector2.new(x, z))
-	end
-
-	-- Tool seed di inventory namanya "<Nama> Seed [Xjumlah]". Server WAJIB kamu
-	-- megang tool seed-nya pas Plant_RE, jadi equip dulu sebelum tanam.
+	----------------------------------------------------------------- equip seed
+	-- Tool seed namanya "<Nama> Seed [Xjumlah]". Server WAJIB kamu megang tool-nya
+	-- pas Plant_RE, jadi equip ulang tiap mau tanam (walau user pindah manual).
 	local function seedBase(t)
 		return t:IsA("Tool") and t.Name:match("^(.-) Seed %[X%d+%]") or nil
 	end
@@ -168,38 +114,22 @@ return function(ctx)
 			local sel = CFG.plantSeedNames or {}
 			if next(sel) then
 				local inv = seedInventory()
-				local mode = CFG.plantPosition or "Good Position"
-				local cells, buckets, ci
-				if mode == "Good Position" then cells = goodCells(); buckets = buildBuckets(); ci = 0 end
-				local function nextPos()
-					if mode == "Random" then return randomPos() end
-					if mode == "Player Position" then return playerPos() end
-					-- Good Position: cell yg beneran kosong (radius) berikutnya
-					while ci < #cells do
-						ci = ci + 1
-						local c = cells[ci]
-						if isFree(buckets, c.X, c.Z) then
-							markPlanted(buckets, c.X, c.Z) -- reserve biar ga dipake 2x
-							return c
-						end
-					end
-					return nil
-				end
-
+				local mode = CFG.plantPosition == "Player Position" and "Player Position" or "Random"
 				local planted, anySeed = 0, false
 				for name in pairs(sel) do
 					local qty = inv[name] or 0
 					if qty > 0 then
 						anySeed = true
-						if equipSeed(name) then -- equip tool seed dulu
-							for _ = 1, qty do
-								if not CFG.plantSeedEnabled or ctx.state.plantId ~= myId then break end
-								local pos = nextPos()
-								if not pos then break end -- Good Position: cell penuh
-								pcall(function() Plant_RE:FireServer(pos, name) end)
-								planted = planted + 1
-								task.wait(0.15 + (tonumber(CFG.plantDelay) or 0))
+						for _ = 1, qty do
+							if not CFG.plantSeedEnabled or ctx.state.plantId ~= myId then break end
+							if equipSeed(name) then -- equip seed tiap mau tanam
+								local pos = (mode == "Player Position") and playerPos() or randomPos()
+								if pos then
+									pcall(function() Plant_RE:FireServer(pos, name) end)
+									planted = planted + 1
+								end
 							end
+							task.wait(0.15 + (tonumber(CFG.plantDelay) or 0))
 						end
 					end
 				end
