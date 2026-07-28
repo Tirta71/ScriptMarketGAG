@@ -7,19 +7,42 @@
 local branch = (getgenv and getgenv().GAG_BRANCH) or _G.GAG_BRANCH or "main"
 local BASE = "https://raw.githubusercontent.com/Tirta71/ScriptMarketGAG/" .. branch .. "/GAGSeller/garden"
 
-local function loadModule(relPath)
+-- Mode load: default = 1 bundle (kilat, coexist sama Cobalt). DEV = per-modul HttpGet
+-- (buat ngedit; edit+push langsung kepake tanpa perlu bundle). Set getgenv().GAG_DEV=true.
+local DEV = (getgenv and getgenv().GAG_DEV) or _G.GAG_DEV
+local FILES
+if not DEV then
+	local ok, src = pcall(function() return game:HttpGet(BASE .. "/bundle.lua?t=" .. os.time()) end)
+	if ok and type(src) == "string" and #src > 0 then
+		local chunk = loadstring(src, "@bundle.lua")
+		if chunk then
+			local okr, tbl = pcall(chunk)
+			if okr and type(tbl) == "table" then FILES = tbl end
+		end
+	end
+end
+
+-- Ambil source modul: dari bundle (memori) kalau ada, else HttpGet (dev/fallback).
+local function fetch(relPath)
+	if FILES and FILES[relPath] then return FILES[relPath] end
 	local full = BASE .. "/" .. relPath .. "?t=" .. os.time()
 	local ok, src = pcall(function() return game:HttpGet(full) end)
-	if not ok or type(src) ~= "string" or src == "" then
-		error(("[AllegiaantHub/garden] gagal ambil %s: %s"):format(full, tostring(src)))
+	if ok and type(src) == "string" then return src end
+	return nil
+end
+
+local function loadModule(relPath)
+	local src = fetch(relPath)
+	if type(src) ~= "string" or src == "" then
+		error(("[AllegiaantHub/garden] gagal ambil %s"):format(relPath))
 	end
 	local chunk, err = loadstring(src, "@" .. relPath)
 	if not chunk then
-		error(("[AllegiaantHub/garden] gagal compile %s: %s"):format(full, tostring(err)))
+		error(("[AllegiaantHub/garden] gagal compile %s: %s"):format(relPath, tostring(err)))
 	end
 	local mod = chunk()
 	if type(mod) ~= "function" then
-		error(("[AllegiaantHub/garden] modul %s harus 'return function(ctx)'"):format(full))
+		error(("[AllegiaantHub/garden] modul %s harus 'return function(ctx)'"):format(relPath))
 	end
 	return mod
 end
@@ -72,9 +95,8 @@ end
 -- Karena app di-load via HttpGet (bukan ModuleScript), require(script...) nggak jalan —
 -- jadi file webhook di-fetch di sini dan hasilnya ditaruh di ctx.
 local function loadRaw(relPath)
-	local full = BASE .. "/" .. relPath .. "?t=" .. os.time()
-	local ok, src = pcall(function() return game:HttpGet(full) end)
-	if not ok or type(src) ~= "string" then return nil end
+	local src = fetch(relPath)
+	if type(src) ~= "string" then return nil end
 	local chunk = loadstring(src, "@" .. relPath)
 	if not chunk then return nil end
 	local okr, val = pcall(chunk)
