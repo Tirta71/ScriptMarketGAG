@@ -5,6 +5,11 @@ return function(ctx)
 	local tabBtns = ctx.ui.tabBtns
 	local C = ctx.C
 
+	-- notif game pas hub selesai dimuat
+	pcall(function()
+		require(game:GetService("ReplicatedStorage").Modules.Notification):CreateNotification("AllegiaantHub Loaded")
+	end)
+
 	-- default tab = Inventory
 	local function selectTab(name)
 		for n, p in pairs(pages) do p.Visible = (n == name) end

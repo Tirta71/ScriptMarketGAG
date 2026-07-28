@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 34 modul, di-generate 2026-07-28T19:24:24.861Z
+-- 34 modul, di-generate 2026-07-28T19:32:12.427Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — init akhir garden: default tab Inventory + auto-resume automation. ]]
@@ -9,6 +9,11 @@ return function(ctx)
 	local pages = ctx.ui.pages
 	local tabBtns = ctx.ui.tabBtns
 	local C = ctx.C
+
+	-- notif game pas hub selesai dimuat
+	pcall(function()
+		require(game:GetService("ReplicatedStorage").Modules.Notification):CreateNotification("AllegiaantHub Loaded")
+	end)
 
 	-- default tab = Inventory
 	local function selectTab(name)
