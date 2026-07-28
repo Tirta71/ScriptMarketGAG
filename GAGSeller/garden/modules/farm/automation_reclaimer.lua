@@ -90,11 +90,8 @@ return function(ctx)
 
 	----------------------------------------------------------------- loop reclaim
 	local POLL = 1
-	local function reclaimLoop()
-		ctx.state.reclaimId = (ctx.state.reclaimId or 0) + 1
-		local myId = ctx.state.reclaimId
+	local function reclaimLoop(myId)
 		ctx.elevate()
-		equipReclaimer() -- equip langsung pas enable
 		while CFG.reclaimEnabled and ctx.alive() and ctx.state.reclaimId == myId do
 			local pf = plantsFolder()
 			local sel = CFG.reclaimPlantNames or {}
@@ -121,7 +118,21 @@ return function(ctx)
 			task.wait(POLL)
 		end
 	end
+
+	-- Guard: selama enable, tool Reclaimer WAJIB tetap kepegang. Kalau user pindah
+	-- manual ke pet/tool lain, langsung equip ulang Reclaimer (cek cepat 0.25s).
+	local function keepEquipped(myId)
+		while CFG.reclaimEnabled and ctx.alive() and ctx.state.reclaimId == myId do
+			if not heldReclaimer() then equipReclaimer() end
+			task.wait(0.25)
+		end
+	end
+
 	function ctx.startReclaim()
-		task.spawn(reclaimLoop)
+		ctx.state.reclaimId = (ctx.state.reclaimId or 0) + 1
+		local myId = ctx.state.reclaimId
+		equipReclaimer() -- equip langsung pas enable
+		task.spawn(function() reclaimLoop(myId) end)
+		task.spawn(function() keepEquipped(myId) end)
 	end
 end
