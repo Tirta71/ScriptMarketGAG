@@ -28,19 +28,35 @@ return function(ctx)
 		return imp and imp:FindFirstChild("Plants_Physical")
 	end
 
-	-- Opsi dropdown: jenis plant unik yg lagi ada di garden + "All".
-	local function plantOptions()
-		local out = { { value = "All", display = "All (semua plant)" } }
+	-- Jenis plant unik yg lagi ada di garden.
+	local function existingTypes()
+		local seen = {}
 		local pf = plantsFolder()
-		if pf then
-			local seen, names = {}, {}
-			for _, m in ipairs(pf:GetChildren()) do
-				local n = m.Name
-				if n and not seen[n] then seen[n] = true; names[#names + 1] = n end
-			end
-			table.sort(names)
-			for _, n in ipairs(names) do out[#out + 1] = { value = n, display = n } end
+		if pf then for _, m in ipairs(pf:GetChildren()) do if m.Name then seen[m.Name] = true end end end
+		return seen
+	end
+
+	-- Buang plant terpilih yg udah ga ada di garden (kecuali "All"),
+	-- biar ga kepilih tapi tanamannya udah abis.
+	local function pruneSelection(existing)
+		local sel = CFG.reclaimPlantNames
+		if type(sel) ~= "table" then return end
+		local changed = false
+		for name in pairs(sel) do
+			if name ~= "All" and not existing[name] then sel[name] = nil; changed = true end
 		end
+		if changed and ctx.persistState then pcall(ctx.persistState) end
+	end
+
+	-- Opsi dropdown: "All" + jenis plant yg lagi ada. Sekalian prune selection stale.
+	local function plantOptions()
+		local existing = existingTypes()
+		pruneSelection(existing)
+		local out = { { value = "All", display = "All (semua plant)" } }
+		local names = {}
+		for n in pairs(existing) do names[#names + 1] = n end
+		table.sort(names)
+		for _, n in ipairs(names) do out[#out + 1] = { value = n, display = n } end
 		return out
 	end
 	function ctx.getReclaimPlantOptions() return plantOptions() end
@@ -78,6 +94,7 @@ return function(ctx)
 		ctx.state.reclaimId = (ctx.state.reclaimId or 0) + 1
 		local myId = ctx.state.reclaimId
 		ctx.elevate()
+		equipReclaimer() -- equip langsung pas enable
 		while CFG.reclaimEnabled and ctx.alive() and ctx.state.reclaimId == myId do
 			local pf = plantsFolder()
 			local sel = CFG.reclaimPlantNames or {}
