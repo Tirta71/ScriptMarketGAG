@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 34 modul, di-generate 2026-07-28T19:32:12.427Z
+-- 34 modul, di-generate 2026-07-28T19:35:00.861Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — init akhir garden: default tab Inventory + auto-resume automation. ]]
@@ -10,9 +10,38 @@ return function(ctx)
 	local tabBtns = ctx.ui.tabBtns
 	local C = ctx.C
 
-	-- notif game pas hub selesai dimuat
+	-- toast "loaded" di pojok kanan bawah
 	pcall(function()
-		require(game:GetService("ReplicatedStorage").Modules.Notification):CreateNotification("AllegiaantHub Loaded")
+		local host = (gethui and gethui()) or game:GetService("CoreGui")
+		local old = host:FindFirstChild("AHNotif"); if old then old:Destroy() end
+		local sg = Instance.new("ScreenGui")
+		sg.Name = "AHNotif"; sg.ResetOnSpawn = false; sg.IgnoreGuiInset = true; sg.DisplayOrder = 9999; sg.Parent = host
+		local f = Instance.new("Frame")
+		f.AnchorPoint = Vector2.new(1, 1)
+		f.Position = UDim2.new(1, 280, 1, -20)     -- mulai di luar layar (buat slide-in)
+		f.Size = UDim2.fromOffset(250, 62)
+		f.BackgroundColor3 = C.panel or Color3.fromRGB(24, 26, 31)
+		f.BorderSizePixel = 0; f.Parent = sg
+		local cr = Instance.new("UICorner"); cr.CornerRadius = UDim.new(0, 10); cr.Parent = f
+		local strk = Instance.new("UIStroke"); strk.Color = C.acc or Color3.fromRGB(246, 197, 24); strk.Thickness = 1.2; strk.Transparency = 0.3; strk.Parent = f
+		local pad = Instance.new("UIPadding"); pad.PaddingLeft = UDim.new(0, 14); pad.PaddingTop = UDim.new(0, 10); pad.Parent = f
+		local title = Instance.new("TextLabel")
+		title.BackgroundTransparency = 1; title.Size = UDim2.new(1, -14, 0, 18)
+		title.Font = Enum.Font.GothamBold; title.TextSize = 14; title.TextXAlignment = Enum.TextXAlignment.Left
+		title.RichText = true; title.Text = 'AllegiaantHub <font color="#f6c518">Notification</font>'
+		title.TextColor3 = C.txt or Color3.fromRGB(235, 238, 242); title.Parent = f
+		local body = Instance.new("TextLabel")
+		body.BackgroundTransparency = 1; body.Size = UDim2.new(1, -14, 0, 16); body.Position = UDim2.fromOffset(0, 24)
+		body.Font = Enum.Font.Gotham; body.TextSize = 13; body.TextXAlignment = Enum.TextXAlignment.Left
+		body.Text = "Loaded"; body.TextColor3 = C.sub or Color3.fromRGB(150, 155, 163); body.Parent = f
+		local TS = game:GetService("TweenService")
+		TS:Create(f, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Position = UDim2.new(1, -20, 1, -20) }):Play()
+		task.delay(3, function()
+			pcall(function()
+				TS:Create(f, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { Position = UDim2.new(1, 280, 1, -20) }):Play()
+				task.wait(0.45); sg:Destroy()
+			end)
+		end)
 	end)
 
 	-- default tab = Inventory
