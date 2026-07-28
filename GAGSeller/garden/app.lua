@@ -50,6 +50,12 @@ return function(ctx)
 		ctx.log("Auto-resume: Auto Reclaimer ON.")
 	end
 
+	-- auto-resume Auto Plants kalau sebelumnya aktif
+	if CFG.plantSeedEnabled and ctx.startPlant then
+		ctx.startPlant()
+		ctx.log("Auto-resume: Auto Plants ON.")
+	end
+
 	-- auto-resume PNP kalau sebelumnya aktif (V1 polling / V2 event-driven, mutually exclusive)
 	if CFG.pnpEnabled and ctx.startPnpV1 then
 		task.wait(1)

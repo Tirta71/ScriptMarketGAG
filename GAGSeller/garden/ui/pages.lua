@@ -57,17 +57,31 @@ return function(ctx)
 	do
 		local farmPage = pageRef["Farm"]
 
+		-- Automation Plants (fitur aktif): pilih seed + posisi + delay + toggle
+		local plAcc = makeAccordion(farmPage, "Automation Plants", 1, false)
+		makeMultiDropdownDyn(plAcc, "Select Seeds", "Pilih seed dari inventory (angka = jumlah).",
+			function() return ctx.getPlantSeedOptions() end, CFG.plantSeedNames, function() persist() end, 1)
+		makeSingleDropdown(plAcc, "Select Position", "Lokasi tanam di farm.",
+			function() return { "Random", "Player Position", "Good Position" } end,
+			function() return CFG.plantPosition end,
+			function(v) CFG.plantPosition = v; persist() end, 2)
+		makeInput(plAcc, "Delay To Plants", "Extra delay (detik) tiap tanam seed.",
+			function() return tostring(CFG.plantDelay) end,
+			function(t) CFG.plantDelay = tonumber(t) or 0; persist() end, 3)
+		makeToggle(plAcc, "Auto Plants Seed", "Tanam seed terpilih otomatis.",
+			function() return CFG.plantSeedEnabled end,
+			function(v) CFG.plantSeedEnabled = v; persist(); if v and ctx.startPlant then ctx.startPlant() end end, 4)
+
 		-- Accordion yg masih kerangka (belum diisi)
 		local SKELETON = {
-			"Automation Plants",
-			"Automation Sprinkler",
-			"Automation Water",
-			"Automation Shovel",
-			"Automation Collection",
-			"Automation Favorite",
+			{ "Automation Sprinkler", 2 },
+			{ "Automation Water", 3 },
+			{ "Automation Shovel", 4 },
+			{ "Automation Collection", 5 },
+			{ "Automation Favorite", 6 },
 		}
-		for i, title in ipairs(SKELETON) do
-			local body = makeAccordion(farmPage, title, i, false)
+		for _, s in ipairs(SKELETON) do
+			local body = makeAccordion(farmPage, s[1], s[2], false)
 			mk("TextLabel", {
 				Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
 				BackgroundTransparency = 1, Text = "Kerangka — fitur belum diisi.",
