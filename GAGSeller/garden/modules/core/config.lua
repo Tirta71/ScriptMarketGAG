@@ -147,6 +147,16 @@ return function(ctx)
 		plantDelay       = 0,
 		plantSeedEnabled = false,
 
+		-- Automation Sprinkler (Farm): pasang + shovel sprinkler
+		sprinklerNames        = {},
+		sprinklerPlantNames   = {},
+		sprinklerPosition     = "Random",
+		sprinklerDelay        = 0,
+		sprinklerEnabled      = false,
+		shovelSprinklerNames  = {},
+		shovelSprinklerDelay  = 0,
+		shovelSprinklerEnabled = false,
+
 		-- Automation Cleanse Mutation (mutasi via aura + cleanse)
 		cleanseTeamUuids     = {},   -- Pet Team for Mutation (aura pemberi mutasi)
 		cleansePetTypes      = {},   -- Pet Types for Mutation (target)
@@ -336,6 +346,14 @@ return function(ctx)
 			CFG.plantPosition    = (st.plantPosition == "Player Position") and "Player Position" or "Random"
 			CFG.plantDelay       = tonumber(st.plantDelay) or 0
 			CFG.plantSeedEnabled = st.plantSeedEnabled or false
+			CFG.sprinklerNames        = (type(st.sprinklerNames) == "table") and st.sprinklerNames or {}
+			CFG.sprinklerPlantNames   = (type(st.sprinklerPlantNames) == "table") and st.sprinklerPlantNames or {}
+			CFG.sprinklerPosition     = (st.sprinklerPosition == "Player Position") and "Player Position" or "Random"
+			CFG.sprinklerDelay        = tonumber(st.sprinklerDelay) or 0
+			CFG.sprinklerEnabled      = st.sprinklerEnabled or false
+			CFG.shovelSprinklerNames  = (type(st.shovelSprinklerNames) == "table") and st.shovelSprinklerNames or {}
+			CFG.shovelSprinklerDelay  = tonumber(st.shovelSprinklerDelay) or 0
+			CFG.shovelSprinklerEnabled = st.shovelSprinklerEnabled or false
 
 			CFG.cleanseTeamUuids     = (type(st.cleanseTeamUuids) == "table") and st.cleanseTeamUuids or {}
 			CFG.cleansePetTypes      = (type(st.cleansePetTypes) == "table") and st.cleansePetTypes or {}

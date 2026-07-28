@@ -72,9 +72,36 @@ return function(ctx)
 			function() return CFG.plantSeedEnabled end,
 			function(v) CFG.plantSeedEnabled = v; persist(); if v and ctx.startPlant then ctx.startPlant() end end, 4)
 
+		-- Automation Sprinkler (fitur aktif): pasang sprinkler + shovel sprinkler
+		local sprAcc = makeAccordion(farmPage, "Automation Sprinkler", 2, false)
+		makeMultiDropdownDyn(sprAcc, "Select Sprinkler", "Sprinkler yg mau dipasang (angka = jumlah).",
+			function() return ctx.getSprinklerOptions() end, CFG.sprinklerNames, function() persist() end, 1)
+		makeMultiDropdownDyn(sprAcc, "Select Sprinkler Plants", "Pasang dekat plant ini. Kosong = pakai Position.",
+			function() return ctx.getSprinklerPlantOptions() end, CFG.sprinklerPlantNames, function() persist() end, 2)
+		makeSingleDropdown(sprAcc, "Select Sprinkler Position", "Lokasi pasang kalau Plants kosong.",
+			function() return { "Random", "Player Position" } end,
+			function() return CFG.sprinklerPosition end,
+			function(v) CFG.sprinklerPosition = v; persist() end, 3)
+		makeInput(sprAcc, "Delay To Sprinkler", "Extra delay (detik) tiap pasang.",
+			function() return tostring(CFG.sprinklerDelay) end,
+			function(t) CFG.sprinklerDelay = tonumber(t) or 0; persist() end, 4)
+		makeToggle(sprAcc, "Auto Sprinkler", "Pasang sprinkler terpilih otomatis.",
+			function() return CFG.sprinklerEnabled end,
+			function(v) CFG.sprinklerEnabled = v; persist(); if v and ctx.startSprinkler then ctx.startSprinkler() end end, 5)
+
+		-- sub-accordion: Sprinkler Shovel (cabut sprinkler terpasang, butuh Shovel)
+		local shAcc = makeAccordion(sprAcc, "Sprinkler Shovel", 6, false)
+		makeMultiDropdownDyn(shAcc, "Select Shovel Sprinkler", "Jenis sprinkler terpasang yg mau dicabut. 'All' = semua.",
+			function() return ctx.getShovelSprinklerOptions() end, CFG.shovelSprinklerNames, function() persist() end, 1)
+		makeInput(shAcc, "Delay To Shovel Sprinkler", "Extra delay (detik) tiap cabut.",
+			function() return tostring(CFG.shovelSprinklerDelay) end,
+			function(t) CFG.shovelSprinklerDelay = tonumber(t) or 0; persist() end, 2)
+		makeToggle(shAcc, "Auto Shovel Sprinkler", "Cabut sprinkler terpilih otomatis (equip Shovel).",
+			function() return CFG.shovelSprinklerEnabled end,
+			function(v) CFG.shovelSprinklerEnabled = v; persist(); if v and ctx.startShovelSprinkler then ctx.startShovelSprinkler() end end, 3)
+
 		-- Accordion yg masih kerangka (belum diisi)
 		local SKELETON = {
-			{ "Automation Sprinkler", 2 },
 			{ "Automation Water", 3 },
 			{ "Automation Shovel", 4 },
 			{ "Automation Collection", 5 },

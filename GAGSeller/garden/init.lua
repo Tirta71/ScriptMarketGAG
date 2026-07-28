@@ -109,6 +109,7 @@ local MODULES = {
 	"modules/event/automation_summer_shop.lua",
 	"modules/farm/automation_reclaimer.lua",
 	"modules/farm/automation_plants.lua",
+	"modules/farm/automation_sprinkler.lua",
 	"modules/mutation/automation_mutation_machine.lua",
 	"modules/mutation/automation_mutation.lua",
 	"modules/event/automation_summer_event.lua",

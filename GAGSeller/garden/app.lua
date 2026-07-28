@@ -56,6 +56,16 @@ return function(ctx)
 		ctx.log("Auto-resume: Auto Plants ON.")
 	end
 
+	-- auto-resume Auto Sprinkler + Shovel Sprinkler
+	if CFG.sprinklerEnabled and ctx.startSprinkler then
+		ctx.startSprinkler()
+		ctx.log("Auto-resume: Auto Sprinkler ON.")
+	end
+	if CFG.shovelSprinklerEnabled and ctx.startShovelSprinkler then
+		ctx.startShovelSprinkler()
+		ctx.log("Auto-resume: Auto Shovel Sprinkler ON.")
+	end
+
 	-- auto-resume PNP kalau sebelumnya aktif (V1 polling / V2 event-driven, mutually exclusive)
 	if CFG.pnpEnabled and ctx.startPnpV1 then
 		task.wait(1)
