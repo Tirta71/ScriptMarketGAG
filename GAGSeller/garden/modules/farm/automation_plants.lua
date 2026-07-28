@@ -115,6 +115,9 @@ return function(ctx)
 			if next(sel) then
 				local inv = seedInventory()
 				local mode = CFG.plantPosition == "Player Position" and "Player Position" or "Random"
+				-- Player Position: spam cepat (base 0) biar numpuk di 1 titik sebelum tumbuh.
+				-- Random: kasih jeda kecil biar nyebar rapi.
+				local baseWait = (mode == "Player Position") and 0 or 0.15
 				local planted, anySeed = 0, false
 				for name in pairs(sel) do
 					local qty = inv[name] or 0
@@ -129,7 +132,7 @@ return function(ctx)
 									planted = planted + 1
 								end
 							end
-							task.wait(0.15 + (tonumber(CFG.plantDelay) or 0))
+							task.wait(baseWait + (tonumber(CFG.plantDelay) or 0))
 						end
 					end
 				end
