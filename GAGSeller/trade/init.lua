@@ -21,19 +21,40 @@ local branch = (getgenv and getgenv().GAG_BRANCH) or _G.GAG_BRANCH or "main"
 local BASE = "https://raw.githubusercontent.com/Tirta71/ScriptMarketGAG/" .. branch .. "/GAGSeller/trade"
 
 --------------------------------------------------------------------- loader
+-- Mode load: default = 1 bundle (kilat). DEV = per-modul HttpGet (buat ngedit).
+-- Set getgenv().GAG_DEV=true buat dev-mode.
+local DEV = (getgenv and getgenv().GAG_DEV) or _G.GAG_DEV
+local FILES
+if not DEV then
+	local ok, src = pcall(function() return game:HttpGet(BASE .. "/bundle.lua?t=" .. os.time()) end)
+	if ok and type(src) == "string" and #src > 0 then
+		local chunk = loadstring(src, "@bundle.lua")
+		if chunk then
+			local okr, tbl = pcall(chunk)
+			if okr and type(tbl) == "table" then FILES = tbl end
+		end
+	end
+end
+
+local function fetch(relPath)
+	if FILES and FILES[relPath] then return FILES[relPath] end
+	local ok, src = pcall(function() return game:HttpGet(BASE .. "/" .. relPath) end)
+	if ok and type(src) == "string" then return src end
+	return nil
+end
+
 local function loadModule(relPath)
-	local full = BASE .. "/" .. relPath
-	local ok, src = pcall(function() return game:HttpGet(full) end)
-	if not ok or type(src) ~= "string" or src == "" then
-		error(("[GAGSeller] gagal ambil %s: %s"):format(full, tostring(src)))
+	local src = fetch(relPath)
+	if type(src) ~= "string" or src == "" then
+		error(("[GAGSeller] gagal ambil %s"):format(relPath))
 	end
 	local chunk, err = loadstring(src, "@" .. relPath)
 	if not chunk then
-		error(("[GAGSeller] gagal compile %s: %s"):format(full, tostring(err)))
+		error(("[GAGSeller] gagal compile %s: %s"):format(relPath, tostring(err)))
 	end
 	local mod = chunk()
 	if type(mod) ~= "function" then
-		error(("[GAGSeller] modul %s harus 'return function(ctx)'"):format(full))
+		error(("[GAGSeller] modul %s harus 'return function(ctx)'"):format(relPath))
 	end
 	return mod
 end
