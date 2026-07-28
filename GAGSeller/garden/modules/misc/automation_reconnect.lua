@@ -65,5 +65,20 @@ return function(ctx)
 		ctx.state.reconnectId = (ctx.state.reconnectId or 0) + 1
 		local myId = ctx.state.reconnectId
 		task.spawn(function() reconnectLoop(myId) end)
+
+		-- Listener DISCONNECT: rejoin pas kena error/kick/server shutdown.
+		-- ErrorMessageChanged nyala pas dialog error/disconnect muncul.
+		-- Slot global biar ga numpuk antar-reload (disconnect yg lama dulu).
+		if _G.__AH_ReconnectDC then pcall(function() _G.__AH_ReconnectDC:Disconnect() end) end
+		pcall(function()
+			local GuiService = game:GetService("GuiService")
+			_G.__AH_ReconnectDC = GuiService.ErrorMessageChanged:Connect(function()
+				if CFG.reconnectEnabled then
+					setStatus("Reconnect: disconnect kedetect, rejoin...")
+					task.wait(1)
+					doReconnect()
+				end
+			end)
+		end)
 	end
 end

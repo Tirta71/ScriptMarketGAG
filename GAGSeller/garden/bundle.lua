@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 35 modul, di-generate 2026-07-28T20:34:07.813Z
+-- 35 modul, di-generate 2026-07-28T20:37:04.004Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — init akhir garden: default tab Inventory + auto-resume automation. ]]
@@ -5323,6 +5323,21 @@ return function(ctx)
 		ctx.state.reconnectId = (ctx.state.reconnectId or 0) + 1
 		local myId = ctx.state.reconnectId
 		task.spawn(function() reconnectLoop(myId) end)
+
+		-- Listener DISCONNECT: rejoin pas kena error/kick/server shutdown.
+		-- ErrorMessageChanged nyala pas dialog error/disconnect muncul.
+		-- Slot global biar ga numpuk antar-reload (disconnect yg lama dulu).
+		if _G.__AH_ReconnectDC then pcall(function() _G.__AH_ReconnectDC:Disconnect() end) end
+		pcall(function()
+			local GuiService = game:GetService("GuiService")
+			_G.__AH_ReconnectDC = GuiService.ErrorMessageChanged:Connect(function()
+				if CFG.reconnectEnabled then
+					setStatus("Reconnect: disconnect kedetect, rejoin...")
+					task.wait(1)
+					doReconnect()
+				end
+			end)
+		end)
 	end
 end
 ]=],
@@ -8471,7 +8486,7 @@ return function(ctx)
 	makeInput(rcAcc, "Interval (menit)", "Auto reconnect/rejoin tiap sekian menit (mis. 1 = tiap 1 menit).",
 		function() return tostring(CFG.reconnectInterval) end,
 		function(t) CFG.reconnectInterval = tonumber(t) or 5; persist() end, 1)
-	makeToggle(rcAcc, "Auto Reconnect", "Auto rejoin server tiap interval (hub auto jalan lagi via queue).",
+	makeToggle(rcAcc, "Auto Reconnect", "Auto rejoin tiap interval + pas kena disconnect/kick/shutdown. Stay di private server. Hub auto jalan lagi via queue.",
 		function() return CFG.reconnectEnabled end,
 		function(v) CFG.reconnectEnabled = v; persist(); if v and ctx.startReconnect then ctx.startReconnect() end end, 2)
 
