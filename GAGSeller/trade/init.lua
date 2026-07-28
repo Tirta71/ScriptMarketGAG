@@ -21,11 +21,11 @@ local branch = (getgenv and getgenv().GAG_BRANCH) or _G.GAG_BRANCH or "main"
 local BASE = "https://raw.githubusercontent.com/Tirta71/ScriptMarketGAG/" .. branch .. "/GAGSeller/trade"
 
 --------------------------------------------------------------------- loader
--- Mode load: default = 1 bundle (kilat). DEV = per-modul HttpGet (buat ngedit).
--- Set getgenv().GAG_DEV=true buat dev-mode.
-local DEV = (getgenv and getgenv().GAG_DEV) or _G.GAG_DEV
+-- Selalu load dari bundle.lua (1 HttpGet, kilat). Workflow: edit modul ->
+-- `node tools/bundle.js` -> push. Fallback per-modul di fungsi fetch kalau
+-- bundle gagal / ada modul yg belum ke-bundle.
 local FILES
-if not DEV then
+do
 	local ok, src = pcall(function() return game:HttpGet(BASE .. "/bundle.lua?t=" .. os.time()) end)
 	if ok and type(src) == "string" and #src > 0 then
 		local chunk = loadstring(src, "@bundle.lua")

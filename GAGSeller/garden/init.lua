@@ -7,11 +7,11 @@
 local branch = (getgenv and getgenv().GAG_BRANCH) or _G.GAG_BRANCH or "main"
 local BASE = "https://raw.githubusercontent.com/Tirta71/ScriptMarketGAG/" .. branch .. "/GAGSeller/garden"
 
--- Mode load: default = 1 bundle (kilat, coexist sama Cobalt). DEV = per-modul HttpGet
--- (buat ngedit; edit+push langsung kepake tanpa perlu bundle). Set getgenv().GAG_DEV=true.
-local DEV = (getgenv and getgenv().GAG_DEV) or _G.GAG_DEV
+-- Selalu load dari bundle.lua (1 HttpGet, kilat). Workflow: edit modul ->
+-- `node tools/bundle.js` -> push. Kalau bundle gagal / ada modul yg belum
+-- ke-bundle, fungsi fetch di bawah fallback ambil per-modul dari GitHub.
 local FILES
-if not DEV then
+do
 	local ok, src = pcall(function() return game:HttpGet(BASE .. "/bundle.lua?t=" .. os.time()) end)
 	if ok and type(src) == "string" and #src > 0 then
 		local chunk = loadstring(src, "@bundle.lua")
