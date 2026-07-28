@@ -50,6 +50,24 @@ function ctx.elevate()
 	end)
 end
 
+-- Logo AH buat tombol minimize. Download sekali, cache via getcustomasset (fallback: teks "AH").
+function ctx.getLogo()
+	if _G.__AH_LOGO ~= nil then return _G.__AH_LOGO or nil end
+	local asset = false
+	pcall(function()
+		local gca = getcustomasset or getsynasset or (syn and syn.getcustomasset)
+		if not (gca and writefile) then return end
+		local path = "AllegiaantHub/logo_icon.png"
+		if not (isfile and isfile(path)) then
+			if makefolder and not (isfolder and isfolder("AllegiaantHub")) then makefolder("AllegiaantHub") end
+			writefile(path, game:HttpGet("https://raw.githubusercontent.com/Tirta71/ScriptMarketGAG/" .. branch .. "/GAGSeller/Logo/logo_icon.png"))
+		end
+		asset = gca(path) or false
+	end)
+	_G.__AH_LOGO = asset
+	return asset or nil
+end
+
 -- Loader untuk file yang BUKAN pola return function(ctx) (mis. webhook helper/formatter).
 -- Karena app di-load via HttpGet (bukan ModuleScript), require(script...) nggak jalan —
 -- jadi file webhook di-fetch di sini dan hasilnya ditaruh di ctx.

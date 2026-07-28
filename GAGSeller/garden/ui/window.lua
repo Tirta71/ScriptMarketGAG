@@ -27,9 +27,17 @@ return function(ctx)
 		ctx.state.isAlive = false
 	end)
 
-	-- floating maximize
+	-- floating maximize (logo AH)
 	local maxIcon = mk("TextButton", { Size = UDim2.fromOffset(46, 46), Position = UDim2.new(0, 15, 0.5, -23), BackgroundColor3 = C.panel, Text = "AH", Font = Enum.Font.GothamBold, TextSize = 15, TextColor3 = C.acc, Visible = false, Active = true }, gui)
 	corner(maxIcon, 23); stroke(maxIcon, C.acc, 1.5)
+	pcall(function()
+		local logo = ctx.getLogo and ctx.getLogo()
+		if logo then
+			maxIcon.Text = ""
+			local img = mk("ImageLabel", { Size = UDim2.new(1, -6, 1, -6), Position = UDim2.fromOffset(3, 3), BackgroundTransparency = 1, Image = logo, ScaleType = Enum.ScaleType.Fit }, maxIcon)
+			corner(img, 21)
+		end
+	end)
 
 	-- AnchorPoint tengah + Position tengah -> UIScale ngecilin dari titik tengah,
 	-- jadi window tetap ke-center (penting di HP).

@@ -37,6 +37,14 @@ return function(ctx)
 	}, gui)
 	corner(maxIcon, 22)
 	stroke(maxIcon, C.acc, 1.5)
+	pcall(function()
+		local logo = ctx.getLogo and ctx.getLogo()
+		if logo then
+			maxIcon.Text = ""
+			local img = mk("ImageLabel", { Size = UDim2.new(1, -6, 1, -6), Position = UDim2.fromOffset(3, 3), BackgroundTransparency = 1, Image = logo, ScaleType = Enum.ScaleType.Fit }, maxIcon)
+			corner(img, 20)
+		end
+	end)
 	do
 		local dragging, ds, sp
 		maxIcon.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging = true; ds = i.Position; sp = maxIcon.Position end end)
