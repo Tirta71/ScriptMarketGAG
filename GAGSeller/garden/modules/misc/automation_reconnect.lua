@@ -40,8 +40,12 @@ return function(ctx)
 			local total = mins * 60
 			local t0 = os.clock()
 			while os.clock() - t0 < total do
-				if not CFG.reconnectEnabled or ctx.state.reconnectId ~= myId or not ctx.alive() then return end
-				setStatus(("Reconnect: %d dtk lagi"):format(math.ceil(total - (os.clock() - t0))))
+				if not CFG.reconnectEnabled or ctx.state.reconnectId ~= myId or not ctx.alive() then
+					ctx.state.reconnectRemaining = nil; return
+				end
+				local rem = math.ceil(total - (os.clock() - t0))
+				ctx.state.reconnectRemaining = rem
+				setStatus(("Reconnect: %d dtk lagi"):format(rem))
 				task.wait(1)
 			end
 			if CFG.reconnectEnabled and ctx.state.reconnectId == myId then

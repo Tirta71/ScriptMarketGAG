@@ -1031,6 +1031,30 @@ return function(ctx)
 
 	-- Automation Reconnect Accordion
 	local rcAcc = makeAccordion(misc, "Automation Reconnect", 2, false)
+	-- countdown live di paling atas
+	local rcLbl = mk("TextLabel", {
+		Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1,
+		Text = "Reconnect: OFF", Font = Enum.Font.GothamBold, TextSize = 15,
+		TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 0,
+	}, rcAcc)
+	mk("Frame", { Size = UDim2.new(1, 0, 0, 8), BackgroundTransparency = 1, LayoutOrder = 0 }, rcAcc)
+	task.spawn(function()
+		while ctx.alive() do
+			if CFG.reconnectEnabled then
+				local rem = ctx.state.reconnectRemaining
+				if rem then
+					rcLbl.Text = ("⏱ Reconnect in: %d:%02d"):format(math.floor(rem / 60), rem % 60)
+				else
+					rcLbl.Text = "⏱ Reconnect: ON"
+				end
+				rcLbl.TextColor3 = C.acc
+			else
+				rcLbl.Text = "Reconnect: OFF"
+				rcLbl.TextColor3 = C.sub
+			end
+			task.wait(0.5)
+		end
+	end)
 	makeInput(rcAcc, "Interval (menit)", "Auto reconnect/rejoin tiap sekian menit (mis. 1 = tiap 1 menit).",
 		function() return tostring(CFG.reconnectInterval) end,
 		function(t) CFG.reconnectInterval = tonumber(t) or 5; persist() end, 1)
