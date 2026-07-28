@@ -21,13 +21,18 @@ return function(ctx)
 		end
 	end
 
+	-- Cache reference Teleport SEKARANG (bukan pas dipanggil) biar bypass hook
+	-- __namecall yg mungkin dipasang game buat block teleport pihak-3.
+	local TeleportFn = TeleportService.Teleport
+
 	local function doReconnect()
 		queueLoader()
 		task.wait(0.4)
-		-- reconnect = balik ke server yg sama; fallback server baru.
-		local ok = pcall(function()
-			TeleportService:TeleportToPlaceInstance(game.PlaceId, game.JobId, LP)
-		end)
+		-- Teleport(placeId, player) via cached-ref. Pas di private server, Roblox
+		-- rejoin ke private server juga (bukan publik) -> stay private. Kalau di
+		-- server publik, ke publik. TeleportToPlaceInstance JANGAN dipakai (773 +
+		-- diblok buat private).
+		local ok = pcall(function() TeleportFn(TeleportService, game.PlaceId, LP) end)
 		if not ok then
 			pcall(function() TeleportService:Teleport(game.PlaceId, LP) end)
 		end
