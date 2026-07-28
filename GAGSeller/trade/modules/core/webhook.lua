@@ -23,8 +23,21 @@ return function(ctx)
 	ctx.sendWebhook = sendWebhook
 
 	----------------------------------------------------------------- sell listener
-	local lastProcessedTx = ctx.state.lastProcessedTx
-	AddToHistory.OnClientEvent:Connect(function(tx)
+	-- Dedup GLOBAL (persist antar-reload). ctx.state di-reset tiap reload, jadi
+	-- kalau pakai tabel per-ctx, listener lama (yg bocor) + listener baru punya
+	-- tabel dedup masing-masing -> kirim double/triple. Tabel global bikin listener
+	-- mana pun yg duluan proses tx.id nge-block sisanya.
+	local lastProcessedTx = _G.__AH_SellTx
+	if type(lastProcessedTx) ~= "table" then
+		lastProcessedTx = {}
+		_G.__AH_SellTx = lastProcessedTx
+	end
+	ctx.state.lastProcessedTx = lastProcessedTx
+
+	-- Disconnect listener dari eksekusi/reload sebelumnya biar nggak numpuk.
+	if _G.__AH_SellConn then pcall(function() _G.__AH_SellConn:Disconnect() end) end
+
+	_G.__AH_SellConn = AddToHistory.OnClientEvent:Connect(function(tx)
 		if not CFG.webhookEnabled or CFG.webhookUrl == "" then return end
 		if not tx or type(tx) ~= "table" then return end
 		if lastProcessedTx[tx.id] then return end
