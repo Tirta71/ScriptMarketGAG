@@ -45,6 +45,13 @@ return function(ctx)
 	end
 	local function sprinklerOptions()
 		local inv = sprinklerInventory()
+		-- prune sprinkler terpilih yg stok-nya udah 0
+		local sel = CFG.sprinklerNames
+		if type(sel) == "table" then
+			local changed = false
+			for nm in pairs(sel) do if (inv[nm] or 0) <= 0 then sel[nm] = nil; changed = true end end
+			if changed and ctx.persistState then pcall(ctx.persistState) end
+		end
 		local names = {}
 		for n, q in pairs(inv) do if q > 0 then names[#names + 1] = n end end
 		table.sort(names)
@@ -67,15 +74,28 @@ return function(ctx)
 		return out
 	end
 
-	-- jenis sprinkler terpasang (OBJECT_TYPE) buat shovel + "All"
+	-- Opsi shovel: gabungan jenis sprinkler yg kamu punya (inventory) + yg lagi
+	-- terpasang, + "All". Daftar dari inventory bikin stabil (ga ilang pas objek
+	-- expire). Sekalian prune pilihan yg jenisnya udah ga ada sama sekali.
 	function ctx.getShovelSprinklerOptions()
-		local out = { { value = "All", display = "All (semua terpasang)" } }
+		local set = {}
+		for n in pairs(sprinklerInventory()) do set[n] = true end
 		local of = objectsFolder()
-		local seen = {}
 		if of then for _, o in ipairs(of:GetChildren()) do
 			local ty = o:GetAttribute("OBJECT_TYPE") or o.Name
-			if ty and not seen[ty] then seen[ty] = true; out[#out + 1] = { value = ty, display = ty } end
+			if ty then set[ty] = true end
 		end end
+		local sel = CFG.shovelSprinklerNames
+		if type(sel) == "table" then
+			local changed = false
+			for nm in pairs(sel) do if nm ~= "All" and not set[nm] then sel[nm] = nil; changed = true end end
+			if changed and ctx.persistState then pcall(ctx.persistState) end
+		end
+		local names = {}
+		for n in pairs(set) do names[#names + 1] = n end
+		table.sort(names)
+		local out = { { value = "All", display = "All (semua terpasang)" } }
+		for _, n in ipairs(names) do out[#out + 1] = { value = n, display = n } end
 		return out
 	end
 
@@ -126,9 +146,10 @@ return function(ctx)
 		while CFG.sprinklerEnabled and ctx.alive() and ctx.state.sprinklerId == myId do
 			local selSpr = CFG.sprinklerNames or {}
 			local inv = sprinklerInventory()
-			-- daftar tipe sprinkler terpilih yg masih ada stok
+			-- daftar tipe sprinkler terpilih yg masih ada stok (urut stabil)
 			local types = {}
 			for n in pairs(selSpr) do if (inv[n] or 0) > 0 then types[#types + 1] = n end end
+			table.sort(types)
 			if #types == 0 then
 				setStatus("Sprinkler: pilih sprinkler (stok kosong?)")
 			else
@@ -141,12 +162,13 @@ return function(ctx)
 					local mode = CFG.sprinklerPosition == "Player Position" and "Player Position" or "Random"
 					positions = { mode == "Player Position" and playerPos() or randomPos() }
 				end
-				local ti, placed = 0, 0
+				local placed = 0
 				for _, pos in ipairs(positions) do
 					if not CFG.sprinklerEnabled or ctx.state.sprinklerId ~= myId then break end
 					if pos then
-						ti = ti % #types + 1
-						local name = types[ti]
+						-- rotasi 1-1 antar tipe, indeks persist antar-siklus (biar ga tipe pertama terus)
+						ctx.state.sprRotIdx = (ctx.state.sprRotIdx or 0) % #types + 1
+						local name = types[ctx.state.sprRotIdx]
 						if equipSprinkler(name) then
 							pcall(function() SprinklerService:FireServer("Create", CFrame.new(pos)) end)
 							placed = placed + 1
