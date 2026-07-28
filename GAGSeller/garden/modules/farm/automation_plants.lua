@@ -120,6 +120,28 @@ return function(ctx)
 		return occ
 	end
 
+	-- Tool seed di inventory namanya "<Nama> Seed [Xjumlah]". Server WAJIB kamu
+	-- megang tool seed-nya pas Plant_RE, jadi equip dulu sebelum tanam.
+	local function seedBase(t)
+		return t:IsA("Tool") and t.Name:match("^(.-) Seed %[X%d+%]") or nil
+	end
+	local function holdingSeed(name)
+		local ch = LP.Character
+		if ch then for _, t in ipairs(ch:GetChildren()) do if seedBase(t) == name then return true end end end
+		return false
+	end
+	local function equipSeed(name)
+		if holdingSeed(name) then return true end
+		local bp = LP:FindFirstChild("Backpack")
+		local tool
+		if bp then for _, t in ipairs(bp:GetChildren()) do if seedBase(t) == name then tool = t; break end end end
+		if tool then
+			local hum = LP.Character and LP.Character:FindFirstChildOfClass("Humanoid")
+			if hum then pcall(function() hum:EquipTool(tool) end) end
+		end
+		return holdingSeed(name)
+	end
+
 	----------------------------------------------------------------- loop tanam
 	local function plantLoop(myId)
 		ctx.elevate()
@@ -127,42 +149,41 @@ return function(ctx)
 			local sel = CFG.plantSeedNames or {}
 			if next(sel) then
 				local inv = seedInventory()
-				-- antrian seed yg mau ditanam (sesuai jumlah)
-				local queue = {}
-				for name in pairs(sel) do
-					for _ = 1, (inv[name] or 0) do queue[#queue + 1] = name end
+				local mode = CFG.plantPosition or "Good Position"
+				local cells, occ, ci
+				if mode == "Good Position" then cells = goodCells(); occ = occupancy(); ci = 0 end
+				local function nextPos()
+					if mode == "Random" then return randomPos() end
+					if mode == "Player Position" then return playerPos() end
+					-- Good Position: cell kosong berikutnya
+					while ci < #cells do
+						ci = ci + 1
+						local c = cells[ci]
+						local k = cellKey(c.X, c.Z)
+						if not occ[k] then occ[k] = true; return c end
+					end
+					return nil
 				end
-				if #queue == 0 then
-					setStatus("Plants: seed terpilih habis")
-				else
-					local mode = CFG.plantPosition or "Good Position"
-					local cells, occ, ci
-					if mode == "Good Position" then cells = goodCells(); occ = occupancy(); ci = 0 end
-					local planted = 0
-					for _, name in ipairs(queue) do
-						if not CFG.plantSeedEnabled or ctx.state.plantId ~= myId then break end
-						local pos
-						if mode == "Random" then
-							pos = randomPos()
-						elseif mode == "Player Position" then
-							pos = playerPos()
-						else -- Good Position: cari cell kosong berikutnya
-							while ci < #cells do
-								ci = ci + 1
-								local c = cells[ci]
-								local k = cellKey(c.X, c.Z)
-								if not occ[k] then occ[k] = true; pos = c; break end
+
+				local planted, anySeed = 0, false
+				for name in pairs(sel) do
+					local qty = inv[name] or 0
+					if qty > 0 then
+						anySeed = true
+						if equipSeed(name) then -- equip tool seed dulu
+							for _ = 1, qty do
+								if not CFG.plantSeedEnabled or ctx.state.plantId ~= myId then break end
+								local pos = nextPos()
+								if not pos then break end -- Good Position: cell penuh
+								pcall(function() Plant_RE:FireServer(pos, name) end)
+								planted = planted + 1
+								task.wait(0.15 + (tonumber(CFG.plantDelay) or 0))
 							end
-							if not pos then break end -- cell penuh
-						end
-						if pos then
-							pcall(function() Plant_RE:FireServer(pos, name) end)
-							planted = planted + 1
-							task.wait(0.15 + (tonumber(CFG.plantDelay) or 0))
 						end
 					end
-					setStatus(("Plants: tanam %d (%s)"):format(planted, mode))
 				end
+				if not anySeed then setStatus("Plants: seed terpilih habis")
+				else setStatus(("Plants: tanam %d (%s)"):format(planted, mode)) end
 			else
 				setStatus("Plants: pilih seed dulu")
 			end
