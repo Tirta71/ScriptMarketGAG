@@ -157,6 +157,10 @@ return function(ctx)
 		shovelSprinklerDelay  = 0,
 		shovelSprinklerEnabled = false,
 
+		-- Automation Reconnect (Misc): auto rejoin tiap interval
+		reconnectEnabled  = false,
+		reconnectInterval = 5,   -- menit
+
 		-- Automation Cleanse Mutation (mutasi via aura + cleanse)
 		cleanseTeamUuids     = {},   -- Pet Team for Mutation (aura pemberi mutasi)
 		cleansePetTypes      = {},   -- Pet Types for Mutation (target)
@@ -354,6 +358,8 @@ return function(ctx)
 			CFG.shovelSprinklerNames  = (type(st.shovelSprinklerNames) == "table") and st.shovelSprinklerNames or {}
 			CFG.shovelSprinklerDelay  = tonumber(st.shovelSprinklerDelay) or 0
 			CFG.shovelSprinklerEnabled = st.shovelSprinklerEnabled or false
+			CFG.reconnectEnabled  = st.reconnectEnabled or false
+			CFG.reconnectInterval = tonumber(st.reconnectInterval) or 5
 
 			CFG.cleanseTeamUuids     = (type(st.cleanseTeamUuids) == "table") and st.cleanseTeamUuids or {}
 			CFG.cleansePetTypes      = (type(st.cleansePetTypes) == "table") and st.cleansePetTypes or {}

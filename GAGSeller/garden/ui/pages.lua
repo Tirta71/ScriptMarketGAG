@@ -1029,8 +1029,17 @@ return function(ctx)
 			if v then ctx.startEsp() else ctx.stopEsp() end
 		end, 1)
 
+	-- Automation Reconnect Accordion
+	local rcAcc = makeAccordion(misc, "Automation Reconnect", 2, false)
+	makeInput(rcAcc, "Interval (menit)", "Auto reconnect/rejoin tiap sekian menit (mis. 1 = tiap 1 menit).",
+		function() return tostring(CFG.reconnectInterval) end,
+		function(t) CFG.reconnectInterval = tonumber(t) or 5; persist() end, 1)
+	makeToggle(rcAcc, "Auto Reconnect", "Auto rejoin server tiap interval (hub auto jalan lagi via queue).",
+		function() return CFG.reconnectEnabled end,
+		function(v) CFG.reconnectEnabled = v; persist(); if v and ctx.startReconnect then ctx.startReconnect() end end, 2)
+
 	-- Webhook Settings Accordion
-	local whAcc = makeAccordion(misc, "Discord Webhook Settings", 2, true)
+	local whAcc = makeAccordion(misc, "Discord Webhook Settings", 3, true)
 
 	-- Discord Webhook URL Input
 	makeInput(whAcc, "Discord Webhook URL", "Webhook URL for automation updates (Leveling, Mutation & Elephant)",

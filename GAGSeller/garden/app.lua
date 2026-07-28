@@ -100,6 +100,12 @@ return function(ctx)
 		ctx.log("Auto-resume: Auto Shovel Sprinkler ON.")
 	end
 
+	-- auto-resume Auto Reconnect (biar loop rejoin lanjut tiap masuk server)
+	if CFG.reconnectEnabled and ctx.startReconnect then
+		ctx.startReconnect()
+		ctx.log("Auto-resume: Auto Reconnect ON.")
+	end
+
 	-- auto-resume PNP kalau sebelumnya aktif (V1 polling / V2 event-driven, mutually exclusive)
 	if CFG.pnpEnabled and ctx.startPnpV1 then
 		task.wait(1)
