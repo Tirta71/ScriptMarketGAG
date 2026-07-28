@@ -45,18 +45,31 @@ return function(ctx)
 	end
 	function ctx.getReclaimPlantOptions() return plantOptions() end
 
+	-- Nama tool di inventory ada suffix jumlah (mis. "Reclaimer x50634"),
+	-- jadi cocokin per-prefix, bukan exact.
+	local function isReclaimer(t)
+		return t:IsA("Tool") and t.Name:match("^Reclaimer") ~= nil
+	end
+	local function heldReclaimer()
+		local char = LP.Character
+		if not char then return nil end
+		for _, t in ipairs(char:GetChildren()) do if isReclaimer(t) then return t end end
+		return nil
+	end
+
 	-- Equip tool Reclaimer dari Backpack kalau belum kepegang.
 	local function equipReclaimer()
 		local char = LP.Character
 		if not char then return false end
-		if char:FindFirstChild("Reclaimer") then return true end
+		if heldReclaimer() then return true end
 		local bp = LP:FindFirstChild("Backpack")
-		local tool = bp and bp:FindFirstChild("Reclaimer")
+		local tool
+		if bp then for _, t in ipairs(bp:GetChildren()) do if isReclaimer(t) then tool = t; break end end end
 		if tool then
 			local hum = char:FindFirstChildOfClass("Humanoid")
-			if hum then pcall(function() hum:EquipTool(tool) end); return char:FindFirstChild("Reclaimer") ~= nil end
+			if hum then pcall(function() hum:EquipTool(tool) end) end
 		end
-		return false
+		return heldReclaimer() ~= nil
 	end
 
 	----------------------------------------------------------------- loop reclaim
