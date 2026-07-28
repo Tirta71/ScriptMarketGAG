@@ -136,6 +136,11 @@ return function(ctx)
 		buyTideTokenNames    = {},
 		buyTideTokenEnabled  = false,
 
+		-- Automation Reclaimer (Farm): reclaim plant terpilih pakai tool Reclaimer
+		reclaimPlantNames = {},
+		reclaimEnabled    = false,
+		reclaimSpeed      = 0.15,
+
 		-- Automation Cleanse Mutation (mutasi via aura + cleanse)
 		cleanseTeamUuids     = {},   -- Pet Team for Mutation (aura pemberi mutasi)
 		cleansePetTypes      = {},   -- Pet Types for Mutation (target)
@@ -318,6 +323,9 @@ return function(ctx)
 			CFG.buySummerSeedEnabled = st.buySummerSeedEnabled or false
 			CFG.buyTideTokenNames    = (type(st.buyTideTokenNames) == "table") and st.buyTideTokenNames or {}
 			CFG.buyTideTokenEnabled  = st.buyTideTokenEnabled or false
+			CFG.reclaimPlantNames = (type(st.reclaimPlantNames) == "table") and st.reclaimPlantNames or {}
+			CFG.reclaimEnabled    = st.reclaimEnabled or false
+			CFG.reclaimSpeed      = tonumber(st.reclaimSpeed) or 0.15
 
 			CFG.cleanseTeamUuids     = (type(st.cleanseTeamUuids) == "table") and st.cleanseTeamUuids or {}
 			CFG.cleansePetTypes      = (type(st.cleansePetTypes) == "table") and st.cleansePetTypes or {}

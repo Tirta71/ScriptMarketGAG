@@ -44,6 +44,12 @@ return function(ctx)
 		ctx.log("Auto-resume: ESP Label ON.")
 	end
 
+	-- auto-resume Auto Reclaimer kalau sebelumnya aktif
+	if CFG.reclaimEnabled and ctx.startReclaim then
+		ctx.startReclaim()
+		ctx.log("Auto-resume: Auto Reclaimer ON.")
+	end
+
 	-- auto-resume PNP kalau sebelumnya aktif (V1 polling / V2 event-driven, mutually exclusive)
 	if CFG.pnpEnabled and ctx.startPnpV1 then
 		task.wait(1)

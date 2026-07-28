@@ -53,19 +53,20 @@ return function(ctx)
 		corner(box, 8); stroke(box); pad(box, 14, 14, 12, 12)
 		mk("TextLabel", { Size = UDim2.new(1, 0, 1, 0), BackgroundTransparency = 1, Text = "Fitur untuk tab ini belum tersedia.", Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top }, box)
 	end
-	------------------------------------------------------------------ FARM (kerangka — accordion doang, belum diisi)
+	------------------------------------------------------------------ FARM
 	do
 		local farmPage = pageRef["Farm"]
-		local FARM_SECTIONS = {
+
+		-- Accordion yg masih kerangka (belum diisi)
+		local SKELETON = {
 			"Automation Plants",
 			"Automation Sprinkler",
 			"Automation Water",
 			"Automation Shovel",
 			"Automation Collection",
 			"Automation Favorite",
-			"Automation Reclaimer",
 		}
-		for i, title in ipairs(FARM_SECTIONS) do
+		for i, title in ipairs(SKELETON) do
 			local body = makeAccordion(farmPage, title, i, false)
 			mk("TextLabel", {
 				Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
@@ -74,6 +75,14 @@ return function(ctx)
 				TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, LayoutOrder = 1,
 			}, body)
 		end
+
+		-- Automation Reclaimer (fitur aktif): pilih plant + toggle auto reclaim
+		local recAcc = makeAccordion(farmPage, "Automation Reclaimer", 7, false)
+		makeMultiDropdownDyn(recAcc, "Select Plants", "Pilih plant yg mau di-reclaim. 'All' = semua.",
+			function() return ctx.getReclaimPlantOptions() end, CFG.reclaimPlantNames, function() persist() end, 1)
+		makeToggle(recAcc, "Auto Reclaimer Plants", "Auto reclaim plant terpilih pakai tool Reclaimer",
+			function() return CFG.reclaimEnabled end,
+			function(v) CFG.reclaimEnabled = v; persist(); if v and ctx.startReclaim then ctx.startReclaim() end end, 2)
 	end
 
 	------------------------------------------------------------------ GROWTH (pipeline batch per-step)
