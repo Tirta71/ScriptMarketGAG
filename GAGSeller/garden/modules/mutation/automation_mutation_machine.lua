@@ -176,7 +176,9 @@ return function(ctx)
 				if not isFav then
 					if hasTargetMutation(pd, CFG.mutationTargetMutations) then
 						doneCount = doneCount + 1
-					elseif lvl >= targetAge then
+					else
+						-- Belum punya mutasi target = masih perlu diproses (bakal di-leveling
+						-- dulu kalau age belum cukup, lalu di-submit). Hitung semua, lepas dari level.
 						readyCount = readyCount + 1
 					end
 				end

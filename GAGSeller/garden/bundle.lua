@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 35 modul, di-generate 2026-07-30T19:04:23.655Z
+-- 35 modul, di-generate 2026-07-30T19:15:28.588Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — init akhir garden: default tab Inventory + auto-resume automation. ]]
@@ -5689,7 +5689,9 @@ return function(ctx)
 				if not isFav then
 					if hasTargetMutation(pd, CFG.mutationTargetMutations) then
 						doneCount = doneCount + 1
-					elseif lvl >= targetAge then
+					else
+						-- Belum punya mutasi target = masih perlu diproses (bakal di-leveling
+						-- dulu kalau age belum cukup, lalu di-submit). Hitung semua, lepas dari level.
 						readyCount = readyCount + 1
 					end
 				end
