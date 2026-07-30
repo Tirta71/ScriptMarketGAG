@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 35 modul, di-generate 2026-07-28T20:43:31.261Z
+-- 35 modul, di-generate 2026-07-30T19:04:23.655Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — init akhir garden: default tab Inventory + auto-resume automation. ]]
@@ -5800,12 +5800,12 @@ return function(ctx)
 			end)
 
 			if isMatched then
-				ctx.state.mutationPhase = "Finished"
-				CFG.mutationEnabled = false
-				ctx.persistState()
-				if ctx.state.mutationToggleRender then
-					pcall(ctx.state.mutationToggleRender)
-				end
+				-- Pet ini dapat mutasi target. JANGAN matikan automation — lanjut proses
+				-- pet ready berikutnya (section D sudah auto-skip pet yg sudah hasTargetMutation,
+				-- jadi pet ini ga bakal diproses ulang).
+				ctx.state.mutationPhase = "Matched! Lanjut next target..."
+			else
+				ctx.state.mutationPhase = "Non-target, lanjut..."
 			end
 			return
 		end

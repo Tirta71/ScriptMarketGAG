@@ -287,12 +287,12 @@ return function(ctx)
 			end)
 
 			if isMatched then
-				ctx.state.mutationPhase = "Finished"
-				CFG.mutationEnabled = false
-				ctx.persistState()
-				if ctx.state.mutationToggleRender then
-					pcall(ctx.state.mutationToggleRender)
-				end
+				-- Pet ini dapat mutasi target. JANGAN matikan automation — lanjut proses
+				-- pet ready berikutnya (section D sudah auto-skip pet yg sudah hasTargetMutation,
+				-- jadi pet ini ga bakal diproses ulang).
+				ctx.state.mutationPhase = "Matched! Lanjut next target..."
+			else
+				ctx.state.mutationPhase = "Non-target, lanjut..."
 			end
 			return
 		end
