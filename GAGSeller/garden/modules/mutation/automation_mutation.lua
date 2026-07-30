@@ -177,7 +177,13 @@ return function(ctx)
 				local pt = pInfo and pInfo.PetType
 				local pd = pInfo and pInfo.PetData or {}
 				if pt and targetTypes[pt] then
-					if isKept(pd) then
+					if pd.IsFavorite then
+						-- Favorite -> JANGAN cleanse (lindungi mutasi). Keluarkan dari garden.
+						ctx.state.cleansePhase = "Skip favorite (protected)"
+						pcall(function() PetsService:FireServer("UnequipPet", origUuid) end)
+						localEq[cu] = nil
+						task.wait(0.1)
+					elseif isKept(pd) then
 						-- Harvest: mutasi bagus -> keluarkan dari garden (disimpan)
 						ctx.state.cleansePhase = "Harvest " .. mutName(pd.MutationType)
 						pcall(function() PetsService:FireServer("UnequipPet", origUuid) end)

@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 35 modul, di-generate 2026-07-30T19:15:28.588Z
+-- 35 modul, di-generate 2026-07-30T19:35:40.208Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — init akhir garden: default tab Inventory + auto-resume automation. ]]
@@ -3061,7 +3061,12 @@ return function(ctx)
 				local v = inv[uuid]
 				if v and types[v.PetType] then
 					local pd = v.PetData or {}
-					if needsWork(pd) then
+					if pd.IsFavorite then
+						-- Favorite -> JANGAN cleanse, JANGAN biarin di garden. Keluarkan.
+						pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
+						localEq[uuid] = nil
+						task.wait(0.1)
+					elseif needsWork(pd) then
 						if step == "mutation" and hasMut(pd) and not (CFG.growthMutationTargets or {})[mutOf(pd)] then
 							cleansePet(uuid) -- mutasi salah -> cleanse
 						end
@@ -3115,7 +3120,7 @@ return function(ctx)
 		if needed > 0 then
 			local pool = {}
 			for uuid, v in pairs(inv) do
-				if not localEq[uuid] and types[v.PetType] and needsWork(v.PetData or {}) then
+				if not localEq[uuid] and types[v.PetType] and not (v.PetData or {}).IsFavorite and needsWork(v.PetData or {}) then
 					table.insert(pool, { uuid = uuid, key = (v.PetData or {}).Level or (v.PetData or {}).BaseWeight or 0 })
 				end
 			end
@@ -6201,7 +6206,13 @@ return function(ctx)
 				local pt = pInfo and pInfo.PetType
 				local pd = pInfo and pInfo.PetData or {}
 				if pt and targetTypes[pt] then
-					if isKept(pd) then
+					if pd.IsFavorite then
+						-- Favorite -> JANGAN cleanse (lindungi mutasi). Keluarkan dari garden.
+						ctx.state.cleansePhase = "Skip favorite (protected)"
+						pcall(function() PetsService:FireServer("UnequipPet", origUuid) end)
+						localEq[cu] = nil
+						task.wait(0.1)
+					elseif isKept(pd) then
 						-- Harvest: mutasi bagus -> keluarkan dari garden (disimpan)
 						ctx.state.cleansePhase = "Harvest " .. mutName(pd.MutationType)
 						pcall(function() PetsService:FireServer("UnequipPet", origUuid) end)
