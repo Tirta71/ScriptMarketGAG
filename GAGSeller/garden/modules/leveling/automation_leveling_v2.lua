@@ -141,13 +141,49 @@ return function(ctx)
 			if not team[uuid] and not otherTeam[uuid] then
 				local v = inv[uuid]
 				if v and targetTypes[v.PetType] then
-					local lvl = (v.PetData or {}).Level or 0
+					local pd  = v.PetData or {}
+					local lvl = pd.Level or 0
 					if lvl >= phaseTarget then
+						-- Webhook HANYA pas phase 2 (pet mencapai target final). Phase 1 = intermediate, skip.
+						if phase == 2 then
+							local petType  = v.PetType or "Unknown"
+							local mutation = pd.MutationType or "Normal"
+							local finalAge = pd.Level or phaseTarget
+							local duration = 0
+							ctx.state.levelingV2StartTime = ctx.state.levelingV2StartTime or {}
+							if ctx.state.levelingV2StartTime[uuid] then
+								duration = os.time() - ctx.state.levelingV2StartTime[uuid]
+								ctx.state.levelingV2StartTime[uuid] = nil
+							end
+							-- Sisa antrean phase 2 (target type, level dalam [p1Target, p2Target), belum equipped, bukan favorite)
+							local remainsQueue = 0
+							for ou, ov in pairs(inv) do
+								if ou ~= uuid and not localEq[ou] and targetTypes[ov.PetType] then
+									local ol = (ov.PetData or {}).Level or 0
+									if ol >= p1Target and ol < p2Target and not (ov.PetData or {}).IsFavorite then
+										remainsQueue = remainsQueue + 1
+									end
+								end
+							end
+							task.spawn(function()
+								local W = ctx.webhookLeveling
+								if W and W.sendFinished then
+									pcall(function() W.sendFinished(ctx, petType, mutation, finalAge, duration, remainsQueue) end)
+								end
+							end)
+						end
 						pcall(function() PetsService:FireServer("UnequipPet", uuid) end)
 						localEq[uuid] = nil
 						task.wait(0.2)
 					else
 						table.insert(active, uuid)
+						-- Catat waktu mulai leveling phase 2 (buat Duration di webhook)
+						if phase == 2 then
+							ctx.state.levelingV2StartTime = ctx.state.levelingV2StartTime or {}
+							if not ctx.state.levelingV2StartTime[uuid] then
+								ctx.state.levelingV2StartTime[uuid] = os.time()
+							end
+						end
 					end
 				end
 			end
@@ -170,6 +206,11 @@ return function(ctx)
 					pcall(function() PetsService:FireServer("EquipPet", pool[i].uuid, CFrame.new(pos)) end)
 					localEq[pool[i].uuid] = true
 					table.insert(active, pool[i].uuid)
+					-- Catat waktu mulai leveling phase 2 (buat Duration di webhook)
+					if phase == 2 then
+						ctx.state.levelingV2StartTime = ctx.state.levelingV2StartTime or {}
+						ctx.state.levelingV2StartTime[pool[i].uuid] = os.time()
+					end
 					task.wait(0.25)
 				end
 			end
