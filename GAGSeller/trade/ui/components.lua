@@ -30,6 +30,9 @@ return function(ctx)
 		end
 		knob.MouseButton1Click:Connect(function() setv(not getv()); render() end)
 		render()
+		-- daftar render buat re-sync tampilan toggle kalau CFG diubah dari luar (mis. web sync)
+		ctx.state.toggleRenders = ctx.state.toggleRenders or {}
+		table.insert(ctx.state.toggleRenders, render)
 		return render
 	end
 
