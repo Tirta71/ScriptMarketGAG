@@ -137,6 +137,15 @@ return function(ctx)
 		if not ctx.__websyncApplying then schedulePush() end
 	end
 
+	-- Salin isi SelSet (pets/muts) ke tabel tujuan IN-PLACE (clear lalu copy), JANGAN ganti
+	-- referensi tabelnya. Dropdown GUI & loop listing pegang referensi tabel yg sama —
+	-- kalau di-replace, mereka baca tabel lama (mutasi/pet ga ke-sync).
+	local function copyInto(dst, src)
+		if type(dst) ~= "table" then return end
+		for k in pairs(dst) do dst[k] = nil end
+		if type(src) == "table" then for k, v in pairs(src) do dst[k] = v end end
+	end
+
 	-- Terapkan nested (profiles / snipeProfiles) dari web ke CFG in-place.
 	local function applyProfiles(w)
 		local CFG = ctx.CFG
@@ -148,8 +157,8 @@ return function(ctx)
 						local sl = sp.listings[j] or sp.listings[tostring(j)]
 						local dst = CFG.profiles[i] and CFG.profiles[i].listings[j]
 						if type(sl) == "table" and dst then
-							dst.pets    = (type(sl.pets) == "table") and sl.pets or {}
-							dst.muts    = (type(sl.muts) == "table") and sl.muts or {}
+							copyInto(dst.pets, sl.pets)
+							copyInto(dst.muts, sl.muts)
 							dst.minW    = tonumber(sl.minW) or 0
 							dst.maxW    = tonumber(sl.maxW) or 0
 							dst.maxList = tonumber(sl.maxList) or 0
@@ -164,8 +173,8 @@ return function(ctx)
 				local sp = w.snipeProfiles[i] or w.snipeProfiles[tostring(i)]
 				local dst = CFG.snipeProfiles[i]
 				if type(sp) == "table" and dst then
-					dst.pets     = (type(sp.pets) == "table") and sp.pets or {}
-					dst.muts     = (type(sp.muts) == "table") and sp.muts or {}
+					copyInto(dst.pets, sp.pets)
+					copyInto(dst.muts, sp.muts)
 					dst.maxPrice = tonumber(sp.maxPrice) or 0
 				end
 			end
