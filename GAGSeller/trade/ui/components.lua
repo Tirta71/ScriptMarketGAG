@@ -47,6 +47,9 @@ return function(ctx)
 		corner(box, 6); local bs = stroke(box)
 		box.Focused:Connect(function() game:GetService("TweenService"):Create(bs, TweenInfo.new(0.15), { Color = C.acc }):Play() end)
 		box.FocusLost:Connect(function() game:GetService("TweenService"):Create(bs, TweenInfo.new(0.15), { Color = C.stroke }):Play(); setv(box.Text); box.Text = tostring(getv()) end)
+		-- daftar refresh biar tampilan angka ikut update kalau CFG diubah dari luar (web sync)
+		ctx.state.uiRefreshers = ctx.state.uiRefreshers or {}
+		table.insert(ctx.state.uiRefreshers, function() box.Text = tostring(getv()) end)
 		return box
 	end
 
@@ -130,6 +133,9 @@ return function(ctx)
 			updateSummary()
 			if built then reorder() end
 		end
+		-- daftar refresh biar centang/summary ikut update kalau selSet diubah dari luar (web sync)
+		ctx.state.uiRefreshers = ctx.state.uiRefreshers or {}
+		table.insert(ctx.state.uiRefreshers, refresh)
 		return refresh
 	end
 

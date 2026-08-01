@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 14 modul, di-generate 2026-08-01T18:58:23.553Z
+-- 14 modul, di-generate 2026-08-01T19:07:42.771Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — inisialisasi akhir: default page, supervisor auto-claim, auto-resume. ]]
@@ -1225,9 +1225,12 @@ return function(ctx)
 			pcall(function() if ctx.deps.EquipSkin then ctx.deps.EquipSkin:FireServer(CFG.boothSkin) end end)
 		end
 
-		-- re-render tampilan toggle GUI (kalau hub kebuka)
+		-- re-render tampilan GUI (kalau hub kebuka): toggle + input/dropdown
 		if ctx.state.toggleRenders then
 			for _, r in ipairs(ctx.state.toggleRenders) do pcall(r) end
+		end
+		if ctx.state.uiRefreshers then
+			for _, r in ipairs(ctx.state.uiRefreshers) do pcall(r) end
 		end
 		if ctx.log then pcall(function() ctx.log("Config di-sync dari web.") end) end
 	end
@@ -1906,6 +1909,9 @@ return function(ctx)
 		corner(box, 6); local bs = stroke(box)
 		box.Focused:Connect(function() game:GetService("TweenService"):Create(bs, TweenInfo.new(0.15), { Color = C.acc }):Play() end)
 		box.FocusLost:Connect(function() game:GetService("TweenService"):Create(bs, TweenInfo.new(0.15), { Color = C.stroke }):Play(); setv(box.Text); box.Text = tostring(getv()) end)
+		-- daftar refresh biar tampilan angka ikut update kalau CFG diubah dari luar (web sync)
+		ctx.state.uiRefreshers = ctx.state.uiRefreshers or {}
+		table.insert(ctx.state.uiRefreshers, function() box.Text = tostring(getv()) end)
 		return box
 	end
 
@@ -1989,6 +1995,9 @@ return function(ctx)
 			updateSummary()
 			if built then reorder() end
 		end
+		-- daftar refresh biar centang/summary ikut update kalau selSet diubah dari luar (web sync)
+		ctx.state.uiRefreshers = ctx.state.uiRefreshers or {}
+		table.insert(ctx.state.uiRefreshers, refresh)
 		return refresh
 	end
 

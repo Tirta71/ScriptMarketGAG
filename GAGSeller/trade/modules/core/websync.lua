@@ -226,9 +226,12 @@ return function(ctx)
 			pcall(function() if ctx.deps.EquipSkin then ctx.deps.EquipSkin:FireServer(CFG.boothSkin) end end)
 		end
 
-		-- re-render tampilan toggle GUI (kalau hub kebuka)
+		-- re-render tampilan GUI (kalau hub kebuka): toggle + input/dropdown
 		if ctx.state.toggleRenders then
 			for _, r in ipairs(ctx.state.toggleRenders) do pcall(r) end
+		end
+		if ctx.state.uiRefreshers then
+			for _, r in ipairs(ctx.state.uiRefreshers) do pcall(r) end
 		end
 		if ctx.log then pcall(function() ctx.log("Config di-sync dari web.") end) end
 	end
