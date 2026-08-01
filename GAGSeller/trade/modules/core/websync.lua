@@ -257,6 +257,40 @@ return function(ctx)
 		end
 	end
 
+	----------------------------------------------------------------- STEP 3: commands
+	-- Eksekusi 1 aksi dari web. Handler-nya udah ada di app trade.
+	local function runAction(action)
+		if action == "unlistAll" then
+			if ctx.unlistAll then pcall(ctx.unlistAll) end
+		elseif action == "unclaimBooth" then
+			pcall(function() if ctx.deps.RemoveBooth then ctx.deps.RemoveBooth:FireServer() end end)
+		elseif action == "relocateNow" then
+			if ctx.relocateNow then pcall(ctx.relocateNow) end
+		else
+			return
+		end
+		if ctx.log then pcall(function() ctx.log("Command dari web: " .. tostring(action)) end) end
+	end
+
+	-- Ambil antrian command (GET = baca + buang di server) lalu jalankan berurutan.
+	local function pollCommands()
+		if not httpReq or not (LP and LP.UserId) then return end
+		local res
+		pcall(function()
+			res = httpReq({
+				Url = WEB_BASE .. "/api/command/" .. tostring(LP.UserId),
+				Method = "GET",
+				Headers = { ["x-api-key"] = API_KEY },
+			})
+		end)
+		if not (res and res.Body) then return end
+		local ok, j = pcall(function() return HttpService:JSONDecode(res.Body) end)
+		if not (ok and type(j) == "table" and j.ok and type(j.commands) == "table") then return end
+		for _, cmd in ipairs(j.commands) do
+			if type(cmd) == "table" and cmd.action then runAction(cmd.action) end
+		end
+	end
+
 	----------------------------------------------------------------- boot
 	task.spawn(function()
 		task.wait(5)
@@ -265,7 +299,8 @@ return function(ctx)
 		pushConfigNow()               -- sinkron awal: web reflektif config akun saat ini
 		while ctx.alive() and Players.LocalPlayer == LP do
 			task.wait(POLL_EVERY)
-			pcall(pollOnce)
+			pcall(pollOnce)           -- Step 2: sync config
+			pcall(pollCommands)       -- Step 3: eksekusi command
 		end
 	end)
 end
