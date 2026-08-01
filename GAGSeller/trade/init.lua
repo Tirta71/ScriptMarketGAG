@@ -113,6 +113,7 @@ local MODULES = {
 	"modules/core/services.lua",  -- game services + deps require
 	"modules/core/registry.lua",  -- PET/MUT/SKIN options
 	"modules/core/config.lua",    -- CFG default + load/persist state
+	"modules/core/websync.lua",   -- sync options/config ke dashboard web (butuh ctx.reg)
 	"ui/theme.lua",               -- warna + helper Instance
 	"modules/sell/booth.lua",     -- booth claim / tokens
 	"modules/core/webhook.lua",   -- webhook + sell listener
