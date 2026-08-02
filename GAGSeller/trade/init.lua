@@ -95,9 +95,9 @@ function ctx.getLogo()
 	pcall(function()
 		local gca = getcustomasset or getsynasset or (syn and syn.getcustomasset)
 		if not (gca and writefile) then return end
-		local path = "AllegiaantHub/logo_icon.png"
+		local path = "AllegiaantHUB/logo_icon.png"
 		if not (isfile and isfile(path)) then
-			if makefolder and not (isfolder and isfolder("AllegiaantHub")) then makefolder("AllegiaantHub") end
+			if makefolder and not (isfolder and isfolder("AllegiaantHUB")) then makefolder("AllegiaantHUB") end
 			writefile(path, game:HttpGet("https://raw.githubusercontent.com/Tirta71/ScriptMarketGAG/" .. branch .. "/GAGSeller/Logo/logo_icon.png"))
 		end
 		asset = gca(path) or false
