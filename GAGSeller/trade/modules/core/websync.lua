@@ -100,6 +100,7 @@ return function(ctx)
 	end
 
 	local lastApplied = nil            -- string serialize terakhir yg udah sinkron
+	local ready = false                -- true setelah PULL pertama (web=master) selesai
 	local origPersist = ctx.persistState
 
 	-- PUT config ke web (script -> web). Set baseline biar poll balik ga apply ulang.
@@ -134,7 +135,9 @@ return function(ctx)
 	-- Bungkus persistState: tiap perubahan in-game -> simpan file + auto push ke web.
 	ctx.persistState = function(...)
 		origPersist(...)
-		if not ctx.__websyncApplying then schedulePush() end
+		-- Cuma push kalau: bukan lagi apply dari web (hindari gema) DAN sudah pull awal
+		-- (cegah config lokal stale ke-push pas boot sebelum web di-apply).
+		if not ctx.__websyncApplying and ready then schedulePush() end
 	end
 
 	-- Salin isi SelSet (pets/muts) ke tabel tujuan IN-PLACE (clear lalu copy), JANGAN ganti
@@ -305,7 +308,11 @@ return function(ctx)
 		task.wait(5)
 		ctx.webPushOptions()          -- Step 1: isi dropdown web
 		task.wait(1)
-		pushConfigNow()               -- sinkron awal: web reflektif config akun saat ini
+		-- WEB = MASTER. Boot PULL dulu (apply config dari web), JANGAN push config lokal —
+		-- kalau push, tiap akun rejoin/hop bakal nimpa settingan web yg baru diubah user.
+		-- Push balik cuma terjadi pas user ubah setting dari GUI in-game (wrap persistState).
+		pcall(pollOnce)
+		ready = true                  -- mulai sekarang, perubahan GUI in-game boleh push ke web
 		while ctx.alive() and Players.LocalPlayer == LP do
 			task.wait(POLL_EVERY)
 			pcall(pollOnce)           -- Step 2: sync config
