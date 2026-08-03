@@ -8,7 +8,7 @@
 
      Semua HTTP di THREAD TERPISAH + pcall = non-blocking, ga ganggu automation. ]]
 return function(ctx)
-	local WEB_BASE = "https://allegiaant-web.vercel.app"
+	local WEB_BASE = "https://api.allegiaant.my.id"
 	local API_KEY  = "ae3858d4a2def3306d6cbff26ff2bd72eee9319b1aae27d1"
 	local POLL_EVERY = 10  -- detik (hemat invocation Vercel; config/command telat max ~10s)
 

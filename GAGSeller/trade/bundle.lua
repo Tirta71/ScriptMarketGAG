@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 14 modul, di-generate 2026-08-03T00:10:21.379Z
+-- 14 modul, di-generate 2026-08-03T15:37:18.877Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — inisialisasi akhir: default page, supervisor auto-claim, auto-resume. ]]
@@ -1026,7 +1026,7 @@ end
 
      Semua HTTP di THREAD TERPISAH + pcall = non-blocking, ga ganggu automation. ]]
 return function(ctx)
-	local WEB_BASE = "https://allegiaant-web.vercel.app"
+	local WEB_BASE = "https://api.allegiaant.my.id"
 	local API_KEY  = "ae3858d4a2def3306d6cbff26ff2bd72eee9319b1aae27d1"
 	local POLL_EVERY = 10  -- detik (hemat invocation Vercel; config/command telat max ~10s)
 
