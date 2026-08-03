@@ -88,11 +88,17 @@ return function(ctx)
 	end)
 
 	------------------------------------------------------------------ Auto Resume
-	if CFG.autoSell then
-		task.wait(1.5)
-		ctx.state.running = true
-		if ctx.ui.rAutoToggle then ctx.ui.rAutoToggle() end
-		task.spawn(ctx.mainLoop)
-		log("Auto-resume: loop dinyalakan.")
-	end
+	-- Tunggu web sync PULL config dulu (max ~10s) biar setting web (autoSell) ke-apply
+	-- sebelum loop nyala, lalu cek ULANG CFG.autoSell.
+	task.spawn(function()
+		local t = 0
+		while not ctx.state.webSyncReady and t < 10 do task.wait(0.3); t = t + 0.3 end
+		task.wait(1.0)
+		if CFG.autoSell then
+			ctx.state.running = true
+			if ctx.ui.rAutoToggle then ctx.ui.rAutoToggle() end
+			task.spawn(ctx.mainLoop)
+			log("Auto-resume: loop dinyalakan.")
+		end
+	end)
 end

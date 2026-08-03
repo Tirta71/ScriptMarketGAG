@@ -465,8 +465,21 @@ return function(ctx)
 		hopInProgress = false
 	end
 
-	-- auto-resume setelah hop / rejoin
+	-- auto-resume setelah hop / rejoin.
+	-- Tunggu web sync PULL config dulu (max ~10s) biar setting web (mis. snipe di-OFF-in)
+	-- ke-apply sebelum snipe nyala & hop lagi. Tanpa ini, hop cepat bikin config web ga
+	-- pernah ke-apply. Habis nunggu, cek ULANG CFG.snipeEnabled (bisa udah jadi false dari web).
 	if CFG.snipeEnabled then
-		task.spawn(function() task.wait(1.5); ctx.startSnipe(); log("Auto-resume: Snipe ON.") end)
+		task.spawn(function()
+			local t = 0
+			while not ctx.state.webSyncReady and t < 10 do task.wait(0.3); t = t + 0.3 end
+			task.wait(1.0)
+			if CFG.snipeEnabled then
+				ctx.startSnipe()
+				log("Auto-resume: Snipe ON.")
+			else
+				log("Snipe di-OFF dari web — tidak auto-resume.")
+			end
+		end)
 	end
 end

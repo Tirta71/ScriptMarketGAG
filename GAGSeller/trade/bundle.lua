@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 14 modul, di-generate 2026-08-02T23:59:14.378Z
+-- 14 modul, di-generate 2026-08-03T00:04:38.409Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — inisialisasi akhir: default page, supervisor auto-claim, auto-resume. ]]
@@ -93,13 +93,19 @@ return function(ctx)
 	end)
 
 	------------------------------------------------------------------ Auto Resume
-	if CFG.autoSell then
-		task.wait(1.5)
-		ctx.state.running = true
-		if ctx.ui.rAutoToggle then ctx.ui.rAutoToggle() end
-		task.spawn(ctx.mainLoop)
-		log("Auto-resume: loop dinyalakan.")
-	end
+	-- Tunggu web sync PULL config dulu (max ~10s) biar setting web (autoSell) ke-apply
+	-- sebelum loop nyala, lalu cek ULANG CFG.autoSell.
+	task.spawn(function()
+		local t = 0
+		while not ctx.state.webSyncReady and t < 10 do task.wait(0.3); t = t + 0.3 end
+		task.wait(1.0)
+		if CFG.autoSell then
+			ctx.state.running = true
+			if ctx.ui.rAutoToggle then ctx.ui.rAutoToggle() end
+			task.spawn(ctx.mainLoop)
+			log("Auto-resume: loop dinyalakan.")
+		end
+	end)
 end
 ]=],
 	["modules/buy/sniper.lua"] = [=[
@@ -570,9 +576,22 @@ return function(ctx)
 		hopInProgress = false
 	end
 
-	-- auto-resume setelah hop / rejoin
+	-- auto-resume setelah hop / rejoin.
+	-- Tunggu web sync PULL config dulu (max ~10s) biar setting web (mis. snipe di-OFF-in)
+	-- ke-apply sebelum snipe nyala & hop lagi. Tanpa ini, hop cepat bikin config web ga
+	-- pernah ke-apply. Habis nunggu, cek ULANG CFG.snipeEnabled (bisa udah jadi false dari web).
 	if CFG.snipeEnabled then
-		task.spawn(function() task.wait(1.5); ctx.startSnipe(); log("Auto-resume: Snipe ON.") end)
+		task.spawn(function()
+			local t = 0
+			while not ctx.state.webSyncReady and t < 10 do task.wait(0.3); t = t + 0.3 end
+			task.wait(1.0)
+			if CFG.snipeEnabled then
+				ctx.startSnipe()
+				log("Auto-resume: Snipe ON.")
+			else
+				log("Snipe di-OFF dari web — tidak auto-resume.")
+			end
+		end)
 	end
 end
 ]=],
@@ -1303,19 +1322,19 @@ return function(ctx)
 	end
 
 	----------------------------------------------------------------- boot
+	ctx.state.webSyncReady = false
 	task.spawn(function()
-		task.wait(5)
-		ctx.webPushOptions()          -- Step 1: isi dropdown web
-		task.wait(1)
-		-- WEB = MASTER. Boot PULL dulu (apply config dari web), JANGAN push config lokal —
-		-- kalau push, tiap akun rejoin/hop bakal nimpa settingan web yg baru diubah user.
-		-- Push balik cuma terjadi pas user ubah setting dari GUI in-game (wrap persistState).
+		-- WEB = MASTER. PULL config PALING AWAL (sebelum automation auto-resume/hop), biar
+		-- setting web (mis. snipe=off) ke-apply duluan. Auto-resume snipe nungguin flag ini.
+		task.wait(0.5)
 		pcall(pollOnce)
 		ready = true                  -- mulai sekarang, perubahan GUI in-game boleh push ke web
+		ctx.state.webSyncReady = true -- sinyal ke auto-resume: config web udah ke-apply
+		ctx.webPushOptions()          -- options nyusul (ga urgent buat dropdown web)
 		while ctx.alive() and Players.LocalPlayer == LP do
 			task.wait(POLL_EVERY)
-			pcall(pollOnce)           -- Step 2: sync config
-			pcall(pollCommands)       -- Step 3: eksekusi command
+			pcall(pollOnce)           -- sync config
+			pcall(pollCommands)       -- eksekusi command
 		end
 	end)
 end

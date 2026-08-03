@@ -304,19 +304,19 @@ return function(ctx)
 	end
 
 	----------------------------------------------------------------- boot
+	ctx.state.webSyncReady = false
 	task.spawn(function()
-		task.wait(5)
-		ctx.webPushOptions()          -- Step 1: isi dropdown web
-		task.wait(1)
-		-- WEB = MASTER. Boot PULL dulu (apply config dari web), JANGAN push config lokal —
-		-- kalau push, tiap akun rejoin/hop bakal nimpa settingan web yg baru diubah user.
-		-- Push balik cuma terjadi pas user ubah setting dari GUI in-game (wrap persistState).
+		-- WEB = MASTER. PULL config PALING AWAL (sebelum automation auto-resume/hop), biar
+		-- setting web (mis. snipe=off) ke-apply duluan. Auto-resume snipe nungguin flag ini.
+		task.wait(0.5)
 		pcall(pollOnce)
 		ready = true                  -- mulai sekarang, perubahan GUI in-game boleh push ke web
+		ctx.state.webSyncReady = true -- sinyal ke auto-resume: config web udah ke-apply
+		ctx.webPushOptions()          -- options nyusul (ga urgent buat dropdown web)
 		while ctx.alive() and Players.LocalPlayer == LP do
 			task.wait(POLL_EVERY)
-			pcall(pollOnce)           -- Step 2: sync config
-			pcall(pollCommands)       -- Step 3: eksekusi command
+			pcall(pollOnce)           -- sync config
+			pcall(pollCommands)       -- eksekusi command
 		end
 	end)
 end
