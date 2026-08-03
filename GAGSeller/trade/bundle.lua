@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 14 modul, di-generate 2026-08-03T15:37:18.877Z
+-- 14 modul, di-generate 2026-08-03T16:09:06.871Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — inisialisasi akhir: default page, supervisor auto-claim, auto-resume. ]]
@@ -1263,7 +1263,7 @@ return function(ctx)
 		if ctx.state.uiRefreshers then
 			for _, r in ipairs(ctx.state.uiRefreshers) do pcall(r) end
 		end
-		if ctx.log then pcall(function() ctx.log("Config di-sync dari web.") end) end
+		-- (log "Config di-sync" dihapus biar console ga spam)
 	end
 
 	-- Satu kali poll: GET config, apply kalau beda dari baseline.

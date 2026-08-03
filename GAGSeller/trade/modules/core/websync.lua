@@ -245,7 +245,7 @@ return function(ctx)
 		if ctx.state.uiRefreshers then
 			for _, r in ipairs(ctx.state.uiRefreshers) do pcall(r) end
 		end
-		if ctx.log then pcall(function() ctx.log("Config di-sync dari web.") end) end
+		-- (log "Config di-sync" dihapus biar console ga spam)
 	end
 
 	-- Satu kali poll: GET config, apply kalau beda dari baseline.
