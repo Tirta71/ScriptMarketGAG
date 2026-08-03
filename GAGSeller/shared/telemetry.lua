@@ -10,8 +10,8 @@
 
 local REPORT_URL = "https://allegiaant-web.vercel.app/api/report"
 local API_KEY    = "ae3858d4a2def3306d6cbff26ff2bd72eee9319b1aae27d1"
-local HEARTBEAT_EVERY = 10   -- detik
-local INVENTORY_EVERY = 45   -- detik (kelipatan HEARTBEAT_EVERY biar rapi)
+local HEARTBEAT_EVERY = 20   -- detik (di bawah threshold online 30s; hemat request Vercel)
+local INVENTORY_EVERY = 90   -- detik (kelipatan HEARTBEAT_EVERY biar rapi)
 
 return function(target)
 	task.spawn(function()

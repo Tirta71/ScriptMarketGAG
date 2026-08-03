@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 14 modul, di-generate 2026-08-03T00:04:38.409Z
+-- 14 modul, di-generate 2026-08-03T00:10:21.379Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — inisialisasi akhir: default page, supervisor auto-claim, auto-resume. ]]
@@ -1028,7 +1028,7 @@ end
 return function(ctx)
 	local WEB_BASE = "https://allegiaant-web.vercel.app"
 	local API_KEY  = "ae3858d4a2def3306d6cbff26ff2bd72eee9319b1aae27d1"
-	local POLL_EVERY = 5   -- detik
+	local POLL_EVERY = 10  -- detik (hemat invocation Vercel; config/command telat max ~10s)
 
 	local HttpService = game:GetService("HttpService")
 	local Players     = game:GetService("Players")
@@ -1321,20 +1321,47 @@ return function(ctx)
 		end
 	end
 
+	-- Gabungan config+command dalam 1 request (GET /api/sync) — hemat invocation Vercel.
+	local function pollSync()
+		if not httpReq or not (LP and LP.UserId) then return end
+		local res
+		pcall(function()
+			res = httpReq({
+				Url = WEB_BASE .. "/api/sync/" .. tostring(LP.UserId),
+				Method = "GET",
+				Headers = { ["x-api-key"] = API_KEY },
+			})
+		end)
+		if not (res and res.Body) then return end
+		local ok, j = pcall(function() return HttpService:JSONDecode(res.Body) end)
+		if not (ok and type(j) == "table" and j.ok) then return end
+		if type(j.config) == "table" then
+			local webStr = serialize(j.config)
+			if webStr ~= lastApplied then
+				applyWebConfig(j.config)
+				lastApplied = serialize(snapshot())
+			end
+		end
+		if type(j.commands) == "table" then
+			for _, cmd in ipairs(j.commands) do
+				if type(cmd) == "table" and cmd.action then runAction(cmd.action) end
+			end
+		end
+	end
+
 	----------------------------------------------------------------- boot
 	ctx.state.webSyncReady = false
 	task.spawn(function()
 		-- WEB = MASTER. PULL config PALING AWAL (sebelum automation auto-resume/hop), biar
 		-- setting web (mis. snipe=off) ke-apply duluan. Auto-resume snipe nungguin flag ini.
 		task.wait(0.5)
-		pcall(pollOnce)
+		pcall(pollSync)
 		ready = true                  -- mulai sekarang, perubahan GUI in-game boleh push ke web
 		ctx.state.webSyncReady = true -- sinyal ke auto-resume: config web udah ke-apply
 		ctx.webPushOptions()          -- options nyusul (ga urgent buat dropdown web)
 		while ctx.alive() and Players.LocalPlayer == LP do
 			task.wait(POLL_EVERY)
-			pcall(pollOnce)           -- sync config
-			pcall(pollCommands)       -- eksekusi command
+			pcall(pollSync)           -- config + command sekaligus
 		end
 	end)
 end
