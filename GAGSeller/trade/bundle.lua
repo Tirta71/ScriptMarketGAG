@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 14 modul, di-generate 2026-08-03T16:09:06.871Z
+-- 14 modul, di-generate 2026-08-06T10:21:31.405Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — inisialisasi akhir: default page, supervisor auto-claim, auto-resume. ]]
@@ -257,6 +257,14 @@ return function(ctx)
 				footer = { text = "JobId: " .. tostring(game.JobId) },
 			}},
 		})
+		if ctx.reportEvent then
+			ctx.reportEvent("buy", {
+				pet = tostring(t.pet),
+				mutation = (t.mut and t.mut ~= "None" and t.mut ~= "Normal") and tostring(t.mut) or nil,
+				price = tonumber(t.price) or 0,
+				counterpart = tostring(seller),
+			})
+		end
 	end
 
 	------------------------------------------------------------------ server hop (cari seller)
@@ -903,6 +911,26 @@ return function(ctx)
 	end
 	ctx.sendWebhook = sendWebhook
 
+	----------------------------------------------------------------- history ke dashboard
+	-- Kirim transaksi (buy/sell) ke Laravel buat History tab. Non-blocking, best-effort.
+	local EVENT_URL = "https://api.allegiaant.my.id/api/event"
+	local EVENT_KEY = "ae3858d4a2def3306d6cbff26ff2bd72eee9319b1aae27d1"
+	local function reportEvent(kind, data)
+		task.spawn(function()
+			local reqFn = (syn and syn.request) or (http and http.request) or http_request or request
+			if not reqFn then return end
+			data = data or {}
+			data.kind = kind
+			data.userId = LP.UserId
+			pcall(reqFn, {
+				Url = EVENT_URL, Method = "POST",
+				Headers = { ["Content-Type"] = "application/json", ["x-api-key"] = EVENT_KEY },
+				Body = HttpService:JSONEncode(data),
+			})
+		end)
+	end
+	ctx.reportEvent = reportEvent
+
 	----------------------------------------------------------------- sell listener
 	-- Dedup GLOBAL (persist antar-reload). ctx.state di-reset tiap reload, jadi
 	-- kalau pakai tabel per-ctx, listener lama (yg bocor) + listener baru punya
@@ -937,6 +965,7 @@ return function(ctx)
 			local petAge = "-"
 			local petWeight = "-"
 
+			local sellW, sellAge, sellMut = nil, nil, nil
 			if itemType == "Pet" and tx.item.data then
 				local d = tx.item.data
 				petType = d.PetType or "Unknown"
@@ -945,6 +974,10 @@ return function(ctx)
 					if petName == "" then petName = petType end
 					petAge = tostring(d.PetData.Level or 0)
 					petWeight = ("%.2f kg"):format(d.PetData.BaseWeight or 0)
+					sellW = d.PetData.BaseWeight or 0
+					sellAge = d.PetData.Level or 0
+					local okm, m = pcall(function() return ctx.reg.mutDisplay(d.PetData.MutationType) end)
+					if okm and m and m ~= "None" and m ~= "Normal" then sellMut = m end
 				end
 			else
 				-- Fallback jika bukan pet
@@ -1010,6 +1043,15 @@ return function(ctx)
 			sendWebhook({
 				username = "AllegiaantHub GAG Seller",
 				embeds = { embed }
+			})
+
+			reportEvent("sell", {
+				pet = petType,
+				mutation = sellMut,
+				weight = sellW,
+				age = sellAge,
+				price = tonumber(price) or 0,
+				counterpart = tostring(tx.buyer and tx.buyer.username or "?"),
 			})
 		end
 	end)

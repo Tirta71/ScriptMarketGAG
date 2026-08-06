@@ -146,6 +146,14 @@ return function(ctx)
 				footer = { text = "JobId: " .. tostring(game.JobId) },
 			}},
 		})
+		if ctx.reportEvent then
+			ctx.reportEvent("buy", {
+				pet = tostring(t.pet),
+				mutation = (t.mut and t.mut ~= "None" and t.mut ~= "Normal") and tostring(t.mut) or nil,
+				price = tonumber(t.price) or 0,
+				counterpart = tostring(seller),
+			})
+		end
 	end
 
 	------------------------------------------------------------------ server hop (cari seller)
