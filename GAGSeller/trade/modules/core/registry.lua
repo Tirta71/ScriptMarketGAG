@@ -2,8 +2,18 @@
      Mengisi: ctx.reg = { comboKey, mutDisplay, PET_OPTIONS, MUT_OPTIONS, SKIN_OPTIONS } ]]
 return function(ctx)
 	local PetEggs   = ctx.deps.PetEggs
+	local PetList   = ctx.deps.PetList or {}
 	local EnumToMut = ctx.deps.EnumToMut
 	local SkinsReg  = ctx.deps.SkinsReg
+
+	-- Map nama pet -> asset id icon (dari PetList[pet].Icon = "rbxassetid://123").
+	local PET_ICONS = {}
+	for petName, d in pairs(PetList) do
+		if type(d) == "table" and d.Icon then
+			local id = tostring(d.Icon):match("(%d+)")
+			if id then PET_ICONS[tostring(petName)] = id end
+		end
+	end
 
 	-- opsi dropdown = kombinasi "Pet - Egg"
 	local function comboKey(petType, egg)
@@ -80,6 +90,7 @@ return function(ctx)
 		mutDisplay        = mutDisplay,
 		PET_OPTIONS       = PET_OPTIONS,
 		PET_COMBO_OPTIONS = PET_COMBO_OPTIONS,
+		PET_ICONS         = PET_ICONS,
 		MUT_OPTIONS       = MUT_OPTIONS,
 		SKIN_OPTIONS      = SKIN_OPTIONS,
 	}

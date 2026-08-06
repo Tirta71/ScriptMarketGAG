@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 14 modul, di-generate 2026-08-06T10:21:31.405Z
+-- 14 modul, di-generate 2026-08-06T13:58:04.010Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — inisialisasi akhir: default page, supervisor auto-claim, auto-resume. ]]
@@ -738,8 +738,18 @@ end
      Mengisi: ctx.reg = { comboKey, mutDisplay, PET_OPTIONS, MUT_OPTIONS, SKIN_OPTIONS } ]]
 return function(ctx)
 	local PetEggs   = ctx.deps.PetEggs
+	local PetList   = ctx.deps.PetList or {}
 	local EnumToMut = ctx.deps.EnumToMut
 	local SkinsReg  = ctx.deps.SkinsReg
+
+	-- Map nama pet -> asset id icon (dari PetList[pet].Icon = "rbxassetid://123").
+	local PET_ICONS = {}
+	for petName, d in pairs(PetList) do
+		if type(d) == "table" and d.Icon then
+			local id = tostring(d.Icon):match("(%d+)")
+			if id then PET_ICONS[tostring(petName)] = id end
+		end
+	end
 
 	-- opsi dropdown = kombinasi "Pet - Egg"
 	local function comboKey(petType, egg)
@@ -816,6 +826,7 @@ return function(ctx)
 		mutDisplay        = mutDisplay,
 		PET_OPTIONS       = PET_OPTIONS,
 		PET_COMBO_OPTIONS = PET_COMBO_OPTIONS,
+		PET_ICONS         = PET_ICONS,
 		MUT_OPTIONS       = MUT_OPTIONS,
 		SKIN_OPTIONS      = SKIN_OPTIONS,
 	}
@@ -851,6 +862,8 @@ return function(ctx)
 	local PU              = require(RS.Modules.PetServices.PetUtilities)
 	local PetEggs         = require(RS.Data.PetRegistry.PetEggs)
 	local MutReg          = require(RS.Data.PetRegistry.PetMutationRegistry)
+	local okPL, PetList   = pcall(function() return require(RS.Data.PetRegistry.PetList) end)
+	if not okPL then PetList = {} end
 	local SkinsReg        = require(RS.Data.TradeBoothSkinRegistry)
 
 	local Booths = RS.GameEvents.TradeEvents.Booths
@@ -866,6 +879,7 @@ return function(ctx)
 		TradeBoothsData = TradeBoothsData,
 		PU              = PU,
 		PetEggs         = PetEggs,
+		PetList         = PetList,
 		MutReg          = MutReg,
 		SkinsReg        = SkinsReg,
 		EnumToMut       = MutReg.EnumToPetMutation,
@@ -1087,6 +1101,7 @@ return function(ctx)
 		return {
 			pets     = reg.PET_OPTIONS or {},
 			petCombo = reg.PET_COMBO_OPTIONS or {},
+			petIcons = reg.PET_ICONS or {},   -- nama pet -> asset id icon (buat gambar di web)
 			muts     = reg.MUT_OPTIONS or {},
 			skins    = skins,
 		}

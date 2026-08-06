@@ -27,6 +27,8 @@ return function(ctx)
 	local PU              = require(RS.Modules.PetServices.PetUtilities)
 	local PetEggs         = require(RS.Data.PetRegistry.PetEggs)
 	local MutReg          = require(RS.Data.PetRegistry.PetMutationRegistry)
+	local okPL, PetList   = pcall(function() return require(RS.Data.PetRegistry.PetList) end)
+	if not okPL then PetList = {} end
 	local SkinsReg        = require(RS.Data.TradeBoothSkinRegistry)
 
 	local Booths = RS.GameEvents.TradeEvents.Booths
@@ -42,6 +44,7 @@ return function(ctx)
 		TradeBoothsData = TradeBoothsData,
 		PU              = PU,
 		PetEggs         = PetEggs,
+		PetList         = PetList,
 		MutReg          = MutReg,
 		SkinsReg        = SkinsReg,
 		EnumToMut       = MutReg.EnumToPetMutation,

@@ -27,6 +27,7 @@ return function(ctx)
 		return {
 			pets     = reg.PET_OPTIONS or {},
 			petCombo = reg.PET_COMBO_OPTIONS or {},
+			petIcons = reg.PET_ICONS or {},   -- nama pet -> asset id icon (buat gambar di web)
 			muts     = reg.MUT_OPTIONS or {},
 			skins    = skins,
 		}
