@@ -54,11 +54,13 @@ return function(target)
 					if mut and mut ~= "" then mut = EnumToMut[mut] or mut else mut = nil end
 					if mut == "Normal" then mut = nil end
 					inv.pets[#inv.pets + 1] = {
-						type     = v.PetType or "?",
-						weight   = (pdata.BaseWeight or 0) * (1 + 0.1 * lvl),
-						level    = lvl,
-						mutation = mut,
-						equipped = eqSet[uuid] or false,
+						type       = v.PetType or "?",
+						weight     = (pdata.BaseWeight or 0) * (1 + 0.1 * lvl), -- berat current (ikut age) buat tampilan
+						baseWeight = pdata.BaseWeight or 0,                     -- berat dasar (bebas age) buat filter listing (= weightOf script)
+						level      = lvl,
+						mutation   = mut,
+						equipped   = eqSet[uuid] or false,
+						favorite   = pdata.IsFavorite and true or false,
 					}
 					n = n + 1
 				end
