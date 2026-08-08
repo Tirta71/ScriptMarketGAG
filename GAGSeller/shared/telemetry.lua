@@ -115,6 +115,45 @@ return function(target)
 		-- laporan pertama langsung bawa inventory
 		post(true)
 
+		-- Auto-reconnect signal: begitu Roblox nampilin error/disconnect apapun,
+		-- lapor ke API biar agent Termux langsung relaunch (semua error → relog).
+		-- App masih hidup pas dialog error muncul, jadi request masih bisa kekirim.
+		pcall(function()
+			local GuiService = game:GetService("GuiService")
+			local sent = false
+			local function reportError(reason)
+				if sent then return end
+				sent = true
+				pcall(function()
+					httpReq({
+						Url = "https://api.allegiaant.my.id/api/agent/signal",
+						Method = "POST",
+						Headers = { ["Content-Type"] = "application/json", ["x-api-key"] = API_KEY },
+						Body = HttpService:JSONEncode({
+							userId = LP.UserId,
+							reason = tostring(reason),
+						}),
+					})
+				end)
+			end
+			-- 1) event resmi: error message berubah (dialog Disconnected muncul)
+			pcall(function()
+				GuiService.ErrorMessageChanged:Connect(function()
+					reportError("ErrorMessageChanged")
+				end)
+			end)
+			-- 2) cadangan: pantau prompt error di CoreGui muncul
+			pcall(function()
+				local CoreGui = game:GetService("CoreGui")
+				CoreGui.DescendantAdded:Connect(function(d)
+					local n = tostring(d.Name):lower()
+					if n:find("errorprompt") or n:find("errortitle") then
+						reportError("CoreGuiErrorPrompt")
+					end
+				end)
+			end)
+		end)
+
 		local elapsed = 0
 		while Players.LocalPlayer == LP do
 			task.wait(HEARTBEAT_EVERY)
