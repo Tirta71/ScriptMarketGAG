@@ -120,9 +120,19 @@ return function(target)
 		-- App masih hidup pas dialog error muncul, jadi request masih bisa kekirim.
 		pcall(function()
 			local GuiService = game:GetService("GuiService")
+			local TeleportService = game:GetService("TeleportService")
 			local sent = false
+			-- guard: teleport gagal (server full 770, dll) BUKAN disconnect — jangan lapor.
+			local lastTeleFail = -999
+			pcall(function()
+				TeleportService.TeleportInitFailed:Connect(function()
+					lastTeleFail = os.clock()
+				end)
+			end)
 			local function reportError(reason)
 				if sent then return end
+				-- kalau barusan (<6s) teleport gagal → itu hop gagal, sniper lanjut. Skip.
+				if os.clock() - lastTeleFail < 6 then return end
 				sent = true
 				pcall(function()
 					httpReq({
