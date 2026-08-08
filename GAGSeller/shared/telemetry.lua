@@ -10,7 +10,7 @@
 
 local REPORT_URL = "https://api.allegiaant.my.id/api/report"
 local API_KEY    = "ae3858d4a2def3306d6cbff26ff2bd72eee9319b1aae27d1"
-local HEARTBEAT_EVERY = 20   -- detik (di bawah threshold online 30s; hemat request Vercel)
+local HEARTBEAT_EVERY = 5    -- detik (payload kecil; biar DC kedeteksi cepet buat auto-reconnect)
 local INVENTORY_EVERY = 90   -- detik (kelipatan HEARTBEAT_EVERY biar rapi)
 
 return function(target)
