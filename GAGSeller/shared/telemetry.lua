@@ -164,6 +164,23 @@ return function(target)
 			end)
 		end)
 
+		-- Teleport disengaja (relocate/hop/snipe) → kasih tau agent biar SKIP relaunch,
+		-- karena putus dari server lama itu normal, bukan DC.
+		pcall(function()
+			LP.OnTeleport:Connect(function(state)
+				if state == Enum.TeleportState.Started or state == Enum.TeleportState.InProgress then
+					pcall(function()
+						httpReq({
+							Url = "https://api.allegiaant.my.id/api/agent/suppress",
+							Method = "POST",
+							Headers = { ["Content-Type"] = "application/json", ["x-api-key"] = API_KEY },
+							Body = HttpService:JSONEncode({ userId = LP.UserId, seconds = 90 }),
+						})
+					end)
+				end
+			end)
+		end)
+
 		local elapsed = 0
 		while Players.LocalPlayer == LP do
 			task.wait(HEARTBEAT_EVERY)
