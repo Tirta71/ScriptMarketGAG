@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 14 modul, di-generate 2026-08-06T13:58:04.010Z
+-- 14 modul, di-generate 2026-08-08T01:29:48.550Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — inisialisasi akhir: default page, supervisor auto-claim, auto-resume. ]]
@@ -1006,7 +1006,7 @@ return function(ctx)
 			end
 
 			local price = tx.price or 0
-			local priceWithFee = math.floor(price * 0.98)
+			local priceWithFee = price - math.ceil(price / 100)
 
 			local currentTokens = tostring(ctx.getTokens())
 			local formattedTokens = currentTokens

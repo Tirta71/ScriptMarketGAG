@@ -103,7 +103,7 @@ return function(ctx)
 			end
 
 			local price = tx.price or 0
-			local priceWithFee = math.floor(price * 0.98)
+			local priceWithFee = price - math.ceil(price / 100)
 
 			local currentTokens = tostring(ctx.getTokens())
 			local formattedTokens = currentTokens
