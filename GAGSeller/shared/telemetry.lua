@@ -186,27 +186,14 @@ return function(target)
 			end)
 		end)
 
-		-- cek langsung ada dialog error/disconnect ga (jaga-jaga hook ga nangkep)
-		local GuiSvc = game:GetService("GuiService")
-		local CoreG = game:GetService("CoreGui")
-		local function hasErrorDialog()
-			local hit = false
-			pcall(function()
-				if GuiSvc.ErrorMessage and GuiSvc.ErrorMessage ~= "" then hit = true end
-			end)
-			if hit then return true end
-			pcall(function()
-				local p = CoreG:FindFirstChild("ErrorPrompt", true) or CoreG:FindFirstChild("ErrorTitle", true)
-				if p then hit = true end
-			end)
-			return hit
-		end
-
 		local elapsed = 0
 		while Players.LocalPlayer == LP do
 			task.wait(HEARTBEAT_EVERY)
 			if Players.LocalPlayer ~= LP then break end
-			if disconnected or hasErrorDialog() then break end -- putus → stop heartbeat, biar agent relog
+			-- putus (dari hook error di atas) → stop heartbeat biar agent tau offline & relog.
+			-- CUMA dari flag `disconnected` (event-driven), JANGAN scan CoreGui (elemen ErrorPrompt
+			-- selalu ada walau ke-hide → bikin false stop → relaunch session sehat).
+			if disconnected then break end
 			elapsed = elapsed + HEARTBEAT_EVERY
 			local withInv = elapsed >= INVENTORY_EVERY
 			if withInv then elapsed = 0 end
