@@ -118,6 +118,8 @@ return function(target)
 		-- Ditandai true begitu kena error/disconnect → STOP heartbeat (biar API liat offline,
 		-- ga ketipu "online" padahal Roblox lagi nampilin dialog Disconnected).
 		local disconnected = false
+		-- kapan terakhir TELEPORT (hop/relocate/snipe). Dipakai buat bedain "hop" vs "disconnect".
+		local lastTeleport = -999
 
 		-- Auto-reconnect signal: begitu Roblox nampilin error/disconnect apapun,
 		-- lapor ke API biar agent Termux langsung relaunch (semua error → relog).
@@ -134,8 +136,10 @@ return function(target)
 				end)
 			end)
 			local function reportError(reason)
-				-- kalau barusan (<6s) teleport gagal → itu hop gagal, sniper lanjut. Skip.
+				-- kalau barusan teleport (hop sukses ATAU gagal) → itu bukan disconnect, tapi transisi
+				-- pindah server. Skip biar sniper yg lagi hop cepet ga ke-relaunch.
 				if os.clock() - lastTeleFail < 6 then return end
+				if os.clock() - lastTeleport < 8 then return end
 				disconnected = true -- tandai putus → heartbeat berhenti (liat loop di bawah)
 				if sent then return end
 				sent = true
@@ -174,6 +178,7 @@ return function(target)
 		pcall(function()
 			LP.OnTeleport:Connect(function(state)
 				if state == Enum.TeleportState.Started or state == Enum.TeleportState.InProgress then
+					lastTeleport = os.clock() -- tandai lagi teleport → reportError skip (bukan disconnect)
 					pcall(function()
 						httpReq({
 							Url = "https://api.allegiaant.my.id/api/agent/suppress",
