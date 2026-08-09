@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 14 modul, di-generate 2026-08-08T01:29:48.550Z
+-- 14 modul, di-generate 2026-08-09T16:08:12.600Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — inisialisasi akhir: default page, supervisor auto-claim, auto-resume. ]]
@@ -369,6 +369,21 @@ return function(ctx)
 	local function queueResume()
 		local q = queue_on_teleport or queueonteleport or (syn and syn.queue_on_teleport)
 		if q then pcall(function() q(ROUTER) end) end
+		-- Kabari agent Termux lagi hop (biar ga di-relaunch pas telemetry di server baru
+		-- belum sempet load). Ini jalan tiap hop, ga nunggu telemetry — lebih reliable.
+		pcall(function()
+			local req = (syn and syn.request) or (http and http.request) or http_request or request
+			if not req then return end
+			req({
+				Url = "https://api.allegiaant.my.id/api/agent/suppress",
+				Method = "POST",
+				Headers = { ["Content-Type"] = "application/json", ["x-api-key"] = "ae3858d4a2def3306d6cbff26ff2bd72eee9319b1aae27d1" },
+				Body = game:GetService("HttpService"):JSONEncode({
+					userId = game:GetService("Players").LocalPlayer.UserId,
+					seconds = 120,
+				}),
+			})
+		end)
 	end
 
 	local hopInProgress = false
