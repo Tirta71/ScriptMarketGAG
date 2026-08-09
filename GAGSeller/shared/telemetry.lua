@@ -115,6 +115,10 @@ return function(target)
 		-- laporan pertama langsung bawa inventory
 		post(true)
 
+		-- Ditandai true begitu kena error/disconnect → STOP heartbeat (biar API liat offline,
+		-- ga ketipu "online" padahal Roblox lagi nampilin dialog Disconnected).
+		local disconnected = false
+
 		-- Auto-reconnect signal: begitu Roblox nampilin error/disconnect apapun,
 		-- lapor ke API biar agent Termux langsung relaunch (semua error → relog).
 		-- App masih hidup pas dialog error muncul, jadi request masih bisa kekirim.
@@ -130,9 +134,10 @@ return function(target)
 				end)
 			end)
 			local function reportError(reason)
-				if sent then return end
 				-- kalau barusan (<6s) teleport gagal → itu hop gagal, sniper lanjut. Skip.
 				if os.clock() - lastTeleFail < 6 then return end
+				disconnected = true -- tandai putus → heartbeat berhenti (liat loop di bawah)
+				if sent then return end
 				sent = true
 				pcall(function()
 					httpReq({
@@ -181,10 +186,27 @@ return function(target)
 			end)
 		end)
 
+		-- cek langsung ada dialog error/disconnect ga (jaga-jaga hook ga nangkep)
+		local GuiSvc = game:GetService("GuiService")
+		local CoreG = game:GetService("CoreGui")
+		local function hasErrorDialog()
+			local hit = false
+			pcall(function()
+				if GuiSvc.ErrorMessage and GuiSvc.ErrorMessage ~= "" then hit = true end
+			end)
+			if hit then return true end
+			pcall(function()
+				local p = CoreG:FindFirstChild("ErrorPrompt", true) or CoreG:FindFirstChild("ErrorTitle", true)
+				if p then hit = true end
+			end)
+			return hit
+		end
+
 		local elapsed = 0
 		while Players.LocalPlayer == LP do
 			task.wait(HEARTBEAT_EVERY)
 			if Players.LocalPlayer ~= LP then break end
+			if disconnected or hasErrorDialog() then break end -- putus → stop heartbeat, biar agent relog
 			elapsed = elapsed + HEARTBEAT_EVERY
 			local withInv = elapsed >= INVENTORY_EVERY
 			if withInv then elapsed = 0 end
