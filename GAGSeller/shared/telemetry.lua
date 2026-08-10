@@ -136,11 +136,14 @@ return function(target)
 				end)
 			end)
 			local function reportError(reason)
-				-- kalau barusan teleport (hop sukses ATAU gagal) → itu bukan disconnect, tapi transisi
-				-- pindah server. Skip biar sniper yg lagi hop cepet ga ke-relaunch.
+				-- SELALU stop heartbeat pas ada dialog error → biar DC beneran (288/277/dll)
+				-- ke-detect offline. Pas hopping tetep keliatan online krn suppress refresh last_seen,
+				-- dan telemetry server baru resume heartbeat. Jadi ini aman buat sniper.
+				disconnected = true
+				-- Signal (relaunch CEPAT) di-skip kalau barusan teleport (hop sukses/gagal) —
+				-- biar sniper yg lagi hop ga ke-relaunch. DC beneran tetep ke-handle via offline+patience.
 				if os.clock() - lastTeleFail < 6 then return end
 				if os.clock() - lastTeleport < 8 then return end
-				disconnected = true -- tandai putus → heartbeat berhenti (liat loop di bawah)
 				if sent then return end
 				sent = true
 				pcall(function()
