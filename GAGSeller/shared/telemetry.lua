@@ -35,6 +35,30 @@ return function(target)
 			EnumToMut = require(RS.Data.PetRegistry.PetMutationRegistry).EnumToPetMutation or {}
 		end)
 
+		-- RAP (nilai Token pasar) — via TokenRAPController:GetRAPAsync("Pet", entry).
+		-- Cuma ada di Trade World. Cache per-id (tipe+mutasi+tier) biar ga spam server.
+		local RAPUtil, RAPCtrl
+		pcall(function() RAPUtil = require(RS.Modules.TradeTokens.TokenRAPUtil) end)
+		pcall(function()
+			RAPCtrl = require(RS.Modules.TradeTokens.TokenRAPController)
+			if RAPCtrl and RAPCtrl.Start then pcall(function() RAPCtrl:Start() end) end
+		end)
+		local rapCache = {}   -- id -> { v = number, t = os.clock() }
+		local RAP_TTL = 300   -- detik; RAP jarang berubah
+		local function getRap(entry)
+			if not (RAPUtil and RAPCtrl) then return nil end
+			local ok, id = pcall(function() return RAPUtil.GetItemId("Pet", entry) end)
+			if not ok or type(id) ~= "string" or id == "Unknown" then return nil end
+			local c = rapCache[id]
+			if c and (os.clock() - c.t) < RAP_TTL then return c.v end
+			local ok2, rap = pcall(function() return RAPCtrl:GetRAPAsync("Pet", entry) end)
+			if ok2 and type(rap) == "number" then
+				rapCache[id] = { v = rap, t = os.clock() }
+				return rap
+			end
+			return c and c.v or nil
+		end
+
 		-- snapshot inventory (best-effort, semua pcall). Relevan di garden.
 		local function buildInventory()
 			local inv = { pets = {}, eggs = {}, items = {}, stats = {} }
@@ -61,6 +85,7 @@ return function(target)
 						mutation   = mut,
 						equipped   = eqSet[uuid] or false,
 						favorite   = pdata.IsFavorite and true or false,
+						rap        = getRap(v), -- nilai Token (RAP pasar), nil di garden / kalau gagal
 					}
 					n = n + 1
 				end
