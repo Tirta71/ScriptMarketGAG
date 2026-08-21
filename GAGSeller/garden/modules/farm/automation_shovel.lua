@@ -23,18 +23,38 @@ return function(ctx)
 			end
 		end
 	end
+	local function heldShovel()
+		local char = LP.Character
+		if not char then return nil end
+		for _, t in ipairs(char:GetChildren()) do
+			if t:IsA("Tool") and tostring(t.Name):find("Shovel") then return t end
+		end
+	end
 	local function equipShovel()
 		local char = LP.Character
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
 		if not hum then return false end
-		local held = char:FindFirstChildWhichIsA("Tool")
-		if held and tostring(held.Name):find("Shovel") then return true end
+		if heldShovel() then return true end
 		local sh = findShovel()
 		if not sh then return false end
 		pcall(function() hum:EquipTool(sh) end)
-		task.wait(0.25)
-		local now = char:FindFirstChildWhichIsA("Tool")
-		return now ~= nil and tostring(now.Name):find("Shovel") ~= nil
+		task.wait(0.2)
+		return heldShovel() ~= nil
+	end
+
+	-- Guard (mirip reclaimer): selama shovel aktif, Shovel WAJIB tetap kepegang.
+	-- Kalau user pindah manual ke tool lain, langsung equip ulang (cek 0.25s).
+	local guardRunning = false
+	local function ensureGuard()
+		if guardRunning then return end
+		guardRunning = true
+		task.spawn(function()
+			while (CFG.shovelTreeEnabled or CFG.shovelFruitEnabled) and ctx.alive() do
+				if not heldShovel() then equipShovel() end
+				task.wait(0.25)
+			end
+			guardRunning = false
+		end)
 	end
 
 	-- attribute fruit yang BUKAN mutasi (metadata) — dibuang pas listing opsi mutasi
@@ -188,8 +208,8 @@ return function(ctx)
 		end
 	end
 
-	function ctx.startShovelTree()  task.spawn(treeLoop) end
+	function ctx.startShovelTree()  equipShovel(); ensureGuard(); task.spawn(treeLoop) end
 	function ctx.stopShovelTree()   ctx.state.shovelTreeId = (ctx.state.shovelTreeId or 0) + 1 end
-	function ctx.startShovelFruit() task.spawn(fruitLoop) end
+	function ctx.startShovelFruit() equipShovel(); ensureGuard(); task.spawn(fruitLoop) end
 	function ctx.stopShovelFruit()  ctx.state.shovelFruitId = (ctx.state.shovelFruitId or 0) + 1 end
 end
