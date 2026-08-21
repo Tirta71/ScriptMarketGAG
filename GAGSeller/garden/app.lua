@@ -211,6 +211,9 @@ return function(ctx)
 	if (CFG.collectWlFruitEnabled or CFG.collectWlMutEnabled or CFG.collectCombEnabled) and ctx.startCollect then
 		ctx.startCollect(); ctx.log("Auto-resume: Auto Collect ON.")
 	end
+	if (CFG.favEnabled or CFG.unfavEnabled) and ctx.startFavorite then
+		ctx.startFavorite(); ctx.log("Auto-resume: Auto Favorite ON.")
+	end
 	if CFG.buySummerSeedEnabled and ctx.startBuySummerSeed then ctx.startBuySummerSeed(); ctx.log("Auto-resume: Buy Summer Seed ON.") end
 	if CFG.buyTideTokenEnabled and ctx.startBuyTideToken then ctx.startBuyTideToken(); ctx.log("Auto-resume: Buy Tide Token ON.") end
 end

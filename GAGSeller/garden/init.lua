@@ -135,6 +135,7 @@ local MODULES = {
 	"modules/farm/automation_water.lua",
 	"modules/farm/automation_shovel.lua",
 	"modules/farm/automation_collect.lua",
+	"modules/farm/automation_favorite.lua",
 	"modules/mutation/automation_mutation_machine.lua",
 	"modules/mutation/automation_mutation.lua",
 	"modules/event/automation_summer_event.lua",

@@ -162,6 +162,15 @@ return function(ctx)
 		collectCombWeight     = 0,
 		collectCombEnabled    = false,
 
+		-- Automation Favorite (favorite/unfavorite fruit via Favorite Tool)
+		favFruitNames = {},
+		favMutNames   = {},
+		favMode       = ">= (berat minimal)",
+		favWeight     = 0,
+		favDelay      = 1,
+		favEnabled    = false,
+		unfavEnabled  = false,
+
 		-- Automation Summer Shop (event: Summer Seed Shop + Tide Token Shop)
 		buySummerSeedNames   = {},
 		buySummerSeedEnabled = false,
@@ -399,6 +408,14 @@ return function(ctx)
 			CFG.collectCombMode       = st.collectCombMode or ">= (berat minimal)"
 			CFG.collectCombWeight     = tonumber(st.collectCombWeight) or 0
 			CFG.collectCombEnabled    = st.collectCombEnabled or false
+
+			CFG.favFruitNames = (type(st.favFruitNames) == "table") and st.favFruitNames or {}
+			CFG.favMutNames   = (type(st.favMutNames) == "table") and st.favMutNames or {}
+			CFG.favMode       = st.favMode or ">= (berat minimal)"
+			CFG.favWeight     = tonumber(st.favWeight) or 0
+			CFG.favDelay      = tonumber(st.favDelay) or 1
+			CFG.favEnabled    = st.favEnabled or false
+			CFG.unfavEnabled  = st.unfavEnabled or false
 
 			CFG.buySummerSeedNames   = (type(st.buySummerSeedNames) == "table") and st.buySummerSeedNames or {}
 			CFG.buySummerSeedEnabled = st.buySummerSeedEnabled or false

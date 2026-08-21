@@ -192,18 +192,28 @@ return function(ctx)
 			function() return CFG.collectCombEnabled end,
 			function(v) CFG.collectCombEnabled = v; persist(); if v and ctx.startCollect then ctx.startCollect() end end, 6)
 
-		local SKELETON = {
-			{ "Automation Favorite", 6 },
-		}
-		for _, s in ipairs(SKELETON) do
-			local body = makeAccordion(farmPage, s[1], s[2], false)
-			mk("TextLabel", {
-				Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
-				BackgroundTransparency = 1, Text = "Kerangka — fitur belum diisi.",
-				Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = C.sub,
-				TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, LayoutOrder = 1,
-			}, body)
-		end
+		-- Automation Favorite (fitur aktif): favorite/unfavorite fruit via Favorite Tool
+		local favAcc = makeAccordion(farmPage, "Automation Favorite", 6, false)
+		makeMultiDropdownDyn(favAcc, "Select Fruits", "Tipe fruit di garden buat di-favorite (kosong = any).",
+			function() return ctx.getFavFruitOptions() end, CFG.favFruitNames, function() persist() end, 1)
+		makeMultiDropdownDyn(favAcc, "Filter Mutations", "Mutasi yang diperluin (kosong = mutasi apapun OK).",
+			function() return ctx.getFavMutationOptions() end, CFG.favMutNames, function() persist() end, 2)
+		makeSingleDropdown(favAcc, "Weight Mode", "Banding berat fruit (kosong = off).",
+			function() return ctx.getFavModeOptions() end,
+			function() return CFG.favMode end,
+			function(v) CFG.favMode = v; persist() end, 3)
+		makeInput(favAcc, "Weight Value", "Threshold berat (0 = off).",
+			function() return tostring(CFG.favWeight) end,
+			function(t) CFG.favWeight = tonumber(t) or 0; persist() end, 4)
+		makeInput(favAcc, "Delay To Favorite", "Detik tiap siklus scan favorite.",
+			function() return tostring(CFG.favDelay) end,
+			function(t) CFG.favDelay = tonumber(t) or 1; persist() end, 5)
+		makeToggle(favAcc, "Auto Favorite Fruits", "Favorite fruit garden yang cocok filter.",
+			function() return CFG.favEnabled end,
+			function(v) CFG.favEnabled = v; persist(); if v and ctx.startFavorite then ctx.startFavorite() end end, 6)
+		makeToggle(favAcc, "Auto Unfavorite Fruits", "Unfavorite fruit garden yang cocok filter.",
+			function() return CFG.unfavEnabled end,
+			function(v) CFG.unfavEnabled = v; persist(); if v and ctx.startFavorite then ctx.startFavorite() end end, 7)
 
 		-- Automation Reclaimer (fitur aktif): pilih plant + toggle auto reclaim
 		local recAcc = makeAccordion(farmPage, "Automation Reclaimer", 7, false)

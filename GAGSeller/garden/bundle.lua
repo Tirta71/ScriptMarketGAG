@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 38 modul, di-generate 2026-08-21T04:14:18.211Z
+-- 39 modul, di-generate 2026-08-21T04:23:30.315Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — init akhir garden: default tab Inventory + auto-resume automation. ]]
@@ -216,6 +216,9 @@ return function(ctx)
 	if (CFG.collectWlFruitEnabled or CFG.collectWlMutEnabled or CFG.collectCombEnabled) and ctx.startCollect then
 		ctx.startCollect(); ctx.log("Auto-resume: Auto Collect ON.")
 	end
+	if (CFG.favEnabled or CFG.unfavEnabled) and ctx.startFavorite then
+		ctx.startFavorite(); ctx.log("Auto-resume: Auto Favorite ON.")
+	end
 	if CFG.buySummerSeedEnabled and ctx.startBuySummerSeed then ctx.startBuySummerSeed(); ctx.log("Auto-resume: Buy Summer Seed ON.") end
 	if CFG.buyTideTokenEnabled and ctx.startBuyTideToken then ctx.startBuyTideToken(); ctx.log("Auto-resume: Buy Tide Token ON.") end
 end
@@ -384,6 +387,15 @@ return function(ctx)
 		collectCombMode       = ">= (berat minimal)",
 		collectCombWeight     = 0,
 		collectCombEnabled    = false,
+
+		-- Automation Favorite (favorite/unfavorite fruit via Favorite Tool)
+		favFruitNames = {},
+		favMutNames   = {},
+		favMode       = ">= (berat minimal)",
+		favWeight     = 0,
+		favDelay      = 1,
+		favEnabled    = false,
+		unfavEnabled  = false,
 
 		-- Automation Summer Shop (event: Summer Seed Shop + Tide Token Shop)
 		buySummerSeedNames   = {},
@@ -622,6 +634,14 @@ return function(ctx)
 			CFG.collectCombMode       = st.collectCombMode or ">= (berat minimal)"
 			CFG.collectCombWeight     = tonumber(st.collectCombWeight) or 0
 			CFG.collectCombEnabled    = st.collectCombEnabled or false
+
+			CFG.favFruitNames = (type(st.favFruitNames) == "table") and st.favFruitNames or {}
+			CFG.favMutNames   = (type(st.favMutNames) == "table") and st.favMutNames or {}
+			CFG.favMode       = st.favMode or ">= (berat minimal)"
+			CFG.favWeight     = tonumber(st.favWeight) or 0
+			CFG.favDelay      = tonumber(st.favDelay) or 1
+			CFG.favEnabled    = st.favEnabled or false
+			CFG.unfavEnabled  = st.unfavEnabled or false
 
 			CFG.buySummerSeedNames   = (type(st.buySummerSeedNames) == "table") and st.buySummerSeedNames or {}
 			CFG.buySummerSeedEnabled = st.buySummerSeedEnabled or false
@@ -2561,6 +2581,160 @@ return function(ctx)
 		task.spawn(collectLoop)
 	end
 	function ctx.stopCollect() ctx.state.collectId = (ctx.state.collectId or 0) + 1 end
+end
+]=],
+	["modules/farm/automation_favorite.lua"] = [=[
+--[[ automation_favorite.lua — Auto Favorite/Unfavorite fruit.
+     Favorite = "lock" buah biar ga kejual/keshovel. Pakai Favorite Tool (equip + guard).
+     Remote (dari Favorite Tool script): LockToolRemote:InvokeServer(favTool, fruitModel, state)
+       state=true -> favorite, false -> unfavorite. RemoteFunction.
+     State fruit: fruit:GetAttribute("Favorited") (boolean). Cuma fruit tag "Harvestable".
+     Filter: tipe fruit + mutasi (required) + berat (mode + threshold). ]]
+return function(ctx)
+	local RS  = game:GetService("ReplicatedStorage")
+	local CFG = ctx.CFG
+	local LP  = ctx.LP
+	local Lock = RS.GameEvents:WaitForChild("LockToolRemote")
+
+	----------------------------------------------------------------- tool equip + guard
+	local function findTool()
+		for _, where in ipairs({ LP.Character, LP:FindFirstChildOfClass("Backpack") }) do
+			if where then for _, t in ipairs(where:GetChildren()) do
+				if t:IsA("Tool") and tostring(t.Name):find("Favorite") then return t end
+			end end
+		end
+	end
+	local function heldTool()
+		local char = LP.Character
+		if not char then return nil end
+		for _, t in ipairs(char:GetChildren()) do
+			if t:IsA("Tool") and tostring(t.Name):find("Favorite") then return t end
+		end
+	end
+	local function equipTool()
+		local char = LP.Character
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if not hum then return false end
+		if heldTool() then return true end
+		local tl = findTool()
+		if not tl then return false end
+		pcall(function() hum:EquipTool(tl) end)
+		task.wait(0.2)
+		return heldTool() ~= nil
+	end
+	local guardRunning = false
+	local function ensureGuard()
+		if guardRunning then return end
+		guardRunning = true
+		task.spawn(function()
+			while (CFG.favEnabled or CFG.unfavEnabled) and ctx.alive() do
+				if not heldTool() then equipTool() end
+				task.wait(0.25)
+			end
+			guardRunning = false
+		end)
+	end
+
+	----------------------------------------------------------------- opsi UI
+	local function optionsFrom(names, allLabel)
+		local out = { { value = "All", display = allLabel or "All" } }
+		for _, n in ipairs(names) do out[#out + 1] = { value = n, display = n } end
+		return out
+	end
+	local function catalog()
+		local ok, t = pcall(function() return require(RS.Data.SeedShopData) end)
+		local names = {}
+		if ok and type(t) == "table" then
+			for k in pairs(t) do local n = tostring(k); if n ~= "RefreshTime" and n ~= "Gear" then names[#names + 1] = n end end
+			table.sort(names)
+		end
+		return names
+	end
+	function ctx.getFavFruitOptions() return optionsFrom(catalog(), "All (semua fruit)") end
+	function ctx.getFavMutationOptions()
+		local ok, MH = pcall(function() return require(RS.Modules.MutationHandler) end)
+		local names = {}
+		if ok and MH and type(MH.MutationNames) == "table" then
+			local mn = MH.MutationNames
+			if mn[1] ~= nil then for _, v in ipairs(mn) do names[#names + 1] = tostring(v) end
+			else for k in pairs(mn) do names[#names + 1] = tostring(k) end end
+			table.sort(names)
+		end
+		return optionsFrom(names, "All (mutasi apapun)")
+	end
+	function ctx.getFavModeOptions() return { ">= (berat minimal)", "<= (berat maksimal)" } end
+
+	----------------------------------------------------------------- match filter
+	local function fruitWeight(f) local w = f:FindFirstChild("Weight"); return w and tonumber(w.Value) or 0 end
+	local function fruitMatches(f)
+		local sel  = CFG.favFruitNames or {}
+		local muts = CFG.favMutNames or {}
+		-- tipe (kosong = any)
+		if not (next(sel) == nil or sel["All"] or sel[f.Name]) then return false end
+		-- mutasi required (kosong = any). Fruit harus punya salah satu mutasi terpilih.
+		if not (next(muts) == nil or muts["All"]) then
+			local hit = false
+			for m in pairs(muts) do if m ~= "All" and f:GetAttribute(m) == true then hit = true; break end end
+			if not hit then return false end
+		end
+		-- berat (0 = off)
+		local thr = tonumber(CFG.favWeight) or 0
+		if thr > 0 then
+			local w = fruitWeight(f)
+			if (CFG.favMode or ">="):find("<=") then if not (w <= thr) then return false end
+			else if not (w >= thr) then return false end end
+		end
+		return true
+	end
+
+	local function eachHarvestable(fn)
+		local Farm = workspace:FindFirstChild("Farm"); if not Farm then return end
+		for _, garden in ipairs(Farm:GetChildren()) do
+			if not garden:GetAttribute("CommunityGarden") then
+				local imp = garden:FindFirstChild("Important")
+				local pp = imp and imp:FindFirstChild("Plants_Physical")
+				if pp then for _, plant in ipairs(pp:GetChildren()) do
+					local fr = plant:FindFirstChild("Fruits")
+					if fr then for _, f in ipairs(fr:GetChildren()) do
+						if f:HasTag("Harvestable") then fn(f) end
+					end end
+				end end
+			end
+		end
+	end
+
+	----------------------------------------------------------------- loop
+	local function favLoop()
+		ctx.state.favId = (ctx.state.favId or 0) + 1
+		local myId = ctx.state.favId
+		ctx.elevate()
+		while (CFG.favEnabled or CFG.unfavEnabled) and ctx.alive() and ctx.state.favId == myId do
+			local tool = heldTool() or findTool()
+			if not tool then
+				ctx.setStatus("Auto Favorite: Favorite Tool ga ada")
+			else
+				local n = 0
+				eachHarvestable(function(f)
+					if not (CFG.favEnabled or CFG.unfavEnabled) or ctx.state.favId ~= myId then return end
+					if not fruitMatches(f) then return end
+					local isFav = f:GetAttribute("Favorited") == true
+					if CFG.favEnabled and not isFav then
+						pcall(function() Lock:InvokeServer(tool, f, true) end); n = n + 1; task.wait(0.08)
+					elseif CFG.unfavEnabled and isFav then
+						pcall(function() Lock:InvokeServer(tool, f, false) end); n = n + 1; task.wait(0.08)
+					end
+				end)
+				ctx.setStatus(("Auto Favorite: proses %d buah"):format(n))
+			end
+			task.wait(math.max(0.5, tonumber(CFG.favDelay) or 1) + 0.5)
+		end
+	end
+
+	function ctx.startFavorite()
+		equipTool(); ensureGuard()
+		task.spawn(favLoop)
+	end
+	function ctx.stopFavorite() ctx.state.favId = (ctx.state.favId or 0) + 1 end
 end
 ]=],
 	["modules/farm/automation_plants.lua"] = [=[
@@ -8292,18 +8466,28 @@ return function(ctx)
 			function() return CFG.collectCombEnabled end,
 			function(v) CFG.collectCombEnabled = v; persist(); if v and ctx.startCollect then ctx.startCollect() end end, 6)
 
-		local SKELETON = {
-			{ "Automation Favorite", 6 },
-		}
-		for _, s in ipairs(SKELETON) do
-			local body = makeAccordion(farmPage, s[1], s[2], false)
-			mk("TextLabel", {
-				Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y,
-				BackgroundTransparency = 1, Text = "Kerangka — fitur belum diisi.",
-				Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = C.sub,
-				TextXAlignment = Enum.TextXAlignment.Left, TextWrapped = true, LayoutOrder = 1,
-			}, body)
-		end
+		-- Automation Favorite (fitur aktif): favorite/unfavorite fruit via Favorite Tool
+		local favAcc = makeAccordion(farmPage, "Automation Favorite", 6, false)
+		makeMultiDropdownDyn(favAcc, "Select Fruits", "Tipe fruit di garden buat di-favorite (kosong = any).",
+			function() return ctx.getFavFruitOptions() end, CFG.favFruitNames, function() persist() end, 1)
+		makeMultiDropdownDyn(favAcc, "Filter Mutations", "Mutasi yang diperluin (kosong = mutasi apapun OK).",
+			function() return ctx.getFavMutationOptions() end, CFG.favMutNames, function() persist() end, 2)
+		makeSingleDropdown(favAcc, "Weight Mode", "Banding berat fruit (kosong = off).",
+			function() return ctx.getFavModeOptions() end,
+			function() return CFG.favMode end,
+			function(v) CFG.favMode = v; persist() end, 3)
+		makeInput(favAcc, "Weight Value", "Threshold berat (0 = off).",
+			function() return tostring(CFG.favWeight) end,
+			function(t) CFG.favWeight = tonumber(t) or 0; persist() end, 4)
+		makeInput(favAcc, "Delay To Favorite", "Detik tiap siklus scan favorite.",
+			function() return tostring(CFG.favDelay) end,
+			function(t) CFG.favDelay = tonumber(t) or 1; persist() end, 5)
+		makeToggle(favAcc, "Auto Favorite Fruits", "Favorite fruit garden yang cocok filter.",
+			function() return CFG.favEnabled end,
+			function(v) CFG.favEnabled = v; persist(); if v and ctx.startFavorite then ctx.startFavorite() end end, 6)
+		makeToggle(favAcc, "Auto Unfavorite Fruits", "Unfavorite fruit garden yang cocok filter.",
+			function() return CFG.unfavEnabled end,
+			function(v) CFG.unfavEnabled = v; persist(); if v and ctx.startFavorite then ctx.startFavorite() end end, 7)
 
 		-- Automation Reclaimer (fitur aktif): pilih plant + toggle auto reclaim
 		local recAcc = makeAccordion(farmPage, "Automation Reclaimer", 7, false)
