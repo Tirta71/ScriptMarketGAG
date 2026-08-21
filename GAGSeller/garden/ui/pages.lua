@@ -100,9 +100,19 @@ return function(ctx)
 			function() return CFG.shovelSprinklerEnabled end,
 			function(v) CFG.shovelSprinklerEnabled = v; persist(); if v and ctx.startShovelSprinkler then ctx.startShovelSprinkler() end end, 3)
 
+		-- Automation Water (fitur aktif): siram plant terpilih pakai Watering Can (Water_RE)
+		local watAcc = makeAccordion(farmPage, "Automation Water", 3, false)
+		makeMultiDropdownDyn(watAcc, "Select Water Fruits", "Pilih fruit/plant yang mau disiram. 'All' = semua.",
+			function() return ctx.getWaterFruitOptions() end, CFG.waterFruitNames, function() persist() end, 1)
+		makeInput(watAcc, "Delay to Water", "Extra delay (detik) tiap siklus siram.",
+			function() return tostring(CFG.waterDelay) end,
+			function(t) CFG.waterDelay = tonumber(t) or 1; persist() end, 2)
+		makeToggle(watAcc, "Auto Water Fruits", "Siram fruit terpilih otomatis.",
+			function() return CFG.waterEnabled end,
+			function(v) CFG.waterEnabled = v; persist(); if v and ctx.startWater then ctx.startWater() end end, 3)
+
 		-- Accordion yg masih kerangka (belum diisi)
 		local SKELETON = {
-			{ "Automation Water", 3 },
 			{ "Automation Shovel", 4 },
 			{ "Automation Collection", 5 },
 			{ "Automation Favorite", 6 },

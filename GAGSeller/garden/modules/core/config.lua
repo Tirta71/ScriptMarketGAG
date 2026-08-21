@@ -130,6 +130,11 @@ return function(ctx)
 		buyGearNames   = {},
 		buyGearEnabled = false,
 
+		-- Automation Water (siram plant terpilih pakai Watering Can / Water_RE)
+		waterFruitNames = {},
+		waterEnabled    = false,
+		waterDelay      = 1,
+
 		-- Automation Summer Shop (event: Summer Seed Shop + Tide Token Shop)
 		buySummerSeedNames   = {},
 		buySummerSeedEnabled = false,
@@ -338,6 +343,10 @@ return function(ctx)
 			CFG.buyEggEnabled  = st.buyEggEnabled or false
 			CFG.buyGearNames   = (type(st.buyGearNames) == "table") and st.buyGearNames or {}
 			CFG.buyGearEnabled = st.buyGearEnabled or false
+
+			CFG.waterFruitNames = (type(st.waterFruitNames) == "table") and st.waterFruitNames or {}
+			CFG.waterEnabled    = st.waterEnabled or false
+			CFG.waterDelay      = tonumber(st.waterDelay) or 1
 
 			CFG.buySummerSeedNames   = (type(st.buySummerSeedNames) == "table") and st.buySummerSeedNames or {}
 			CFG.buySummerSeedEnabled = st.buySummerSeedEnabled or false
