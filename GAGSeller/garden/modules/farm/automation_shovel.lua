@@ -10,7 +10,32 @@
 return function(ctx)
 	local RS  = game:GetService("ReplicatedStorage")
 	local CFG = ctx.CFG
+	local LP  = ctx.LP
 	local Remove = RS:WaitForChild("GameEvents"):WaitForChild("Remove_Item")
+
+	-- cari + equip Shovel dulu (server nolak kalau ga pegang shovel)
+	local function findShovel()
+		for _, where in ipairs({ LP.Character, LP:FindFirstChildOfClass("Backpack") }) do
+			if where then
+				for _, t in ipairs(where:GetChildren()) do
+					if t:IsA("Tool") and tostring(t.Name):find("Shovel") then return t end
+				end
+			end
+		end
+	end
+	local function equipShovel()
+		local char = LP.Character
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if not hum then return false end
+		local held = char:FindFirstChildWhichIsA("Tool")
+		if held and tostring(held.Name):find("Shovel") then return true end
+		local sh = findShovel()
+		if not sh then return false end
+		pcall(function() hum:EquipTool(sh) end)
+		task.wait(0.25)
+		local now = char:FindFirstChildWhichIsA("Tool")
+		return now ~= nil and tostring(now.Name):find("Shovel") ~= nil
+	end
 
 	-- attribute fruit yang BUKAN mutasi (metadata) — dibuang pas listing opsi mutasi
 	local NOT_MUTATION = {
@@ -119,17 +144,22 @@ return function(ctx)
 		local myId = ctx.state.shovelTreeId
 		ctx.elevate()
 		while CFG.shovelTreeEnabled and ctx.alive() and ctx.state.shovelTreeId == myId do
-			local sel = CFG.shovelTreeNames or {}
-			local all = sel["All"]
-			local n = 0
-			eachPlant(function(plant)
-				if not CFG.shovelTreeEnabled or ctx.state.shovelTreeId ~= myId then return end
-				if all or sel[plant.Name] then
-					shovel(plant); n = n + 1; task.wait(0.12)
-				end
-			end)
-			ctx.setStatus(("Auto Shovel Tree: cabut %d plant"):format(n))
-			task.wait(math.max(0.5, tonumber(CFG.shovelTreeDelay) or 0) + 0.5)
+			if not equipShovel() then
+				ctx.setStatus("Auto Shovel Tree: Shovel ga ada / gagal equip")
+				task.wait(math.max(1, tonumber(CFG.shovelTreeDelay) or 0))
+			else
+				local sel = CFG.shovelTreeNames or {}
+				local all = sel["All"]
+				local n = 0
+				eachPlant(function(plant)
+					if not CFG.shovelTreeEnabled or ctx.state.shovelTreeId ~= myId then return end
+					if all or sel[plant.Name] then
+						shovel(plant); n = n + 1; task.wait(0.12)
+					end
+				end)
+				ctx.setStatus(("Auto Shovel Tree: cabut %d plant"):format(n))
+				task.wait(math.max(0.5, tonumber(CFG.shovelTreeDelay) or 0) + 0.5)
+			end
 		end
 	end
 
@@ -139,17 +169,22 @@ return function(ctx)
 		local myId = ctx.state.shovelFruitId
 		ctx.elevate()
 		while CFG.shovelFruitEnabled and ctx.alive() and ctx.state.shovelFruitId == myId do
-			local n = 0
-			eachPlant(function(plant)
-				if not CFG.shovelFruitEnabled or ctx.state.shovelFruitId ~= myId then return end
-				local fr = plant:FindFirstChild("Fruits")
-				if not fr then return end
-				for _, f in ipairs(fr:GetChildren()) do
-					if fruitMatches(f) then shovel(plant); n = n + 1; task.wait(0.12); break end
-				end
-			end)
-			ctx.setStatus(("Auto Shovel Fruit: cabut %d plant"):format(n))
-			task.wait(math.max(0.5, tonumber(CFG.shovelFruitDelay) or 0) + 0.5)
+			if not equipShovel() then
+				ctx.setStatus("Auto Shovel Fruit: Shovel ga ada / gagal equip")
+				task.wait(math.max(1, tonumber(CFG.shovelFruitDelay) or 0))
+			else
+				local n = 0
+				eachPlant(function(plant)
+					if not CFG.shovelFruitEnabled or ctx.state.shovelFruitId ~= myId then return end
+					local fr = plant:FindFirstChild("Fruits")
+					if not fr then return end
+					for _, f in ipairs(fr:GetChildren()) do
+						if fruitMatches(f) then shovel(plant); n = n + 1; task.wait(0.12); break end
+					end
+				end)
+				ctx.setStatus(("Auto Shovel Fruit: cabut %d plant"):format(n))
+				task.wait(math.max(0.5, tonumber(CFG.shovelFruitDelay) or 0) + 0.5)
+			end
 		end
 	end
 
