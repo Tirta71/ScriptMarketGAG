@@ -7,7 +7,40 @@
 return function(ctx)
 	local RS  = game:GetService("ReplicatedStorage")
 	local CFG = ctx.CFG
+	local LP  = ctx.LP
 	local Water = RS:WaitForChild("GameEvents"):WaitForChild("Water_RE")
+
+	-- cari Watering Can (prioritas regular = uses banyak; fallback Super/Sugar/apapun)
+	local function findCan()
+		local best, fallback
+		for _, where in ipairs({ LP.Character, LP:FindFirstChildOfClass("Backpack") }) do
+			if where then
+				for _, t in ipairs(where:GetChildren()) do
+					local n = tostring(t.Name)
+					if t:IsA("Tool") and n:find("Watering Can") then
+						if not n:find("Super") and not n:find("Sugar") then best = best or t
+						else fallback = fallback or t end
+					end
+				end
+			end
+		end
+		return best or fallback
+	end
+
+	-- pastiin Watering Can ke-equip (server nyiram cuma pas can dipegang)
+	local function equipCan()
+		local char = LP.Character
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if not hum then return false end
+		local held = char:FindFirstChildWhichIsA("Tool")
+		if held and tostring(held.Name):find("Watering Can") then return true end
+		local can = findCan()
+		if not can then return false end
+		pcall(function() hum:EquipTool(can) end)
+		task.wait(0.25)
+		local now = char:FindFirstChildWhichIsA("Tool")
+		return now ~= nil and tostring(now.Name):find("Watering Can") ~= nil
+	end
 
 	-- opsi fruit = katalog seed (semua yang bisa ditanam). Format sama kayak shop.
 	local function optionsFrom(names)
@@ -48,6 +81,11 @@ return function(ctx)
 			local sel = CFG.waterFruitNames or {}
 			local all = sel["All"]
 			local n = 0
+			-- equip can dulu; kalau ga ada, kasih tau & tunggu
+			if not equipCan() then
+				ctx.setStatus("Auto Water: Watering Can ga ada / gagal equip")
+				task.wait(math.max(1, tonumber(CFG.waterDelay) or 1))
+			else
 			eachPlant(function(plant)
 				if not CFG.waterEnabled or ctx.state.waterId ~= myId then return end
 				if all or sel[plant.Name] then
@@ -59,8 +97,9 @@ return function(ctx)
 					end
 				end
 			end)
-			ctx.setStatus(("Auto Water: siram %d plant"):format(n))
-			task.wait(math.max(0.5, tonumber(CFG.waterDelay) or 1))
+				ctx.setStatus(("Auto Water: siram %d plant"):format(n))
+				task.wait(math.max(0.5, tonumber(CFG.waterDelay) or 1))
+			end
 		end
 	end
 
