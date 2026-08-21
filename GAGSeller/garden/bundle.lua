@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 37 modul, di-generate 2026-08-21T03:35:30.037Z
+-- 37 modul, di-generate 2026-08-21T03:41:27.404Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — init akhir garden: default tab Inventory + auto-resume automation. ]]
@@ -2715,8 +2715,14 @@ return function(ctx)
 		end
 	end
 
+	-- shovel SELURUH plant (Remove_Item di part plant)
 	local function shovel(plant)
 		local part = plant.PrimaryPart or plant:FindFirstChildWhichIsA("BasePart")
+		if part then pcall(function() Remove:FireServer(part) end) end
+	end
+	-- shovel 1 BUAH aja (Remove_Item di part buah -> plant tetap)
+	local function shovelFruit(fruit)
+		local part = fruit.PrimaryPart or fruit:FindFirstChildWhichIsA("BasePart")
 		if part then pcall(function() Remove:FireServer(part) end) end
 	end
 
@@ -2831,11 +2837,13 @@ return function(ctx)
 					if not CFG.shovelFruitEnabled or ctx.state.shovelFruitId ~= myId then return end
 					local fr = plant:FindFirstChild("Fruits")
 					if not fr then return end
+					-- hapus TIAP buah yg cocok filter (plant tetap ada)
 					for _, f in ipairs(fr:GetChildren()) do
-						if fruitMatches(f) then shovel(plant); n = n + 1; task.wait(0.12); break end
+						if not CFG.shovelFruitEnabled or ctx.state.shovelFruitId ~= myId then break end
+						if fruitMatches(f) then shovelFruit(f); n = n + 1; task.wait(0.12) end
 					end
 				end)
-				ctx.setStatus(("Auto Shovel Fruit: cabut %d plant"):format(n))
+				ctx.setStatus(("Auto Shovel Fruit: cabut %d buah"):format(n))
 				task.wait(math.max(0.5, tonumber(CFG.shovelFruitDelay) or 0) + 0.5)
 			end
 		end
