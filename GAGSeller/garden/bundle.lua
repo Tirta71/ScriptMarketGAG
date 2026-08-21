@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 39 modul, di-generate 2026-08-21T04:23:30.315Z
+-- 39 modul, di-generate 2026-08-21T04:30:10.024Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — init akhir garden: default tab Inventory + auto-resume automation. ]]
@@ -2594,7 +2594,19 @@ return function(ctx)
 	local RS  = game:GetService("ReplicatedStorage")
 	local CFG = ctx.CFG
 	local LP  = ctx.LP
-	local Lock = RS.GameEvents:WaitForChild("LockToolRemote")
+	-- Ambil remote LAZY (jangan WaitForChild di module-load -> bisa nge-block init).
+	local function favRemote()
+		local GE = RS:FindFirstChild("GameEvents"); if not GE then return nil end
+		return GE:FindFirstChild("FavoriteToolRemote") or GE:FindFirstChild("Favorite_Item")
+	end
+	-- Panggil remote: RemoteFunction -> InvokeServer, RemoteEvent -> FireServer.
+	local function doFav(tool, fruit, state)
+		local re = favRemote(); if not re then return end
+		pcall(function()
+			if re:IsA("RemoteFunction") then re:InvokeServer(tool, fruit, state)
+			else re:FireServer(tool, fruit, state) end
+		end)
+	end
 
 	----------------------------------------------------------------- tool equip + guard
 	local function findTool()
@@ -2719,9 +2731,9 @@ return function(ctx)
 					if not fruitMatches(f) then return end
 					local isFav = f:GetAttribute("Favorited") == true
 					if CFG.favEnabled and not isFav then
-						pcall(function() Lock:InvokeServer(tool, f, true) end); n = n + 1; task.wait(0.08)
+						doFav(tool, f, true); n = n + 1; task.wait(0.08)
 					elseif CFG.unfavEnabled and isFav then
-						pcall(function() Lock:InvokeServer(tool, f, false) end); n = n + 1; task.wait(0.08)
+						doFav(tool, f, false); n = n + 1; task.wait(0.08)
 					end
 				end)
 				ctx.setStatus(("Auto Favorite: proses %d buah"):format(n))
