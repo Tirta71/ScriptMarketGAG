@@ -10,10 +10,28 @@
 return function(ctx)
 	local RS  = game:GetService("ReplicatedStorage")
 	local CFG = ctx.CFG
-	local Collect  = RS.GameEvents:WaitForChild("Crops"):WaitForChild("Collect")
-	local SellFood = RS.GameEvents:WaitForChild("SellFood_RE")
+	local LP  = ctx.LP
+	local Collect = RS.GameEvents:WaitForChild("Crops"):WaitForChild("Collect")
+	local SellInv = RS.GameEvents:WaitForChild("Sell_Inventory")
 	local IS
 	pcall(function() IS = require(RS.Modules.InventoryService) end)
+
+	-- Jual semua fruit: HARUS deket NPC jual (Steven) — teleport bentar, jual, balik.
+	local function sellAllFruits()
+		local char = LP.Character
+		local hrp = char and char:FindFirstChild("HumanoidRootPart")
+		if not hrp then return end
+		local npcs = workspace:FindFirstChild("NPCS")
+		local steven = npcs and npcs:FindFirstChild("Steven")
+		local shrp = steven and steven:FindFirstChild("HumanoidRootPart")
+		if not shrp then return end
+		local orig = hrp.CFrame
+		hrp.CFrame = shrp.CFrame * CFrame.new(0, 0, 4) -- deket Steven
+		task.wait(0.5)
+		pcall(function() SellInv:FireServer() end)
+		task.wait(0.8)
+		pcall(function() if hrp and hrp.Parent then hrp.CFrame = orig end end) -- balik
+	end
 
 	local NOT_MUTATION = {
 		FruitVersion = true, MaxAge = true, GrowRateMulti = true, WeightMulti = true,
@@ -129,9 +147,9 @@ return function(ctx)
 			-- backpack full handling
 			if backpackFull() then
 				if CFG.collectAutoSellIfFull then
-					pcall(function() SellFood:FireServer() end)
-					ctx.setStatus("Auto Collect: backpack penuh -> jual semua fruit")
-					task.wait(1)
+					ctx.setStatus("Auto Collect: backpack penuh -> jual (ke Steven)")
+					sellAllFruits()
+					task.wait(0.5)
 				elseif CFG.collectStopIfFull then
 					ctx.setStatus("Auto Collect: backpack penuh -> stop")
 					task.wait(math.max(1, tonumber(CFG.collectDelay) or 0))
