@@ -145,8 +145,54 @@ return function(ctx)
 			function(v) CFG.shovelFruitEnabled = v; persist(); if v and ctx.startShovelFruit then ctx.startShovelFruit() end end, 7)
 
 		-- Accordion yg masih kerangka (belum diisi)
+		-- Automation Collection (fitur aktif): auto harvest fruit (3 mode whitelist)
+		local colAcc = makeAccordion(farmPage, "Automation Collection", 5, false)
+		makeInput(colAcc, "Delay To Collect", "Extra delay (detik) tiap siklus collect.",
+			function() return tostring(CFG.collectDelay) end,
+			function(t) CFG.collectDelay = tonumber(t) or 0; persist() end, 1)
+		makeToggle(colAcc, "Stop Collect If Backpack Is Full Max", "Stop collect pas backpack penuh.",
+			function() return CFG.collectStopIfFull end,
+			function(v) CFG.collectStopIfFull = v; persist() end, 2)
+		makeToggle(colAcc, "Auto Sell Fruit If Backpack Full", "Jual semua fruit pas backpack penuh.",
+			function() return CFG.collectAutoSellIfFull end,
+			function(v) CFG.collectAutoSellIfFull = v; persist() end, 3)
+
+		-- sub: Whitelist Fruit
+		local colWf = makeAccordion(colAcc, "Collect Whitelist Fruit", 4, false)
+		makeMultiDropdownDyn(colWf, "Select Whitelist Fruit", "Pilih tipe fruit yang mau di-collect.",
+			function() return ctx.getCollectFruitOptions() end, CFG.collectWlFruitNames, function() persist() end, 1)
+		makeToggle(colWf, "Auto Collect Whitelisted Fruits", "Collect cuma tipe fruit yang di-whitelist.",
+			function() return CFG.collectWlFruitEnabled end,
+			function(v) CFG.collectWlFruitEnabled = v; persist(); if v and ctx.startCollect then ctx.startCollect() end end, 2)
+
+		-- sub: Whitelist Mutation
+		local colWm = makeAccordion(colAcc, "Collect Whitelist Mutation", 5, false)
+		makeMultiDropdownDyn(colWm, "Select Whitelist Mutations", "Pilih mutasi yang mau di-collect.",
+			function() return ctx.getCollectMutationOptions() end, CFG.collectWlMutNames, function() persist() end, 1)
+		makeToggle(colWm, "Auto Collect Whitelisted Mutations", "Collect cuma fruit dgn mutasi yang di-whitelist.",
+			function() return CFG.collectWlMutEnabled end,
+			function(v) CFG.collectWlMutEnabled = v; persist(); if v and ctx.startCollect then ctx.startCollect() end end, 2)
+
+		-- sub: Combined (semua kriteria)
+		local colCb = makeAccordion(colAcc, "Collect Whitelist Combined", 6, false)
+		makeMultiDropdownDyn(colCb, "Select Combined Fruits", "Filter by fruit type.",
+			function() return ctx.getCollectFruitOptions() end, CFG.collectCombFruitNames, function() persist() end, 1)
+		makeMultiDropdownDyn(colCb, "Select Combined Mutation", "Filter by mutation type.",
+			function() return ctx.getCollectMutationOptions() end, CFG.collectCombMutNames, function() persist() end, 2)
+		makeMultiDropdownDyn(colCb, "Select Combined Variant", "Filter by variant type.",
+			function() return ctx.getCollectVariantOptions() end, CFG.collectCombVariants, function() persist() end, 3)
+		makeSingleDropdown(colCb, "Whitelist Weight Mode", "Cara banding berat fruit.",
+			function() return ctx.getCollectModeOptions() end,
+			function() return CFG.collectCombMode end,
+			function(v) CFG.collectCombMode = v; persist() end, 4)
+		makeInput(colCb, "Whitelist Weight", "Kalau ga dipakai, isi '0'.",
+			function() return tostring(CFG.collectCombWeight) end,
+			function(t) CFG.collectCombWeight = tonumber(t) or 0; persist() end, 5)
+		makeToggle(colCb, "Auto Collect Fruits", "Collect fruit yang cocok SEMUA kriteria combined.",
+			function() return CFG.collectCombEnabled end,
+			function(v) CFG.collectCombEnabled = v; persist(); if v and ctx.startCollect then ctx.startCollect() end end, 6)
+
 		local SKELETON = {
-			{ "Automation Collection", 5 },
 			{ "Automation Favorite", 6 },
 		}
 		for _, s in ipairs(SKELETON) do

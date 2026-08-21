@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 37 modul, di-generate 2026-08-21T03:41:27.404Z
+-- 38 modul, di-generate 2026-08-21T04:01:22.214Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — init akhir garden: default tab Inventory + auto-resume automation. ]]
@@ -213,6 +213,9 @@ return function(ctx)
 	if CFG.waterEnabled and ctx.startWater then ctx.startWater(); ctx.log("Auto-resume: Auto Water ON.") end
 	if CFG.shovelTreeEnabled and ctx.startShovelTree then ctx.startShovelTree(); ctx.log("Auto-resume: Auto Shovel Tree ON.") end
 	if CFG.shovelFruitEnabled and ctx.startShovelFruit then ctx.startShovelFruit(); ctx.log("Auto-resume: Auto Shovel Fruit ON.") end
+	if (CFG.collectWlFruitEnabled or CFG.collectWlMutEnabled or CFG.collectCombEnabled) and ctx.startCollect then
+		ctx.startCollect(); ctx.log("Auto-resume: Auto Collect ON.")
+	end
 	if CFG.buySummerSeedEnabled and ctx.startBuySummerSeed then ctx.startBuySummerSeed(); ctx.log("Auto-resume: Buy Summer Seed ON.") end
 	if CFG.buyTideTokenEnabled and ctx.startBuyTideToken then ctx.startBuyTideToken(); ctx.log("Auto-resume: Buy Tide Token ON.") end
 end
@@ -366,6 +369,21 @@ return function(ctx)
 		shovelFruitWeight   = 0,
 		shovelFruitEnabled  = false,
 		shovelFruitDelay    = 0,
+
+		-- Automation Collection (harvest fruit via Crops.Collect)
+		collectDelay          = 0,
+		collectStopIfFull     = false,
+		collectAutoSellIfFull = false,
+		collectWlFruitNames   = {},
+		collectWlFruitEnabled = false,
+		collectWlMutNames     = {},
+		collectWlMutEnabled   = false,
+		collectCombFruitNames = {},
+		collectCombMutNames   = {},
+		collectCombVariants   = {},
+		collectCombMode       = ">= (berat minimal)",
+		collectCombWeight     = 0,
+		collectCombEnabled    = false,
 
 		-- Automation Summer Shop (event: Summer Seed Shop + Tide Token Shop)
 		buySummerSeedNames   = {},
@@ -590,6 +608,20 @@ return function(ctx)
 			CFG.shovelFruitWeight   = tonumber(st.shovelFruitWeight) or 0
 			CFG.shovelFruitEnabled  = st.shovelFruitEnabled or false
 			CFG.shovelFruitDelay    = tonumber(st.shovelFruitDelay) or 0
+
+			CFG.collectDelay          = tonumber(st.collectDelay) or 0
+			CFG.collectStopIfFull     = st.collectStopIfFull or false
+			CFG.collectAutoSellIfFull = st.collectAutoSellIfFull or false
+			CFG.collectWlFruitNames   = (type(st.collectWlFruitNames) == "table") and st.collectWlFruitNames or {}
+			CFG.collectWlFruitEnabled = st.collectWlFruitEnabled or false
+			CFG.collectWlMutNames     = (type(st.collectWlMutNames) == "table") and st.collectWlMutNames or {}
+			CFG.collectWlMutEnabled   = st.collectWlMutEnabled or false
+			CFG.collectCombFruitNames = (type(st.collectCombFruitNames) == "table") and st.collectCombFruitNames or {}
+			CFG.collectCombMutNames   = (type(st.collectCombMutNames) == "table") and st.collectCombMutNames or {}
+			CFG.collectCombVariants   = (type(st.collectCombVariants) == "table") and st.collectCombVariants or {}
+			CFG.collectCombMode       = st.collectCombMode or ">= (berat minimal)"
+			CFG.collectCombWeight     = tonumber(st.collectCombWeight) or 0
+			CFG.collectCombEnabled    = st.collectCombEnabled or false
 
 			CFG.buySummerSeedNames   = (type(st.buySummerSeedNames) == "table") and st.buySummerSeedNames or {}
 			CFG.buySummerSeedEnabled = st.buySummerSeedEnabled or false
@@ -2335,6 +2367,178 @@ return function(ctx)
 	function ctx.startBuyTideToken()
 		task.spawn(function() buyLoop(TIDE_TOKEN, "buyTideTokenEnabled", "buyTideTokenNames", "buyTideTokenId", "Tide Token") end)
 	end
+end
+]=],
+	["modules/farm/automation_collect.lua"] = [=[
+--[[ automation_collect.lua — Auto Collect fruit (harvest ke backpack).
+     Remote (dari CollectController): GameEvents.Crops.Collect:FireServer({fruitModel,...})
+       — batch collect list FRUIT MODEL. Jalan walau jauh (server ga cek proximity).
+     Backpack full: require(Modules.InventoryService):IsMaxInventory().
+     Auto-sell: GameEvents.SellFood_RE:FireServer().
+     3 mode (bisa barengan), collect fruit yang cocok SALAH SATU mode aktif:
+       1) Whitelist Fruit   : tipe fruit terpilih
+       2) Whitelist Mutation: fruit punya mutasi terpilih
+       3) Combined          : fruit + mutasi + variant + berat (SEMUA kriteria) ]]
+return function(ctx)
+	local RS  = game:GetService("ReplicatedStorage")
+	local CFG = ctx.CFG
+	local Collect  = RS.GameEvents:WaitForChild("Crops"):WaitForChild("Collect")
+	local SellFood = RS.GameEvents:WaitForChild("SellFood_RE")
+	local IS
+	pcall(function() IS = require(RS.Modules.InventoryService) end)
+
+	local NOT_MUTATION = {
+		FruitVersion = true, MaxAge = true, GrowRateMulti = true, WeightMulti = true,
+		DoneGrowTime = true, FruitSpawnIndex = true, OfflineGrowthTarget = true,
+		MasteryGrowthMulti = true, MasterySizeMulti = true,
+	}
+
+	local function backpackFull()
+		if not IS then return false end
+		local ok, full = pcall(function() return IS:IsMaxInventory() end)
+		return ok and full == true
+	end
+
+	local function eachFruit(fn)
+		local Farm = workspace:FindFirstChild("Farm"); if not Farm then return end
+		for _, garden in ipairs(Farm:GetChildren()) do
+			if not garden:GetAttribute("CommunityGarden") then
+				local imp = garden:FindFirstChild("Important")
+				local pp = imp and imp:FindFirstChild("Plants_Physical")
+				if pp then for _, plant in ipairs(pp:GetChildren()) do
+					local fr = plant:FindFirstChild("Fruits")
+					if fr then for _, f in ipairs(fr:GetChildren()) do fn(f) end end
+				end end
+			end
+		end
+	end
+
+	----------------------------------------------------------------- opsi UI
+	local function optionsFrom(names, allLabel)
+		local out = { { value = "All", display = allLabel or "All" } }
+		for _, n in ipairs(names) do out[#out + 1] = { value = n, display = n } end
+		return out
+	end
+	local function catalog()
+		local ok, t = pcall(function() return require(RS.Data.SeedShopData) end)
+		local names = {}
+		if ok and type(t) == "table" then
+			for k in pairs(t) do local n = tostring(k); if n ~= "RefreshTime" and n ~= "Gear" then names[#names + 1] = n end end
+			table.sort(names)
+		end
+		return names
+	end
+	function ctx.getCollectFruitOptions() return optionsFrom(catalog(), "All (semua fruit)") end
+	function ctx.getCollectVariantOptions()
+		local set = { Normal = true, Gold = true, Rainbow = true }
+		eachFruit(function(f) local v = f:FindFirstChild("Variant"); if v and v.Value ~= "" then set[tostring(v.Value)] = true end end)
+		local names = {} for k in pairs(set) do names[#names + 1] = k end; table.sort(names)
+		return optionsFrom(names, "All (semua variant)")
+	end
+	function ctx.getCollectMutationOptions()
+		local set = {}
+		eachFruit(function(f)
+			for k, v in pairs(f:GetAttributes()) do if v == true and not NOT_MUTATION[k] then set[k] = true end end
+		end)
+		local names = {} for k in pairs(set) do names[#names + 1] = k end; table.sort(names)
+		return optionsFrom(names, "All (semua mutasi)")
+	end
+	function ctx.getCollectModeOptions() return { ">= (berat minimal)", "<= (berat maksimal)" } end
+
+	----------------------------------------------------------------- match per-mode
+	local function hasSelMut(f, muts)
+		for m in pairs(muts) do if m ~= "All" and f:GetAttribute(m) == true then return true end end
+		return false
+	end
+	local function fruitVariant(f) local v = f:FindFirstChild("Variant"); return v and tostring(v.Value) or "Normal" end
+	local function fruitWeight(f) local w = f:FindFirstChild("Weight"); return w and tonumber(w.Value) or 0 end
+
+	-- mode 1: whitelist fruit type
+	local function matchWlFruit(f)
+		if not CFG.collectWlFruitEnabled then return false end
+		local sel = CFG.collectWlFruitNames or {}
+		return sel["All"] == true or sel[f.Name] == true
+	end
+	-- mode 2: whitelist mutation
+	local function matchWlMut(f)
+		if not CFG.collectWlMutEnabled then return false end
+		local muts = CFG.collectWlMutNames or {}
+		if muts["All"] then return true end
+		return hasSelMut(f, muts)
+	end
+	-- mode 3: combined (SEMUA kriteria)
+	local function matchCombined(f)
+		if not CFG.collectCombEnabled then return false end
+		local sel  = CFG.collectCombFruitNames or {}
+		local muts = CFG.collectCombMutNames or {}
+		local vars = CFG.collectCombVariants or {}
+		if not (next(sel) == nil or sel["All"] or sel[f.Name]) then return false end
+		if not (next(muts) == nil or muts["All"] or hasSelMut(f, muts)) then return false end
+		if not (next(vars) == nil or vars["All"] or vars[fruitVariant(f)]) then return false end
+		local thr = tonumber(CFG.collectCombWeight) or 0
+		if thr > 0 then
+			local w = fruitWeight(f)
+			if (CFG.collectCombMode or ">="):find("<=") then if not (w <= thr) then return false end
+			else if not (w >= thr) then return false end end
+		end
+		return true
+	end
+
+	local function shouldCollect(f)
+		return matchWlFruit(f) or matchWlMut(f) or matchCombined(f)
+	end
+	local function anyEnabled()
+		return CFG.collectWlFruitEnabled or CFG.collectWlMutEnabled or CFG.collectCombEnabled
+	end
+
+	----------------------------------------------------------------- loop
+	local running = false
+	local function collectLoop()
+		ctx.state.collectId = (ctx.state.collectId or 0) + 1
+		local myId = ctx.state.collectId
+		ctx.elevate()
+		while anyEnabled() and ctx.alive() and ctx.state.collectId == myId do
+			-- backpack full handling
+			if backpackFull() then
+				if CFG.collectAutoSellIfFull then
+					pcall(function() SellFood:FireServer() end)
+					ctx.setStatus("Auto Collect: backpack penuh -> jual semua fruit")
+					task.wait(1)
+				elseif CFG.collectStopIfFull then
+					ctx.setStatus("Auto Collect: backpack penuh -> stop")
+					task.wait(math.max(1, tonumber(CFG.collectDelay) or 0))
+					-- lanjut cek lagi (ga collect)
+				end
+			end
+			if not (backpackFull() and CFG.collectStopIfFull and not CFG.collectAutoSellIfFull) then
+				-- kumpulin fruit yg cocok
+				local batch = {}
+				eachFruit(function(f) if shouldCollect(f) then batch[#batch + 1] = f end end)
+				-- fire per-chunk (biar payload ga kegedean)
+				local n = 0
+				for i = 1, #batch, 40 do
+					if not anyEnabled() or ctx.state.collectId ~= myId then break end
+					local chunk = {}
+					for j = i, math.min(i + 39, #batch) do chunk[#chunk + 1] = batch[j] end
+					pcall(function() Collect:FireServer(chunk) end)
+					n = n + #chunk
+					task.wait(0.1)
+					if backpackFull() then break end
+				end
+				ctx.setStatus(("Auto Collect: collect %d fruit"):format(n))
+			end
+			task.wait(math.max(0.5, tonumber(CFG.collectDelay) or 0) + 0.5)
+		end
+		running = false
+	end
+
+	-- 1 loop dipakai bareng semua mode; idempotent (semua toggle panggil ini).
+	function ctx.startCollect()
+		if running then return end
+		running = true
+		task.spawn(collectLoop)
+	end
+	function ctx.stopCollect() ctx.state.collectId = (ctx.state.collectId or 0) + 1 end
 end
 ]=],
 	["modules/farm/automation_plants.lua"] = [=[
@@ -8021,8 +8225,54 @@ return function(ctx)
 			function(v) CFG.shovelFruitEnabled = v; persist(); if v and ctx.startShovelFruit then ctx.startShovelFruit() end end, 7)
 
 		-- Accordion yg masih kerangka (belum diisi)
+		-- Automation Collection (fitur aktif): auto harvest fruit (3 mode whitelist)
+		local colAcc = makeAccordion(farmPage, "Automation Collection", 5, false)
+		makeInput(colAcc, "Delay To Collect", "Extra delay (detik) tiap siklus collect.",
+			function() return tostring(CFG.collectDelay) end,
+			function(t) CFG.collectDelay = tonumber(t) or 0; persist() end, 1)
+		makeToggle(colAcc, "Stop Collect If Backpack Is Full Max", "Stop collect pas backpack penuh.",
+			function() return CFG.collectStopIfFull end,
+			function(v) CFG.collectStopIfFull = v; persist() end, 2)
+		makeToggle(colAcc, "Auto Sell Fruit If Backpack Full", "Jual semua fruit pas backpack penuh.",
+			function() return CFG.collectAutoSellIfFull end,
+			function(v) CFG.collectAutoSellIfFull = v; persist() end, 3)
+
+		-- sub: Whitelist Fruit
+		local colWf = makeAccordion(colAcc, "Collect Whitelist Fruit", 4, false)
+		makeMultiDropdownDyn(colWf, "Select Whitelist Fruit", "Pilih tipe fruit yang mau di-collect.",
+			function() return ctx.getCollectFruitOptions() end, CFG.collectWlFruitNames, function() persist() end, 1)
+		makeToggle(colWf, "Auto Collect Whitelisted Fruits", "Collect cuma tipe fruit yang di-whitelist.",
+			function() return CFG.collectWlFruitEnabled end,
+			function(v) CFG.collectWlFruitEnabled = v; persist(); if v and ctx.startCollect then ctx.startCollect() end end, 2)
+
+		-- sub: Whitelist Mutation
+		local colWm = makeAccordion(colAcc, "Collect Whitelist Mutation", 5, false)
+		makeMultiDropdownDyn(colWm, "Select Whitelist Mutations", "Pilih mutasi yang mau di-collect.",
+			function() return ctx.getCollectMutationOptions() end, CFG.collectWlMutNames, function() persist() end, 1)
+		makeToggle(colWm, "Auto Collect Whitelisted Mutations", "Collect cuma fruit dgn mutasi yang di-whitelist.",
+			function() return CFG.collectWlMutEnabled end,
+			function(v) CFG.collectWlMutEnabled = v; persist(); if v and ctx.startCollect then ctx.startCollect() end end, 2)
+
+		-- sub: Combined (semua kriteria)
+		local colCb = makeAccordion(colAcc, "Collect Whitelist Combined", 6, false)
+		makeMultiDropdownDyn(colCb, "Select Combined Fruits", "Filter by fruit type.",
+			function() return ctx.getCollectFruitOptions() end, CFG.collectCombFruitNames, function() persist() end, 1)
+		makeMultiDropdownDyn(colCb, "Select Combined Mutation", "Filter by mutation type.",
+			function() return ctx.getCollectMutationOptions() end, CFG.collectCombMutNames, function() persist() end, 2)
+		makeMultiDropdownDyn(colCb, "Select Combined Variant", "Filter by variant type.",
+			function() return ctx.getCollectVariantOptions() end, CFG.collectCombVariants, function() persist() end, 3)
+		makeSingleDropdown(colCb, "Whitelist Weight Mode", "Cara banding berat fruit.",
+			function() return ctx.getCollectModeOptions() end,
+			function() return CFG.collectCombMode end,
+			function(v) CFG.collectCombMode = v; persist() end, 4)
+		makeInput(colCb, "Whitelist Weight", "Kalau ga dipakai, isi '0'.",
+			function() return tostring(CFG.collectCombWeight) end,
+			function(t) CFG.collectCombWeight = tonumber(t) or 0; persist() end, 5)
+		makeToggle(colCb, "Auto Collect Fruits", "Collect fruit yang cocok SEMUA kriteria combined.",
+			function() return CFG.collectCombEnabled end,
+			function(v) CFG.collectCombEnabled = v; persist(); if v and ctx.startCollect then ctx.startCollect() end end, 6)
+
 		local SKELETON = {
-			{ "Automation Collection", 5 },
 			{ "Automation Favorite", 6 },
 		}
 		for _, s in ipairs(SKELETON) do

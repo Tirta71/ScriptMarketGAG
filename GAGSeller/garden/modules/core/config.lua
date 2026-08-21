@@ -147,6 +147,21 @@ return function(ctx)
 		shovelFruitEnabled  = false,
 		shovelFruitDelay    = 0,
 
+		-- Automation Collection (harvest fruit via Crops.Collect)
+		collectDelay          = 0,
+		collectStopIfFull     = false,
+		collectAutoSellIfFull = false,
+		collectWlFruitNames   = {},
+		collectWlFruitEnabled = false,
+		collectWlMutNames     = {},
+		collectWlMutEnabled   = false,
+		collectCombFruitNames = {},
+		collectCombMutNames   = {},
+		collectCombVariants   = {},
+		collectCombMode       = ">= (berat minimal)",
+		collectCombWeight     = 0,
+		collectCombEnabled    = false,
+
 		-- Automation Summer Shop (event: Summer Seed Shop + Tide Token Shop)
 		buySummerSeedNames   = {},
 		buySummerSeedEnabled = false,
@@ -370,6 +385,20 @@ return function(ctx)
 			CFG.shovelFruitWeight   = tonumber(st.shovelFruitWeight) or 0
 			CFG.shovelFruitEnabled  = st.shovelFruitEnabled or false
 			CFG.shovelFruitDelay    = tonumber(st.shovelFruitDelay) or 0
+
+			CFG.collectDelay          = tonumber(st.collectDelay) or 0
+			CFG.collectStopIfFull     = st.collectStopIfFull or false
+			CFG.collectAutoSellIfFull = st.collectAutoSellIfFull or false
+			CFG.collectWlFruitNames   = (type(st.collectWlFruitNames) == "table") and st.collectWlFruitNames or {}
+			CFG.collectWlFruitEnabled = st.collectWlFruitEnabled or false
+			CFG.collectWlMutNames     = (type(st.collectWlMutNames) == "table") and st.collectWlMutNames or {}
+			CFG.collectWlMutEnabled   = st.collectWlMutEnabled or false
+			CFG.collectCombFruitNames = (type(st.collectCombFruitNames) == "table") and st.collectCombFruitNames or {}
+			CFG.collectCombMutNames   = (type(st.collectCombMutNames) == "table") and st.collectCombMutNames or {}
+			CFG.collectCombVariants   = (type(st.collectCombVariants) == "table") and st.collectCombVariants or {}
+			CFG.collectCombMode       = st.collectCombMode or ">= (berat minimal)"
+			CFG.collectCombWeight     = tonumber(st.collectCombWeight) or 0
+			CFG.collectCombEnabled    = st.collectCombEnabled or false
 
 			CFG.buySummerSeedNames   = (type(st.buySummerSeedNames) == "table") and st.buySummerSeedNames or {}
 			CFG.buySummerSeedEnabled = st.buySummerSeedEnabled or false

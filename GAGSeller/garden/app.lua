@@ -208,6 +208,9 @@ return function(ctx)
 	if CFG.waterEnabled and ctx.startWater then ctx.startWater(); ctx.log("Auto-resume: Auto Water ON.") end
 	if CFG.shovelTreeEnabled and ctx.startShovelTree then ctx.startShovelTree(); ctx.log("Auto-resume: Auto Shovel Tree ON.") end
 	if CFG.shovelFruitEnabled and ctx.startShovelFruit then ctx.startShovelFruit(); ctx.log("Auto-resume: Auto Shovel Fruit ON.") end
+	if (CFG.collectWlFruitEnabled or CFG.collectWlMutEnabled or CFG.collectCombEnabled) and ctx.startCollect then
+		ctx.startCollect(); ctx.log("Auto-resume: Auto Collect ON.")
+	end
 	if CFG.buySummerSeedEnabled and ctx.startBuySummerSeed then ctx.startBuySummerSeed(); ctx.log("Auto-resume: Buy Summer Seed ON.") end
 	if CFG.buyTideTokenEnabled and ctx.startBuyTideToken then ctx.startBuyTideToken(); ctx.log("Auto-resume: Buy Tide Token ON.") end
 end
