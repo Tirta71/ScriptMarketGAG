@@ -82,11 +82,15 @@ return function(ctx)
 		return optionsFrom(names, "All (semua variant)")
 	end
 	function ctx.getCollectMutationOptions()
-		local set = {}
-		eachFruit(function(f)
-			for k, v in pairs(f:GetAttributes()) do if v == true and not NOT_MUTATION[k] then set[k] = true end end
-		end)
-		local names = {} for k in pairs(set) do names[#names + 1] = k end; table.sort(names)
+		-- daftar LENGKAP semua mutasi buah dari registry (MutationHandler.MutationNames)
+		local ok, MH = pcall(function() return require(RS.Modules.MutationHandler) end)
+		local names = {}
+		if ok and MH and type(MH.MutationNames) == "table" then
+			local mn = MH.MutationNames
+			if mn[1] ~= nil then for _, v in ipairs(mn) do names[#names + 1] = tostring(v) end
+			else for k in pairs(mn) do names[#names + 1] = tostring(k) end end
+			table.sort(names)
+		end
 		return optionsFrom(names, "All (semua mutasi)")
 	end
 	function ctx.getCollectModeOptions() return { ">= (berat minimal)", "<= (berat maksimal)" } end

@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 38 modul, di-generate 2026-08-21T04:09:37.642Z
+-- 38 modul, di-generate 2026-08-21T04:14:18.211Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — init akhir garden: default tab Inventory + auto-resume automation. ]]
@@ -2454,11 +2454,15 @@ return function(ctx)
 		return optionsFrom(names, "All (semua variant)")
 	end
 	function ctx.getCollectMutationOptions()
-		local set = {}
-		eachFruit(function(f)
-			for k, v in pairs(f:GetAttributes()) do if v == true and not NOT_MUTATION[k] then set[k] = true end end
-		end)
-		local names = {} for k in pairs(set) do names[#names + 1] = k end; table.sort(names)
+		-- daftar LENGKAP semua mutasi buah dari registry (MutationHandler.MutationNames)
+		local ok, MH = pcall(function() return require(RS.Modules.MutationHandler) end)
+		local names = {}
+		if ok and MH and type(MH.MutationNames) == "table" then
+			local mn = MH.MutationNames
+			if mn[1] ~= nil then for _, v in ipairs(mn) do names[#names + 1] = tostring(v) end
+			else for k in pairs(mn) do names[#names + 1] = tostring(k) end end
+			table.sort(names)
+		end
 		return optionsFrom(names, "All (semua mutasi)")
 	end
 	function ctx.getCollectModeOptions() return { ">= (berat minimal)", "<= (berat maksimal)" } end
@@ -2973,17 +2977,15 @@ return function(ctx)
 		return optionsFrom(names, "All (semua variant)")
 	end
 	function ctx.getShovelMutationOptions()
-		-- kumpulin mutasi (attr boolean true) yg ADA di garden, buang metadata
-		local set = {}
-		eachPlant(function(plant)
-			local fr = plant:FindFirstChild("Fruits")
-			if fr then for _, f in ipairs(fr:GetChildren()) do
-				for k, v in pairs(f:GetAttributes()) do
-					if v == true and not NOT_MUTATION[k] then set[k] = true end
-				end
-			end end
-		end)
-		local names = {} for k in pairs(set) do names[#names + 1] = k end; table.sort(names)
+		-- daftar LENGKAP semua mutasi buah dari registry (MutationHandler.MutationNames)
+		local ok, MH = pcall(function() return require(RS.Modules.MutationHandler) end)
+		local names = {}
+		if ok and MH and type(MH.MutationNames) == "table" then
+			local mn = MH.MutationNames
+			if mn[1] ~= nil then for _, v in ipairs(mn) do names[#names + 1] = tostring(v) end
+			else for k in pairs(mn) do names[#names + 1] = tostring(k) end end
+			table.sort(names)
+		end
 		return optionsFrom(names, "All (semua mutasi)")
 	end
 	function ctx.getShovelModeOptions() return { ">= (berat minimal)", "<= (berat maksimal)" } end
