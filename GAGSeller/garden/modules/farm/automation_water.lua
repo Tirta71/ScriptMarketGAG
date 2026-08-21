@@ -27,19 +27,39 @@ return function(ctx)
 		return best or fallback
 	end
 
+	local function heldCan()
+		local char = LP.Character
+		if not char then return nil end
+		for _, t in ipairs(char:GetChildren()) do
+			if t:IsA("Tool") and tostring(t.Name):find("Watering Can") then return t end
+		end
+	end
 	-- pastiin Watering Can ke-equip (server nyiram cuma pas can dipegang)
 	local function equipCan()
 		local char = LP.Character
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
 		if not hum then return false end
-		local held = char:FindFirstChildWhichIsA("Tool")
-		if held and tostring(held.Name):find("Watering Can") then return true end
+		if heldCan() then return true end
 		local can = findCan()
 		if not can then return false end
 		pcall(function() hum:EquipTool(can) end)
-		task.wait(0.25)
-		local now = char:FindFirstChildWhichIsA("Tool")
-		return now ~= nil and tostring(now.Name):find("Watering Can") ~= nil
+		task.wait(0.2)
+		return heldCan() ~= nil
+	end
+
+	-- Guard (mirip reclaimer): selama auto water aktif, Watering Can WAJIB tetap kepegang.
+	-- Kalau user pindah manual ke tool lain, langsung equip ulang (cek 0.25s).
+	local guardRunning = false
+	local function ensureGuard()
+		if guardRunning then return end
+		guardRunning = true
+		task.spawn(function()
+			while CFG.waterEnabled and ctx.alive() do
+				if not heldCan() then equipCan() end
+				task.wait(0.25)
+			end
+			guardRunning = false
+		end)
 	end
 
 	-- opsi fruit = katalog seed (semua yang bisa ditanam). Format sama kayak shop.
@@ -103,6 +123,6 @@ return function(ctx)
 		end
 	end
 
-	function ctx.startWater() task.spawn(waterLoop) end
+	function ctx.startWater() equipCan(); ensureGuard(); task.spawn(waterLoop) end
 	function ctx.stopWater() ctx.state.waterId = (ctx.state.waterId or 0) + 1 end
 end
