@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 35 modul, di-generate 2026-08-09T16:08:12.589Z
+-- 35 modul, di-generate 2026-08-21T02:15:15.519Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — init akhir garden: default tab Inventory + auto-resume automation. ]]
@@ -7048,10 +7048,14 @@ return function(ctx)
 		local lastMarker
 		while CFG.buySeedEnabled and ctx.alive() and ctx.state.buySeedId == myId do
 			local d = getData()
-			local marker = d and d.SeedStock and d.SeedStock.Seed
+			-- Game mindahin stok seed ke d.SeedStocks.Shop (d.SeedStock singular udah BEKU:
+			-- markernya ga update lagi -> loop lama cuma beli sekali terus stuck "nunggu restock").
+			-- Prefer path baru; fallback ke singular biar aman kalau server balikin lagi.
+			local shop = d and ((d.SeedStocks and d.SeedStocks.Shop) or d.SeedStock)
+			local marker = shop and shop.Seed
 			if marker ~= lastMarker then -- restock baru (atau pertama jalan) -> beli
 				lastMarker = marker
-				local st = d and d.SeedStock and d.SeedStock.Stocks or {}
+				local st = shop and shop.Stocks or {}
 				local sel = CFG.buySeedNames or {}
 				local all = sel["All"]
 				local bought = 0
