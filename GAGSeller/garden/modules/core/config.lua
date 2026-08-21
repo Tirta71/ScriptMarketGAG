@@ -135,6 +135,18 @@ return function(ctx)
 		waterEnabled    = false,
 		waterDelay      = 1,
 
+		-- Automation Shovel (hapus plant / fruit via Remove_Item)
+		shovelTreeNames    = {},
+		shovelTreeEnabled  = false,
+		shovelTreeDelay    = 0,
+		shovelFruitNames    = {},
+		shovelFruitMuts     = {},
+		shovelFruitVariants = {},
+		shovelFruitMode     = ">= (berat minimal)",
+		shovelFruitWeight   = 0,
+		shovelFruitEnabled  = false,
+		shovelFruitDelay    = 0,
+
 		-- Automation Summer Shop (event: Summer Seed Shop + Tide Token Shop)
 		buySummerSeedNames   = {},
 		buySummerSeedEnabled = false,
@@ -347,6 +359,17 @@ return function(ctx)
 			CFG.waterFruitNames = (type(st.waterFruitNames) == "table") and st.waterFruitNames or {}
 			CFG.waterEnabled    = st.waterEnabled or false
 			CFG.waterDelay      = tonumber(st.waterDelay) or 1
+
+			CFG.shovelTreeNames    = (type(st.shovelTreeNames) == "table") and st.shovelTreeNames or {}
+			CFG.shovelTreeEnabled  = st.shovelTreeEnabled or false
+			CFG.shovelTreeDelay    = tonumber(st.shovelTreeDelay) or 0
+			CFG.shovelFruitNames    = (type(st.shovelFruitNames) == "table") and st.shovelFruitNames or {}
+			CFG.shovelFruitMuts     = (type(st.shovelFruitMuts) == "table") and st.shovelFruitMuts or {}
+			CFG.shovelFruitVariants = (type(st.shovelFruitVariants) == "table") and st.shovelFruitVariants or {}
+			CFG.shovelFruitMode     = st.shovelFruitMode or ">= (berat minimal)"
+			CFG.shovelFruitWeight   = tonumber(st.shovelFruitWeight) or 0
+			CFG.shovelFruitEnabled  = st.shovelFruitEnabled or false
+			CFG.shovelFruitDelay    = tonumber(st.shovelFruitDelay) or 0
 
 			CFG.buySummerSeedNames   = (type(st.buySummerSeedNames) == "table") and st.buySummerSeedNames or {}
 			CFG.buySummerSeedEnabled = st.buySummerSeedEnabled or false

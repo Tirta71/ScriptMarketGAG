@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 36 modul, di-generate 2026-08-21T02:51:53.284Z
+-- 37 modul, di-generate 2026-08-21T03:24:57.673Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — init akhir garden: default tab Inventory + auto-resume automation. ]]
@@ -211,6 +211,8 @@ return function(ctx)
 	if CFG.buyEggEnabled and ctx.startBuyEgg then ctx.startBuyEgg(); ctx.log("Auto-resume: Buy Egg ON.") end
 	if CFG.buyGearEnabled and ctx.startBuyGear then ctx.startBuyGear(); ctx.log("Auto-resume: Buy Gear ON.") end
 	if CFG.waterEnabled and ctx.startWater then ctx.startWater(); ctx.log("Auto-resume: Auto Water ON.") end
+	if CFG.shovelTreeEnabled and ctx.startShovelTree then ctx.startShovelTree(); ctx.log("Auto-resume: Auto Shovel Tree ON.") end
+	if CFG.shovelFruitEnabled and ctx.startShovelFruit then ctx.startShovelFruit(); ctx.log("Auto-resume: Auto Shovel Fruit ON.") end
 	if CFG.buySummerSeedEnabled and ctx.startBuySummerSeed then ctx.startBuySummerSeed(); ctx.log("Auto-resume: Buy Summer Seed ON.") end
 	if CFG.buyTideTokenEnabled and ctx.startBuyTideToken then ctx.startBuyTideToken(); ctx.log("Auto-resume: Buy Tide Token ON.") end
 end
@@ -352,6 +354,18 @@ return function(ctx)
 		waterFruitNames = {},
 		waterEnabled    = false,
 		waterDelay      = 1,
+
+		-- Automation Shovel (hapus plant / fruit via Remove_Item)
+		shovelTreeNames    = {},
+		shovelTreeEnabled  = false,
+		shovelTreeDelay    = 0,
+		shovelFruitNames    = {},
+		shovelFruitMuts     = {},
+		shovelFruitVariants = {},
+		shovelFruitMode     = ">= (berat minimal)",
+		shovelFruitWeight   = 0,
+		shovelFruitEnabled  = false,
+		shovelFruitDelay    = 0,
 
 		-- Automation Summer Shop (event: Summer Seed Shop + Tide Token Shop)
 		buySummerSeedNames   = {},
@@ -565,6 +579,17 @@ return function(ctx)
 			CFG.waterFruitNames = (type(st.waterFruitNames) == "table") and st.waterFruitNames or {}
 			CFG.waterEnabled    = st.waterEnabled or false
 			CFG.waterDelay      = tonumber(st.waterDelay) or 1
+
+			CFG.shovelTreeNames    = (type(st.shovelTreeNames) == "table") and st.shovelTreeNames or {}
+			CFG.shovelTreeEnabled  = st.shovelTreeEnabled or false
+			CFG.shovelTreeDelay    = tonumber(st.shovelTreeDelay) or 0
+			CFG.shovelFruitNames    = (type(st.shovelFruitNames) == "table") and st.shovelFruitNames or {}
+			CFG.shovelFruitMuts     = (type(st.shovelFruitMuts) == "table") and st.shovelFruitMuts or {}
+			CFG.shovelFruitVariants = (type(st.shovelFruitVariants) == "table") and st.shovelFruitVariants or {}
+			CFG.shovelFruitMode     = st.shovelFruitMode or ">= (berat minimal)"
+			CFG.shovelFruitWeight   = tonumber(st.shovelFruitWeight) or 0
+			CFG.shovelFruitEnabled  = st.shovelFruitEnabled or false
+			CFG.shovelFruitDelay    = tonumber(st.shovelFruitDelay) or 0
 
 			CFG.buySummerSeedNames   = (type(st.buySummerSeedNames) == "table") and st.buySummerSeedNames or {}
 			CFG.buySummerSeedEnabled = st.buySummerSeedEnabled or false
@@ -2603,6 +2628,168 @@ return function(ctx)
 		task.spawn(function() reclaimLoop(myId) end)
 		task.spawn(function() keepEquipped(myId) end)
 	end
+end
+]=],
+	["modules/farm/automation_shovel.lua"] = [=[
+--[[ automation_shovel.lua — Auto Shovel (2 mode):
+       1) Shovel Tree/Plant  : hapus plant dari tipe terpilih (CFG.shovelTreeNames).
+       2) Shovel Fruit        : hapus plant kalau punya FRUIT yang cocok filter
+                                (tipe + mutasi + variant + berat vs threshold).
+     Mekanisme (dari remote spy + tes live): Remove_Item:FireServer(plant.PrimaryPart)
+     — hapus SELURUH plant. Ga perlu equip Shovel (server terima langsung).
+     Plant ada di workspace.Farm.<garden>.Important.Plants_Physical (nama = tipe).
+     Tiap plant.Fruits berisi fruit models: child Weight (NumberValue), Variant (StringValue),
+     + attribute mutasi boolean (Wet/Twisted/dll). ]]
+return function(ctx)
+	local RS  = game:GetService("ReplicatedStorage")
+	local CFG = ctx.CFG
+	local Remove = RS:WaitForChild("GameEvents"):WaitForChild("Remove_Item")
+
+	-- attribute fruit yang BUKAN mutasi (metadata) — dibuang pas listing opsi mutasi
+	local NOT_MUTATION = {
+		FruitVersion = true, MaxAge = true, GrowRateMulti = true, WeightMulti = true,
+		DoneGrowTime = true, FruitSpawnIndex = true, OfflineGrowthTarget = true,
+		MasteryGrowthMulti = true, MasterySizeMulti = true,
+	}
+
+	local function optionsFrom(names, allLabel)
+		local out = { { value = "All", display = allLabel or "All" } }
+		for _, n in ipairs(names) do out[#out + 1] = { value = n, display = n } end
+		return out
+	end
+
+	-- iterasi plant di garden SENDIRI
+	local function eachPlant(fn)
+		local Farm = workspace:FindFirstChild("Farm"); if not Farm then return end
+		for _, garden in ipairs(Farm:GetChildren()) do
+			if not garden:GetAttribute("CommunityGarden") then
+				local imp = garden:FindFirstChild("Important")
+				local pp = imp and imp:FindFirstChild("Plants_Physical")
+				if pp then for _, plant in ipairs(pp:GetChildren()) do fn(plant) end end
+			end
+		end
+	end
+
+	local function shovel(plant)
+		local part = plant.PrimaryPart or plant:FindFirstChildWhichIsA("BasePart")
+		if part then pcall(function() Remove:FireServer(part) end) end
+	end
+
+	----------------------------------------------------------------- opsi (buat UI)
+	local function catalog()
+		local ok, t = pcall(function() return require(RS.Data.SeedShopData) end)
+		local names = {}
+		if ok and type(t) == "table" then
+			for k in pairs(t) do local n = tostring(k); if n ~= "RefreshTime" and n ~= "Gear" then names[#names + 1] = n end end
+			table.sort(names)
+		end
+		return names
+	end
+	function ctx.getShovelTreeOptions()  return optionsFrom(catalog(), "All (semua plant)") end
+	function ctx.getShovelFruitOptions() return optionsFrom(catalog(), "All (semua fruit)") end
+	function ctx.getShovelVariantOptions()
+		-- kumpulin variant yg ADA di garden + base
+		local set = { Normal = true, Gold = true, Rainbow = true }
+		eachPlant(function(plant)
+			local fr = plant:FindFirstChild("Fruits")
+			if fr then for _, f in ipairs(fr:GetChildren()) do
+				local v = f:FindFirstChild("Variant"); if v and v.Value ~= "" then set[tostring(v.Value)] = true end
+			end end
+		end)
+		local names = {} for k in pairs(set) do names[#names + 1] = k end; table.sort(names)
+		return optionsFrom(names, "All (semua variant)")
+	end
+	function ctx.getShovelMutationOptions()
+		-- kumpulin mutasi (attr boolean true) yg ADA di garden, buang metadata
+		local set = {}
+		eachPlant(function(plant)
+			local fr = plant:FindFirstChild("Fruits")
+			if fr then for _, f in ipairs(fr:GetChildren()) do
+				for k, v in pairs(f:GetAttributes()) do
+					if v == true and not NOT_MUTATION[k] then set[k] = true end
+				end
+			end end
+		end)
+		local names = {} for k in pairs(set) do names[#names + 1] = k end; table.sort(names)
+		return optionsFrom(names, "All (semua mutasi)")
+	end
+	function ctx.getShovelModeOptions() return { ">= (berat minimal)", "<= (berat maksimal)" } end
+
+	----------------------------------------------------------------- cek fruit cocok filter
+	local function fruitMatches(f)
+		local sel  = CFG.shovelFruitNames or {}
+		local muts = CFG.shovelFruitMuts or {}
+		local vars = CFG.shovelFruitVariants or {}
+		-- tipe
+		if not (next(sel) == nil or sel["All"] or sel[f.Name]) then return false end
+		-- variant
+		if not (next(vars) == nil or vars["All"]) then
+			local fv = f:FindFirstChild("Variant")
+			local vn = fv and tostring(fv.Value) or "Normal"
+			if not vars[vn] then return false end
+		end
+		-- mutasi (fruit harus punya salah satu mutasi terpilih)
+		if not (next(muts) == nil or muts["All"]) then
+			local hit = false
+			for m in pairs(muts) do if m ~= "All" and f:GetAttribute(m) == true then hit = true; break end end
+			if not hit then return false end
+		end
+		-- berat vs threshold
+		local thr = tonumber(CFG.shovelFruitWeight) or 0
+		if thr > 0 then
+			local w = f:FindFirstChild("Weight")
+			local wv = w and tonumber(w.Value) or 0
+			local mode = CFG.shovelFruitMode or ">="
+			if mode:find("<=") then if not (wv <= thr) then return false end
+			else if not (wv >= thr) then return false end end
+		end
+		return true
+	end
+
+	----------------------------------------------------------------- loop: shovel tree/plant
+	local function treeLoop()
+		ctx.state.shovelTreeId = (ctx.state.shovelTreeId or 0) + 1
+		local myId = ctx.state.shovelTreeId
+		ctx.elevate()
+		while CFG.shovelTreeEnabled and ctx.alive() and ctx.state.shovelTreeId == myId do
+			local sel = CFG.shovelTreeNames or {}
+			local all = sel["All"]
+			local n = 0
+			eachPlant(function(plant)
+				if not CFG.shovelTreeEnabled or ctx.state.shovelTreeId ~= myId then return end
+				if all or sel[plant.Name] then
+					shovel(plant); n = n + 1; task.wait(0.12)
+				end
+			end)
+			ctx.setStatus(("Auto Shovel Tree: cabut %d plant"):format(n))
+			task.wait(math.max(0.5, tonumber(CFG.shovelTreeDelay) or 0) + 0.5)
+		end
+	end
+
+	----------------------------------------------------------------- loop: shovel fruit
+	local function fruitLoop()
+		ctx.state.shovelFruitId = (ctx.state.shovelFruitId or 0) + 1
+		local myId = ctx.state.shovelFruitId
+		ctx.elevate()
+		while CFG.shovelFruitEnabled and ctx.alive() and ctx.state.shovelFruitId == myId do
+			local n = 0
+			eachPlant(function(plant)
+				if not CFG.shovelFruitEnabled or ctx.state.shovelFruitId ~= myId then return end
+				local fr = plant:FindFirstChild("Fruits")
+				if not fr then return end
+				for _, f in ipairs(fr:GetChildren()) do
+					if fruitMatches(f) then shovel(plant); n = n + 1; task.wait(0.12); break end
+				end
+			end)
+			ctx.setStatus(("Auto Shovel Fruit: cabut %d plant"):format(n))
+			task.wait(math.max(0.5, tonumber(CFG.shovelFruitDelay) or 0) + 0.5)
+		end
+	end
+
+	function ctx.startShovelTree()  task.spawn(treeLoop) end
+	function ctx.stopShovelTree()   ctx.state.shovelTreeId = (ctx.state.shovelTreeId or 0) + 1 end
+	function ctx.startShovelFruit() task.spawn(fruitLoop) end
+	function ctx.stopShovelFruit()  ctx.state.shovelFruitId = (ctx.state.shovelFruitId or 0) + 1 end
 end
 ]=],
 	["modules/farm/automation_sprinkler.lua"] = [=[
@@ -7717,9 +7904,41 @@ return function(ctx)
 			function() return CFG.waterEnabled end,
 			function(v) CFG.waterEnabled = v; persist(); if v and ctx.startWater then ctx.startWater() end end, 3)
 
+		-- Automation Shovel (fitur aktif): shovel tree/plant + shovel fruit (filter)
+		local shvAcc = makeAccordion(farmPage, "Automation Shovel", 4, false)
+		makeMultiDropdownDyn(shvAcc, "Select Tree", "Pilih tree/plant yang mau di-shovel. 'All' = semua.",
+			function() return ctx.getShovelTreeOptions() end, CFG.shovelTreeNames, function() persist() end, 1)
+		makeInput(shvAcc, "Delay To Shovel Tree", "Extra delay (detik) tiap siklus shovel tree.",
+			function() return tostring(CFG.shovelTreeDelay) end,
+			function(t) CFG.shovelTreeDelay = tonumber(t) or 0; persist() end, 2)
+		makeToggle(shvAcc, "Auto Shovel Tree", "Shovel tree/plant terpilih otomatis.",
+			function() return CFG.shovelTreeEnabled end,
+			function(v) CFG.shovelTreeEnabled = v; persist(); if v and ctx.startShovelTree then ctx.startShovelTree() end end, 3)
+
+		-- sub: Fruits Shovel (shovel plant kalau fruit-nya cocok filter)
+		local frShv = makeAccordion(shvAcc, "Fruits Shovel", 4, false)
+		makeMultiDropdownDyn(frShv, "Select Shovel Fruits", "Tipe fruit yang mau di-shovel. 'All' = semua.",
+			function() return ctx.getShovelFruitOptions() end, CFG.shovelFruitNames, function() persist() end, 1)
+		makeMultiDropdownDyn(frShv, "Select Shovel Mutation", "Filter mutasi. Kosong/'All' = abaikan.",
+			function() return ctx.getShovelMutationOptions() end, CFG.shovelFruitMuts, function() persist() end, 2)
+		makeMultiDropdownDyn(frShv, "Select Shovel Variant", "Filter variant (Gold/Rainbow/dll). Kosong/'All' = abaikan.",
+			function() return ctx.getShovelVariantOptions() end, CFG.shovelFruitVariants, function() persist() end, 3)
+		makeSingleDropdown(frShv, "Select Shovel Threshold Mode", "Cara banding berat fruit.",
+			function() return ctx.getShovelModeOptions() end,
+			function() return CFG.shovelFruitMode end,
+			function(v) CFG.shovelFruitMode = v; persist() end, 4)
+		makeInput(frShv, "Shovel Weight Threshold", "Kalau ga mau pakai, isi '0'.",
+			function() return tostring(CFG.shovelFruitWeight) end,
+			function(t) CFG.shovelFruitWeight = tonumber(t) or 0; persist() end, 5)
+		makeInput(frShv, "Delay To Shovel Fruit", "Extra delay (detik) tiap siklus shovel fruit.",
+			function() return tostring(CFG.shovelFruitDelay) end,
+			function(t) CFG.shovelFruitDelay = tonumber(t) or 0; persist() end, 6)
+		makeToggle(frShv, "Auto Shovel Fruits", "Shovel plant yang fruit-nya cocok filter.",
+			function() return CFG.shovelFruitEnabled end,
+			function(v) CFG.shovelFruitEnabled = v; persist(); if v and ctx.startShovelFruit then ctx.startShovelFruit() end end, 7)
+
 		-- Accordion yg masih kerangka (belum diisi)
 		local SKELETON = {
-			{ "Automation Shovel", 4 },
 			{ "Automation Collection", 5 },
 			{ "Automation Favorite", 6 },
 		}

@@ -111,9 +111,41 @@ return function(ctx)
 			function() return CFG.waterEnabled end,
 			function(v) CFG.waterEnabled = v; persist(); if v and ctx.startWater then ctx.startWater() end end, 3)
 
+		-- Automation Shovel (fitur aktif): shovel tree/plant + shovel fruit (filter)
+		local shvAcc = makeAccordion(farmPage, "Automation Shovel", 4, false)
+		makeMultiDropdownDyn(shvAcc, "Select Tree", "Pilih tree/plant yang mau di-shovel. 'All' = semua.",
+			function() return ctx.getShovelTreeOptions() end, CFG.shovelTreeNames, function() persist() end, 1)
+		makeInput(shvAcc, "Delay To Shovel Tree", "Extra delay (detik) tiap siklus shovel tree.",
+			function() return tostring(CFG.shovelTreeDelay) end,
+			function(t) CFG.shovelTreeDelay = tonumber(t) or 0; persist() end, 2)
+		makeToggle(shvAcc, "Auto Shovel Tree", "Shovel tree/plant terpilih otomatis.",
+			function() return CFG.shovelTreeEnabled end,
+			function(v) CFG.shovelTreeEnabled = v; persist(); if v and ctx.startShovelTree then ctx.startShovelTree() end end, 3)
+
+		-- sub: Fruits Shovel (shovel plant kalau fruit-nya cocok filter)
+		local frShv = makeAccordion(shvAcc, "Fruits Shovel", 4, false)
+		makeMultiDropdownDyn(frShv, "Select Shovel Fruits", "Tipe fruit yang mau di-shovel. 'All' = semua.",
+			function() return ctx.getShovelFruitOptions() end, CFG.shovelFruitNames, function() persist() end, 1)
+		makeMultiDropdownDyn(frShv, "Select Shovel Mutation", "Filter mutasi. Kosong/'All' = abaikan.",
+			function() return ctx.getShovelMutationOptions() end, CFG.shovelFruitMuts, function() persist() end, 2)
+		makeMultiDropdownDyn(frShv, "Select Shovel Variant", "Filter variant (Gold/Rainbow/dll). Kosong/'All' = abaikan.",
+			function() return ctx.getShovelVariantOptions() end, CFG.shovelFruitVariants, function() persist() end, 3)
+		makeSingleDropdown(frShv, "Select Shovel Threshold Mode", "Cara banding berat fruit.",
+			function() return ctx.getShovelModeOptions() end,
+			function() return CFG.shovelFruitMode end,
+			function(v) CFG.shovelFruitMode = v; persist() end, 4)
+		makeInput(frShv, "Shovel Weight Threshold", "Kalau ga mau pakai, isi '0'.",
+			function() return tostring(CFG.shovelFruitWeight) end,
+			function(t) CFG.shovelFruitWeight = tonumber(t) or 0; persist() end, 5)
+		makeInput(frShv, "Delay To Shovel Fruit", "Extra delay (detik) tiap siklus shovel fruit.",
+			function() return tostring(CFG.shovelFruitDelay) end,
+			function(t) CFG.shovelFruitDelay = tonumber(t) or 0; persist() end, 6)
+		makeToggle(frShv, "Auto Shovel Fruits", "Shovel plant yang fruit-nya cocok filter.",
+			function() return CFG.shovelFruitEnabled end,
+			function(v) CFG.shovelFruitEnabled = v; persist(); if v and ctx.startShovelFruit then ctx.startShovelFruit() end end, 7)
+
 		-- Accordion yg masih kerangka (belum diisi)
 		local SKELETON = {
-			{ "Automation Shovel", 4 },
 			{ "Automation Collection", 5 },
 			{ "Automation Favorite", 6 },
 		}
