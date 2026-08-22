@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 39 modul, di-generate 2026-08-21T04:30:10.024Z
+-- 39 modul, di-generate 2026-08-22T02:49:16.577Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — init akhir garden: default tab Inventory + auto-resume automation. ]]
@@ -3655,6 +3655,10 @@ return function(ctx)
 	end
 
 	----------------------------------------------------------------- helper mutasi/shard
+	-- pet yang di-favorite JANGAN diproses & JANGAN dihitung di step manapun
+	-- (elephant/mutation/leveling). Kalau ikut dihitung, pet fav yg ga pernah beres
+	-- bikin step "belum semua selesai" selamanya -> growth mandek.
+	local function isFav(pd) return (pd or {}).IsFavorite == true end
 	local function mutOf(pd) return mutDisplay((pd or {}).MutationType) end
 	local function hasMut(pd)
 		local m = (pd or {}).MutationType
@@ -3714,7 +3718,7 @@ return function(ctx)
 		local perStep = {}
 		for _, s in ipairs(flow) do perStep[s] = { done = 0, total = 0 } end
 		for _, v in pairs(inv) do
-			if types[v.PetType] then
+			if types[v.PetType] and not isFav(v.PetData) then
 				for _, s in ipairs(flow) do
 					perStep[s].total = perStep[s].total + 1
 					if stepDone(s, v.PetData) then perStep[s].done = perStep[s].done + 1 end
@@ -3770,7 +3774,7 @@ return function(ctx)
 		for i, s in ipairs(flow) do
 			local allDone = true
 			for _, v in pairs(inv) do
-				if types[v.PetType] and not stepDone(s, v.PetData) then allDone = false; break end
+				if types[v.PetType] and not isFav(v.PetData) and not stepDone(s, v.PetData) then allDone = false; break end
 			end
 			if not allDone then step, stepIdx = s, i; break end
 		end
@@ -3794,7 +3798,7 @@ return function(ctx)
 			local p1t = CFG.growthLevP1Target or 40
 			local phase1 = false
 			for _, v in pairs(inv) do
-				if types[v.PetType] and not stepDone("leveling", v.PetData) and ((v.PetData or {}).Level or 0) < p1t then phase1 = true; break end
+				if types[v.PetType] and not isFav(v.PetData) and not stepDone("leveling", v.PetData) and ((v.PetData or {}).Level or 0) < p1t then phase1 = true; break end
 			end
 			if phase1 then
 				team, maxPets = CFG.growthLevP1Team or {}, CFG.growthLevP1Max or 3
@@ -3895,7 +3899,7 @@ return function(ctx)
 							-- aura/cleanse webhook (bukan mutasi mesin)
 							local remainsM = 0
 							for _, iv in pairs(inv) do
-								if types[iv.PetType] and not stepDone("mutation", iv.PetData) then remainsM = remainsM + 1 end
+								if types[iv.PetType] and not isFav(iv.PetData) and not stepDone("mutation", iv.PetData) then remainsM = remainsM + 1 end
 							end
 							pcall(function() ctx.webhookCleanse.sendObtained(ctx, pt, mutOf(pd), pd.Level or 0, remainsM) end)
 						elseif step == "leveling" and stepDone("leveling", pd)
@@ -3903,7 +3907,7 @@ return function(ctx)
 							-- CUMA Phase 2 (reached final). Phase 1 (P1Target) ga kirim.
 							local remains = 0
 							for _, iv in pairs(inv) do
-								if types[iv.PetType] and not stepDone("leveling", iv.PetData) then remains = remains + 1 end
+								if types[iv.PetType] and not isFav(iv.PetData) and not stepDone("leveling", iv.PetData) then remains = remains + 1 end
 							end
 							pcall(function() ctx.webhookLeveling.sendFinished(ctx, pt, mutOf(pd), pd.Level or 0, 0, remains) end)
 						end
