@@ -1127,8 +1127,17 @@ return function(ctx)
 			if v then ctx.startEsp() else ctx.stopEsp() end
 		end, 1)
 
+	-- ESP Base Weight (Inventory) Accordion
+	local espInvAcc = makeAccordion(misc, "ESP Base Weight (Inventory)", 2, false)
+	makeToggle(espInvAcc, "Enable ESP Base Weight", "Tampilkan Base Weight di tiap slot pet saat buka inventory",
+		function() return CFG.espInvEnabled end,
+		function(v)
+			CFG.espInvEnabled = v; persist()
+			if v then ctx.startEspInv() else ctx.stopEspInv() end
+		end, 1)
+
 	-- Automation Reconnect Accordion
-	local rcAcc = makeAccordion(misc, "Automation Reconnect", 2, false)
+	local rcAcc = makeAccordion(misc, "Automation Reconnect", 3, false)
 	-- countdown live di paling atas
 	local rcLbl = mk("TextLabel", {
 		Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1,
@@ -1161,7 +1170,7 @@ return function(ctx)
 		function(v) CFG.reconnectEnabled = v; persist(); if v and ctx.startReconnect then ctx.startReconnect() end end, 2)
 
 	-- Webhook Settings Accordion
-	local whAcc = makeAccordion(misc, "Discord Webhook Settings", 3, true)
+	local whAcc = makeAccordion(misc, "Discord Webhook Settings", 4, true)
 
 	-- Discord Webhook URL Input
 	makeInput(whAcc, "Discord Webhook URL", "Webhook URL for automation updates (Leveling, Mutation & Elephant)",
@@ -1207,7 +1216,7 @@ return function(ctx)
 			end)
 		end, 2)
 
-	local logCard = mk("Frame", { Size = UDim2.new(1, 0, 0, 220), BackgroundColor3 = C.row, LayoutOrder = 3 }, misc)
+	local logCard = mk("Frame", { Size = UDim2.new(1, 0, 0, 220), BackgroundColor3 = C.row, LayoutOrder = 5 }, misc)
 	corner(logCard, 8); stroke(logCard); pad(logCard, 12, 12, 10, 10)
 	mk("TextLabel", { Size = UDim2.new(1, 0, 0, 20), BackgroundTransparency = 1, Text = "Console Log", Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = C.txt, TextXAlignment = Enum.TextXAlignment.Left }, logCard)
 	local logBox = mk("TextLabel", { Size = UDim2.new(1, 0, 1, -26), Position = UDim2.fromOffset(0, 24), BackgroundColor3 = C.panel, Text = "", Font = Enum.Font.Code, TextSize = 11, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true }, logCard)

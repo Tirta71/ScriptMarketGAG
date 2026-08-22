@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 39 modul, di-generate 2026-08-22T02:51:55.649Z
+-- 40 modul, di-generate 2026-08-22T11:06:58.938Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — init akhir garden: default tab Inventory + auto-resume automation. ]]
@@ -81,6 +81,10 @@ return function(ctx)
 	if CFG.espEnabled and ctx.startEsp then
 		ctx.startEsp()
 		ctx.log("Auto-resume: ESP Label ON.")
+	end
+	if CFG.espInvEnabled and ctx.startEspInv then
+		ctx.startEspInv()
+		ctx.log("Auto-resume: ESP Base Weight (Inventory) ON.")
 	end
 
 	-- auto-resume Auto Reclaimer kalau sebelumnya aktif
@@ -300,6 +304,7 @@ return function(ctx)
 		pnpV2ScanInterval = 0.05,
 		pnpV2Enabled     = false,
 		espEnabled  = false, -- label melayang (ESP) pet+egg di dunia
+		espInvEnabled = false, -- ESP base weight di tiap slot pet inventory
 
 		-- Automation Leveling
 		levelingTeamUuids   = {},
@@ -555,6 +560,7 @@ return function(ctx)
 			CFG.pnpV2ScanInterval = tonumber(st.pnpV2ScanInterval) or 0.05
 			CFG.pnpV2Enabled     = st.pnpV2Enabled or false
 			CFG.espEnabled = st.espEnabled or false
+			CFG.espInvEnabled = st.espInvEnabled or false
 			
 			CFG.levelingTeamUuids   = (type(st.levelingTeamUuids) == "table") and st.levelingTeamUuids or {}
 			CFG.levelingPetTypes    = (type(st.levelingPetTypes) == "table") and st.levelingPetTypes or {}
@@ -6199,6 +6205,128 @@ return function(ctx)
 	end
 end
 ]=],
+	["modules/misc/esp_inventory.lua"] = [=[
+--[[ esp_inventory.lua — ESP Base Weight di INVENTORY (Pet Items).
+     Nempel label kecil "Base X.XX KG" di tiap slot pet di backpack GUI,
+     jadi pas buka inventory langsung keliatan BaseWeight tiap pet.
+     Mapping: slot.ToolName.Text == Tool.Name -> Tool.PET_UUID ->
+              PetData.BaseWeight (dari DataService).
+     Toggle: CFG.espInvEnabled. ]]
+return function(ctx)
+	local RS = game:GetService("ReplicatedStorage")
+	local LP = ctx.LP
+	local DataService = ctx.deps.DataService
+
+	local GRID_PATH = { "BackpackGui", "Backpack", "Inventory", "ScrollingFrame", "UIGridFrame" }
+	local LBL_NAME  = "AH_BaseW" -- label yg kita tempel di slot
+
+	-- ambil UIGridFrame (tempat slot-slot pet). nil kalau backpack belum ke-load.
+	local function grid()
+		local n = LP:FindFirstChild("PlayerGui")
+		for _, seg in ipairs(GRID_PATH) do
+			if not n then return nil end
+			n = n:FindFirstChild(seg)
+		end
+		return n
+	end
+
+	-- map Tool.Name -> BaseWeight (cuma pet). Dibangun tiap refresh (ratusan tool, murah).
+	local function buildWeightMap()
+		local ok, d = pcall(function() return DataService:GetData() end)
+		local inv = ok and d and d.PetsData and d.PetsData.PetInventory and d.PetsData.PetInventory.Data or {}
+		local byUuid = {}
+		for uuid, v in pairs(inv) do
+			local pd = v.PetData or {}
+			if pd.BaseWeight then byUuid[uuid] = pd.BaseWeight end
+		end
+		local byName = {}
+		local function scan(where)
+			if not where then return end
+			for _, t in ipairs(where:GetChildren()) do
+				if t:IsA("Tool") and t:GetAttribute("ItemType") == "Pet" then
+					local uuid = t:GetAttribute("PET_UUID")
+					local bw = uuid and byUuid[uuid]
+					if bw and byName[t.Name] == nil then byName[t.Name] = bw end
+				end
+			end
+		end
+		scan(LP.Character)
+		scan(LP:FindFirstChildOfClass("Backpack"))
+		return byName
+	end
+
+	-- tempel/refresh label base weight di slot; hapus dari slot non-pet.
+	local function setLabel(slot, bw)
+		local lbl = slot:FindFirstChild(LBL_NAME)
+		if not bw then
+			if lbl then lbl:Destroy() end
+			return
+		end
+		if not lbl then
+			lbl = Instance.new("TextLabel")
+			lbl.Name = LBL_NAME
+			lbl.AnchorPoint = Vector2.new(0.5, 1)
+			lbl.Position = UDim2.new(0.5, 0, 1, -1)
+			lbl.Size = UDim2.new(1, -4, 0, 14)
+			lbl.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+			lbl.BackgroundTransparency = 0.35
+			lbl.Font = Enum.Font.GothamBold
+			lbl.TextSize = 11
+			lbl.TextColor3 = Color3.fromRGB(124, 240, 255)
+			lbl.TextStrokeTransparency = 0.4
+			lbl.ZIndex = 20
+			lbl.RichText = false
+			local corner = Instance.new("UICorner")
+			corner.CornerRadius = UDim.new(0, 4)
+			corner.Parent = lbl
+			lbl.Parent = slot
+		end
+		lbl.Text = ("Base %.2f KG"):format(bw)
+	end
+
+	local function clearAll()
+		local g = grid()
+		if not g then return end
+		for _, slot in ipairs(g:GetChildren()) do
+			if slot:IsA("GuiButton") then
+				local lbl = slot:FindFirstChild(LBL_NAME)
+				if lbl then lbl:Destroy() end
+			end
+		end
+	end
+
+	local function update()
+		local g = grid()
+		if not g then return end
+		local byName = buildWeightMap()
+		for _, slot in ipairs(g:GetChildren()) do
+			if slot:IsA("GuiButton") then
+				local tn = slot:FindFirstChild("ToolName")
+				local name = tn and tn:IsA("TextLabel") and tn.Text or nil
+				setLabel(slot, name and byName[name] or nil)
+			end
+		end
+	end
+
+	local loopId = 0
+	function ctx.startEspInv()
+		loopId = loopId + 1
+		local my = loopId
+		task.spawn(function()
+			while ctx.alive() and ctx.CFG.espInvEnabled and loopId == my do
+				pcall(update)
+				task.wait(0.5)
+			end
+			pcall(clearAll)
+		end)
+	end
+
+	function ctx.stopEspInv()
+		loopId = loopId + 1
+		pcall(clearAll)
+	end
+end
+]=],
 	["modules/misc/esp_label.lua"] = [=[
 --[[ esp.lua — label melayang (BillboardGui) di dunia 3D di atas tiap egg.
      Egg: nama egg + ISI-nya (pet yang bakal menetas + berat) dari
@@ -9425,8 +9553,17 @@ return function(ctx)
 			if v then ctx.startEsp() else ctx.stopEsp() end
 		end, 1)
 
+	-- ESP Base Weight (Inventory) Accordion
+	local espInvAcc = makeAccordion(misc, "ESP Base Weight (Inventory)", 2, false)
+	makeToggle(espInvAcc, "Enable ESP Base Weight", "Tampilkan Base Weight di tiap slot pet saat buka inventory",
+		function() return CFG.espInvEnabled end,
+		function(v)
+			CFG.espInvEnabled = v; persist()
+			if v then ctx.startEspInv() else ctx.stopEspInv() end
+		end, 1)
+
 	-- Automation Reconnect Accordion
-	local rcAcc = makeAccordion(misc, "Automation Reconnect", 2, false)
+	local rcAcc = makeAccordion(misc, "Automation Reconnect", 3, false)
 	-- countdown live di paling atas
 	local rcLbl = mk("TextLabel", {
 		Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1,
@@ -9459,7 +9596,7 @@ return function(ctx)
 		function(v) CFG.reconnectEnabled = v; persist(); if v and ctx.startReconnect then ctx.startReconnect() end end, 2)
 
 	-- Webhook Settings Accordion
-	local whAcc = makeAccordion(misc, "Discord Webhook Settings", 3, true)
+	local whAcc = makeAccordion(misc, "Discord Webhook Settings", 4, true)
 
 	-- Discord Webhook URL Input
 	makeInput(whAcc, "Discord Webhook URL", "Webhook URL for automation updates (Leveling, Mutation & Elephant)",
@@ -9505,7 +9642,7 @@ return function(ctx)
 			end)
 		end, 2)
 
-	local logCard = mk("Frame", { Size = UDim2.new(1, 0, 0, 220), BackgroundColor3 = C.row, LayoutOrder = 3 }, misc)
+	local logCard = mk("Frame", { Size = UDim2.new(1, 0, 0, 220), BackgroundColor3 = C.row, LayoutOrder = 5 }, misc)
 	corner(logCard, 8); stroke(logCard); pad(logCard, 12, 12, 10, 10)
 	mk("TextLabel", { Size = UDim2.new(1, 0, 0, 20), BackgroundTransparency = 1, Text = "Console Log", Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = C.txt, TextXAlignment = Enum.TextXAlignment.Left }, logCard)
 	local logBox = mk("TextLabel", { Size = UDim2.new(1, 0, 1, -26), Position = UDim2.fromOffset(0, 24), BackgroundColor3 = C.panel, Text = "", Font = Enum.Font.Code, TextSize = 11, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true }, logCard)

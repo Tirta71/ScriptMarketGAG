@@ -141,6 +141,7 @@ local MODULES = {
 	"modules/event/automation_summer_event.lua",
 	"ui/components.lua",
 	"modules/misc/esp_label.lua",
+	"modules/misc/esp_inventory.lua",
 	"modules/misc/automation_reconnect.lua",
 	"ui/window.lua",
 	"ui/pages.lua",

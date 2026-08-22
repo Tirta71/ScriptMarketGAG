@@ -74,6 +74,7 @@ return function(ctx)
 		pnpV2ScanInterval = 0.05,
 		pnpV2Enabled     = false,
 		espEnabled  = false, -- label melayang (ESP) pet+egg di dunia
+		espInvEnabled = false, -- ESP base weight di tiap slot pet inventory
 
 		-- Automation Leveling
 		levelingTeamUuids   = {},
@@ -329,6 +330,7 @@ return function(ctx)
 			CFG.pnpV2ScanInterval = tonumber(st.pnpV2ScanInterval) or 0.05
 			CFG.pnpV2Enabled     = st.pnpV2Enabled or false
 			CFG.espEnabled = st.espEnabled or false
+			CFG.espInvEnabled = st.espInvEnabled or false
 			
 			CFG.levelingTeamUuids   = (type(st.levelingTeamUuids) == "table") and st.levelingTeamUuids or {}
 			CFG.levelingPetTypes    = (type(st.levelingPetTypes) == "table") and st.levelingPetTypes or {}

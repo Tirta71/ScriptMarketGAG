@@ -77,6 +77,10 @@ return function(ctx)
 		ctx.startEsp()
 		ctx.log("Auto-resume: ESP Label ON.")
 	end
+	if CFG.espInvEnabled and ctx.startEspInv then
+		ctx.startEspInv()
+		ctx.log("Auto-resume: ESP Base Weight (Inventory) ON.")
+	end
 
 	-- auto-resume Auto Reclaimer kalau sebelumnya aktif
 	if CFG.reclaimEnabled and ctx.startReclaim then
