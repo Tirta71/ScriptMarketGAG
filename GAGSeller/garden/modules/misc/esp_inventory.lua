@@ -9,17 +9,24 @@ return function(ctx)
 	local LP = ctx.LP
 	local DataService = ctx.deps.DataService
 
-	local GRID_PATH = { "BackpackGui", "Backpack", "Inventory", "ScrollingFrame", "UIGridFrame" }
-	local LBL_NAME  = "AH_BaseW" -- label yg kita tempel di slot
+	local GRID_PATH   = { "BackpackGui", "Backpack", "Inventory", "ScrollingFrame", "UIGridFrame" }
+	local HOTBAR_PATH = { "BackpackGui", "Backpack", "Hotbar" }
+	local LBL_NAME    = "AH_BaseW" -- label yg kita tempel di slot
 
-	-- ambil UIGridFrame (tempat slot-slot pet). nil kalau backpack belum ke-load.
-	local function grid()
+	local function byPath(path)
 		local n = LP:FindFirstChild("PlayerGui")
-		for _, seg in ipairs(GRID_PATH) do
+		for _, seg in ipairs(path) do
 			if not n then return nil end
 			n = n:FindFirstChild(seg)
 		end
 		return n
+	end
+	-- container slot pet: grid inventory + hotbar (bar bawah, termasuk pet yg dipegang).
+	local function containers()
+		local out = {}
+		local g = byPath(GRID_PATH);   if g then out[#out + 1] = g end
+		local h = byPath(HOTBAR_PATH); if h then out[#out + 1] = h end
+		return out
 	end
 
 	-- map Tool.Name -> BaseWeight (cuma pet). Dibangun tiap refresh (ratusan tool, murah).
@@ -86,25 +93,27 @@ return function(ctx)
 	end
 
 	local function clearAll()
-		local g = grid()
-		if not g then return end
-		for _, slot in ipairs(g:GetChildren()) do
-			if slot:IsA("GuiButton") then
-				local lbl = slot:FindFirstChild(LBL_NAME)
-				if lbl then lbl:Destroy() end
+		for _, c in ipairs(containers()) do
+			for _, slot in ipairs(c:GetChildren()) do
+				if slot:IsA("GuiButton") then
+					local lbl = slot:FindFirstChild(LBL_NAME)
+					if lbl then lbl:Destroy() end
+				end
 			end
 		end
 	end
 
 	local function update()
-		local g = grid()
-		if not g then return end
+		local cs = containers()
+		if #cs == 0 then return end
 		local byName = buildWeightMap()
-		for _, slot in ipairs(g:GetChildren()) do
-			if slot:IsA("GuiButton") then
-				local tn = slot:FindFirstChild("ToolName")
-				local name = tn and tn:IsA("TextLabel") and tn.Text or nil
-				setLabel(slot, name and byName[name] or nil)
+		for _, c in ipairs(cs) do
+			for _, slot in ipairs(c:GetChildren()) do
+				if slot:IsA("GuiButton") then
+					local tn = slot:FindFirstChild("ToolName")
+					local name = tn and tn:IsA("TextLabel") and tn.Text or nil
+					setLabel(slot, name and byName[name] or nil)
+				end
 			end
 		end
 	end
