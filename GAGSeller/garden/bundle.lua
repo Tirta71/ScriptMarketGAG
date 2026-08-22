@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 40 modul, di-generate 2026-08-22T11:30:11.538Z
+-- 40 modul, di-generate 2026-08-22T11:35:22.152Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — init akhir garden: default tab Inventory + auto-resume automation. ]]
@@ -6273,11 +6273,14 @@ return function(ctx)
 	local function baseKG(bw) return floor1(bw * WEIGHT_MULT) end
 	local function maxKG(bw)  return floor1(bw * (1 + 0.1 * MAX_LEVEL)) end
 
-	-- teks label sesuai mode CFG.espInvMode ("age" / "max").
+	-- teks label sesuai mode CFG.espInvMode ("base" / "age" / "max").
 	local function labelText(e)
 		local base = baseKG(e.base)
-		if ctx.CFG.espInvMode == "max" then
+		local mode = ctx.CFG.espInvMode
+		if mode == "max" then
 			return ("%.1f>%.1f KG"):format(base, maxKG(e.base))
+		elseif mode == "base" then
+			return ("%.1f KG"):format(base)
 		end
 		return ("%.1f KG A%d"):format(base, e.level or 0)
 	end
@@ -9594,8 +9597,8 @@ return function(ctx)
 			CFG.espInvEnabled = v; persist()
 			if v then ctx.startEspInv() else ctx.stopEspInv() end
 		end, 1)
-	local espInvModeOpts = { { name = "age", display = "Base + Age" }, { name = "max", display = "Base + Max" } }
-	makeSingleDropdown(espInvAcc, "Tampilan", "Base + Age: base KG + umur. Base + Max: base KG + max KG (umur 500).",
+	local espInvModeOpts = { { name = "base", display = "Base Weight Only" }, { name = "age", display = "Base + Age" }, { name = "max", display = "Base + Max" } }
+	makeSingleDropdown(espInvAcc, "Tampilan", "Base Only: base KG. Base + Age: base KG + umur. Base + Max: base KG + max KG (umur 500).",
 		function() return espInvModeOpts end,
 		function() for _, o in ipairs(espInvModeOpts) do if o.name == CFG.espInvMode then return o.display end end return "Base + Age" end,
 		function(code) CFG.espInvMode = code; persist() end, 2)

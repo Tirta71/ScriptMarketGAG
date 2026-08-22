@@ -63,11 +63,14 @@ return function(ctx)
 	local function baseKG(bw) return floor1(bw * WEIGHT_MULT) end
 	local function maxKG(bw)  return floor1(bw * (1 + 0.1 * MAX_LEVEL)) end
 
-	-- teks label sesuai mode CFG.espInvMode ("age" / "max").
+	-- teks label sesuai mode CFG.espInvMode ("base" / "age" / "max").
 	local function labelText(e)
 		local base = baseKG(e.base)
-		if ctx.CFG.espInvMode == "max" then
+		local mode = ctx.CFG.espInvMode
+		if mode == "max" then
 			return ("%.1f>%.1f KG"):format(base, maxKG(e.base))
+		elseif mode == "base" then
+			return ("%.1f KG"):format(base)
 		end
 		return ("%.1f KG A%d"):format(base, e.level or 0)
 	end
