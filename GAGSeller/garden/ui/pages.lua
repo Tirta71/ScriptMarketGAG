@@ -456,7 +456,7 @@ return function(ctx)
 				for _, o in ipairs(ctx.getPremiumItemOptions()) do if o.name == CFG.premiumItem then return o.display end end
 				return "Select Option"
 			end,
-			function(code) CFG.premiumItem = code; persist() end, 1)
+			function(code) CFG.premiumItem = code; persist(); if ctx.premiumShowPrice then ctx.premiumShowPrice() end end, 1)
 		makeSingleDropdown(premAcc, "Payment Method", "Robux atau Token",
 			function() return ctx.getPremiumPayOptions() end,
 			function() return CFG.premiumPay == "token" and "Token" or "Robux" end,

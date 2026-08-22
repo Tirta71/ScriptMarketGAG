@@ -28,16 +28,51 @@ return function(ctx)
 		return key and d[key] or nil
 	end
 
+	------------------------------------------------------------- harga (Robux)
+	-- Harga token dinamis (RAP), susah/ga stabil -> tampilkan harga Robux dari
+	-- GetProductInfo. Di-cache; prefetch pelan di background (hindari rate limit).
+	local priceCache = {}                       -- id -> number | false (gagal)
+	local function fetchPrice(id)
+		if id == nil then return nil end
+		local c = priceCache[id]
+		if c ~= nil then return c or nil end
+		local ok, info = pcall(function() return MPS:GetProductInfo(id, Enum.InfoType.Product) end)
+		local p = (ok and info and info.PriceInRobux) or false
+		priceCache[id] = p
+		return p or nil
+	end
+
+	local prefetchStarted = false
+	local function startPrefetch(entries)
+		if prefetchStarted then return end
+		prefetchStarted = true
+		task.spawn(function()
+			for _, e in ipairs(entries) do
+				if not ctx.alive() then return end
+				if priceCache[e.id] == nil then
+					fetchPrice(e.id)
+					task.wait(0.08)             -- pelan biar ga kena throttle GetProductInfo
+				end
+			end
+		end)
+	end
+
 	-- opsi dropdown item: SEMUA entry di GiftData yg punya NormalId.
+	-- Display + harga Robux (kalau udah ke-cache). Prefetch jalan di background.
 	function ctx.getPremiumItemOptions()
 		local d = giftData()
-		local out = {}
+		local out, ids = {}, {}
 		for k, v in pairs(d) do
 			if type(v) == "table" and v.NormalId then
-				out[#out + 1] = { name = k, display = tostring(v.Display or k) }
+				local disp = tostring(v.Display or k)
+				local p = priceCache[v.NormalId]
+				if type(p) == "number" then disp = disp .. ("  (R$ %d)"):format(p) end
+				out[#out + 1] = { name = k, display = disp }
+				ids[#ids + 1] = { id = v.NormalId }
 			end
 		end
 		table.sort(out, function(a, b) return a.display < b.display end)
+		startPrefetch(ids)
 		return out
 	end
 	function ctx.getPremiumPayOptions()
@@ -63,6 +98,19 @@ return function(ctx)
 				pcall(function() MPS:PromptProductPurchase(LP, id) end)
 			end
 			ctx.setStatus("Premium Shop: prompt Robux " .. label .. " dibuka")
+		end
+	end
+
+	-- fetch harga item terpilih & tampilkan di status (dipanggil saat milih item).
+	function ctx.premiumShowPrice()
+		local e = entryOf(CFG.premiumItem)
+		if not (e and e.NormalId) then return end
+		local name = tostring(e.Display or CFG.premiumItem)
+		local p = fetchPrice(e.NormalId)
+		if p then
+			ctx.setStatus(("Premium: %s — R$ %d"):format(name, p))
+		else
+			ctx.setStatus(("Premium: %s"):format(name))
 		end
 	end
 
