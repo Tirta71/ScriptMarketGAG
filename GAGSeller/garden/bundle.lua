@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 40 modul, di-generate 2026-08-22T11:18:17.839Z
+-- 40 modul, di-generate 2026-08-22T11:30:11.538Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — init akhir garden: default tab Inventory + auto-resume automation. ]]
@@ -305,6 +305,7 @@ return function(ctx)
 		pnpV2Enabled     = false,
 		espEnabled  = false, -- label melayang (ESP) pet+egg di dunia
 		espInvEnabled = false, -- ESP base weight di tiap slot pet inventory
+		espInvMode  = "age",   -- tampilan ESP inv: "age" (base+age) / "max" (base+max@500)
 
 		-- Automation Leveling
 		levelingTeamUuids   = {},
@@ -561,6 +562,7 @@ return function(ctx)
 			CFG.pnpV2Enabled     = st.pnpV2Enabled or false
 			CFG.espEnabled = st.espEnabled or false
 			CFG.espInvEnabled = st.espInvEnabled or false
+			CFG.espInvMode = st.espInvMode or "age"
 			
 			CFG.levelingTeamUuids   = (type(st.levelingTeamUuids) == "table") and st.levelingTeamUuids or {}
 			CFG.levelingPetTypes    = (type(st.levelingPetTypes) == "table") and st.levelingPetTypes or {}
@@ -6237,14 +6239,14 @@ return function(ctx)
 		return out
 	end
 
-	-- map Tool.Name -> BaseWeight (cuma pet). Dibangun tiap refresh (ratusan tool, murah).
+	-- map Tool.Name -> {base, level} (cuma pet). Dibangun tiap refresh (murah).
 	local function buildWeightMap()
 		local ok, d = pcall(function() return DataService:GetData() end)
 		local inv = ok and d and d.PetsData and d.PetsData.PetInventory and d.PetsData.PetInventory.Data or {}
 		local byUuid = {}
 		for uuid, v in pairs(inv) do
 			local pd = v.PetData or {}
-			if pd.BaseWeight then byUuid[uuid] = pd.BaseWeight end
+			if pd.BaseWeight then byUuid[uuid] = { base = pd.BaseWeight, level = pd.Level or 0 } end
 		end
 		local byName = {}
 		local function scan(where)
@@ -6252,8 +6254,8 @@ return function(ctx)
 			for _, t in ipairs(where:GetChildren()) do
 				if t:IsA("Tool") and t:GetAttribute("ItemType") == "Pet" then
 					local uuid = t:GetAttribute("PET_UUID")
-					local bw = uuid and byUuid[uuid]
-					if bw and byName[t.Name] == nil then byName[t.Name] = bw end
+					local e = uuid and byUuid[uuid]
+					if e and byName[t.Name] == nil then byName[t.Name] = e end
 				end
 			end
 		end
@@ -6262,18 +6264,28 @@ return function(ctx)
 		return byName
 	end
 
-	-- Game: Weight = BaseWeight * (1 + 0.1*Level). Berat "dasar" (level 0/hatch)
-	-- yang biasa dilihat = BaseWeight * 1.1, di-truncate (floor) 1 desimal —
-	-- persis kaya tampilan game (5.5 base -> 6.0 KG, 5.6 -> 6.1, dst).
+	-- Game: Weight = BaseWeight * (1 + 0.1*Level). MAX_LEVEL = umur 500.
+	-- Berat "dasar" (level dasar) yg biasa dilihat = BaseWeight * 1.1, di-floor
+	-- 1 desimal — persis game (5.5 base -> 6.0, 5.6 -> 6.1). Max = base*(1+0.1*500).
 	local WEIGHT_MULT = 1.1
-	local function baseKG(bw)
-		return math.floor(bw * WEIGHT_MULT * 10) / 10
+	local MAX_LEVEL   = 500
+	local function floor1(n) return math.floor(n * 10) / 10 end
+	local function baseKG(bw) return floor1(bw * WEIGHT_MULT) end
+	local function maxKG(bw)  return floor1(bw * (1 + 0.1 * MAX_LEVEL)) end
+
+	-- teks label sesuai mode CFG.espInvMode ("age" / "max").
+	local function labelText(e)
+		local base = baseKG(e.base)
+		if ctx.CFG.espInvMode == "max" then
+			return ("%.1f>%.1f KG"):format(base, maxKG(e.base))
+		end
+		return ("%.1f KG A%d"):format(base, e.level or 0)
 	end
 
-	-- tempel/refresh label base weight di slot; hapus dari slot non-pet.
-	local function setLabel(slot, bw)
+	-- tempel/refresh label di slot; hapus dari slot non-pet.
+	local function setLabel(slot, e)
 		local lbl = slot:FindFirstChild(LBL_NAME)
-		if not bw then
+		if not e then
 			if lbl then lbl:Destroy() end
 			return
 		end
@@ -6287,17 +6299,20 @@ return function(ctx)
 			lbl.BackgroundTransparency = 0.15
 			lbl.Font = Enum.Font.GothamBold
 			lbl.TextSize = 11
+			lbl.TextScaled = true -- auto-fit biar muat di slot sempit
 			lbl.TextColor3 = Color3.fromRGB(255, 214, 92) -- gold, senada tema
 			lbl.TextStrokeTransparency = 0.5
-			lbl.TextScaled = false
 			lbl.ZIndex = 20
 			lbl.RichText = false
 			local corner = Instance.new("UICorner")
 			corner.CornerRadius = UDim.new(0, 4)
 			corner.Parent = lbl
+			local con = Instance.new("UITextSizeConstraint")
+			con.MaxTextSize = 12
+			con.Parent = lbl
 			lbl.Parent = slot
 		end
-		lbl.Text = ("%.1f KG"):format(baseKG(bw))
+		lbl.Text = labelText(e)
 	end
 
 	local function clearAll()
@@ -9579,6 +9594,11 @@ return function(ctx)
 			CFG.espInvEnabled = v; persist()
 			if v then ctx.startEspInv() else ctx.stopEspInv() end
 		end, 1)
+	local espInvModeOpts = { { name = "age", display = "Base + Age" }, { name = "max", display = "Base + Max" } }
+	makeSingleDropdown(espInvAcc, "Tampilan", "Base + Age: base KG + umur. Base + Max: base KG + max KG (umur 500).",
+		function() return espInvModeOpts end,
+		function() for _, o in ipairs(espInvModeOpts) do if o.name == CFG.espInvMode then return o.display end end return "Base + Age" end,
+		function(code) CFG.espInvMode = code; persist() end, 2)
 
 	-- Automation Reconnect Accordion
 	local rcAcc = makeAccordion(misc, "Automation Reconnect", 3, false)

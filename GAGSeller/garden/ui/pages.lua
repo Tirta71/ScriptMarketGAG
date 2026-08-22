@@ -1135,6 +1135,11 @@ return function(ctx)
 			CFG.espInvEnabled = v; persist()
 			if v then ctx.startEspInv() else ctx.stopEspInv() end
 		end, 1)
+	local espInvModeOpts = { { name = "age", display = "Base + Age" }, { name = "max", display = "Base + Max" } }
+	makeSingleDropdown(espInvAcc, "Tampilan", "Base + Age: base KG + umur. Base + Max: base KG + max KG (umur 500).",
+		function() return espInvModeOpts end,
+		function() for _, o in ipairs(espInvModeOpts) do if o.name == CFG.espInvMode then return o.display end end return "Base + Age" end,
+		function(code) CFG.espInvMode = code; persist() end, 2)
 
 	-- Automation Reconnect Accordion
 	local rcAcc = makeAccordion(misc, "Automation Reconnect", 3, false)

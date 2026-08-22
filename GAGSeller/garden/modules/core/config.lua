@@ -75,6 +75,7 @@ return function(ctx)
 		pnpV2Enabled     = false,
 		espEnabled  = false, -- label melayang (ESP) pet+egg di dunia
 		espInvEnabled = false, -- ESP base weight di tiap slot pet inventory
+		espInvMode  = "age",   -- tampilan ESP inv: "age" (base+age) / "max" (base+max@500)
 
 		-- Automation Leveling
 		levelingTeamUuids   = {},
@@ -331,6 +332,7 @@ return function(ctx)
 			CFG.pnpV2Enabled     = st.pnpV2Enabled or false
 			CFG.espEnabled = st.espEnabled or false
 			CFG.espInvEnabled = st.espInvEnabled or false
+			CFG.espInvMode = st.espInvMode or "age"
 			
 			CFG.levelingTeamUuids   = (type(st.levelingTeamUuids) == "table") and st.levelingTeamUuids or {}
 			CFG.levelingPetTypes    = (type(st.levelingPetTypes) == "table") and st.levelingPetTypes or {}
