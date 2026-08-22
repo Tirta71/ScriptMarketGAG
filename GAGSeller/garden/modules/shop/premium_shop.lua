@@ -34,7 +34,9 @@ return function(ctx)
 	-- id -> number (harga) | false (id ga valid / ga dijual Robux) | nil (belum kebaca)
 	-- PENTING: kegagalan karena throttle TIDAK di-cache (biar dicoba lagi), cuma
 	-- id==0 / hasil valid-tanpa-harga yg di-cache false permanen.
-	local priceCache = {}
+	-- Cache disimpan di getgenv() biar SELAMAT dari reload script (dalam sesi/
+	-- server yg sama) -> reload berikutnya 0 panggilan, harga langsung muncul.
+	local priceCache = (getgenv and (getgenv().__AH_PREM_PRICE or (function() getgenv().__AH_PREM_PRICE = {}; return getgenv().__AH_PREM_PRICE end)())) or {}
 	-- Harga dari MarketplaceService:GetProductInfo(id, Product) — HARUS pakai
 	-- InfoType.Product (MC:GetProductInfo cache-nya di-key by id doang, bisa
 	-- ketuker sama info Asset). Engine nge-cache hasil per (id,infoType), jadi
