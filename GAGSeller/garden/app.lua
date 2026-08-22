@@ -81,6 +81,9 @@ return function(ctx)
 		ctx.startEspInv()
 		ctx.log("Auto-resume: ESP Base Weight (Inventory) ON.")
 	end
+	if CFG.noclipEnabled and ctx.setNoclip then ctx.setNoclip(true); ctx.log("Auto-resume: Noclip ON.") end
+	if CFG.walkSpeedEnabled and ctx.setWalkSpeed then ctx.setWalkSpeed(true); ctx.log("Auto-resume: Walk Speed ON.") end
+	if CFG.infJumpEnabled and ctx.setInfJump then ctx.setInfJump(true); ctx.log("Auto-resume: Infinity Jump ON.") end
 
 	-- auto-resume Auto Reclaimer kalau sebelumnya aktif
 	if CFG.reclaimEnabled and ctx.startReclaim then

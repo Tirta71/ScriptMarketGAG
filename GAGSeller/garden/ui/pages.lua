@@ -1118,6 +1118,21 @@ return function(ctx)
 	------------------------------------------------------------------ MISC (log & webhooks)
 	local misc = pageRef["Misc"]
 
+	-- Player Accordion (Noclip / Walk Speed / Infinity Jump)
+	local plAcc = makeAccordion(misc, "Player", 0, false)
+	makeToggle(plAcc, "Noclip", "Walk through walls and obstacles",
+		function() return CFG.noclipEnabled end,
+		function(v) if ctx.setNoclip then ctx.setNoclip(v) end; persist() end, 1)
+	makeInput(plAcc, "Walk Speed", "Player walk speed (default 16)",
+		function() return tostring(CFG.walkSpeed) end,
+		function(t) CFG.walkSpeed = tonumber(t) or 16; if ctx.applyWalkSpeed then ctx.applyWalkSpeed() end; persist() end, 2)
+	makeToggle(plAcc, "Enable Walk Speed", "Apply custom walk speed",
+		function() return CFG.walkSpeedEnabled end,
+		function(v) if ctx.setWalkSpeed then ctx.setWalkSpeed(v) end; persist() end, 3)
+	makeToggle(plAcc, "Infinity Jump", "Jump in mid-air infinitely",
+		function() return CFG.infJumpEnabled end,
+		function(v) if ctx.setInfJump then ctx.setInfJump(v) end; persist() end, 4)
+
 	-- ESP Label Accordion
 	local espAcc = makeAccordion(misc, "ESP Label (Pet & Egg)", 1, false)
 	makeToggle(espAcc, "Enable ESP Label", "Label melayang di atas pet (nama+berat) & egg (nama+waktu hatch)",

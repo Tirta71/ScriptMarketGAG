@@ -76,6 +76,10 @@ return function(ctx)
 		espEnabled  = false, -- label melayang (ESP) pet+egg di dunia
 		espInvEnabled = false, -- ESP base weight di tiap slot pet inventory
 		espInvMode  = "age",   -- tampilan ESP inv: "age" (base+age) / "max" (base+max@500)
+		noclipEnabled    = false, -- Player: tembus tembok
+		walkSpeedEnabled = false, -- Player: pakai custom walk speed
+		walkSpeed        = 16,    -- Player: walk speed custom (default 16)
+		infJumpEnabled   = false, -- Player: lompat tak terbatas di udara
 
 		-- Automation Leveling
 		levelingTeamUuids   = {},
@@ -333,6 +337,10 @@ return function(ctx)
 			CFG.espEnabled = st.espEnabled or false
 			CFG.espInvEnabled = st.espInvEnabled or false
 			CFG.espInvMode = st.espInvMode or "age"
+			CFG.noclipEnabled = st.noclipEnabled or false
+			CFG.walkSpeedEnabled = st.walkSpeedEnabled or false
+			CFG.walkSpeed = tonumber(st.walkSpeed) or 16
+			CFG.infJumpEnabled = st.infJumpEnabled or false
 			
 			CFG.levelingTeamUuids   = (type(st.levelingTeamUuids) == "table") and st.levelingTeamUuids or {}
 			CFG.levelingPetTypes    = (type(st.levelingPetTypes) == "table") and st.levelingPetTypes or {}

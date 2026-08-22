@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 40 modul, di-generate 2026-08-22T13:53:10.097Z
+-- 41 modul, di-generate 2026-08-22T13:59:17.070Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — init akhir garden: default tab Inventory + auto-resume automation. ]]
@@ -86,6 +86,9 @@ return function(ctx)
 		ctx.startEspInv()
 		ctx.log("Auto-resume: ESP Base Weight (Inventory) ON.")
 	end
+	if CFG.noclipEnabled and ctx.setNoclip then ctx.setNoclip(true); ctx.log("Auto-resume: Noclip ON.") end
+	if CFG.walkSpeedEnabled and ctx.setWalkSpeed then ctx.setWalkSpeed(true); ctx.log("Auto-resume: Walk Speed ON.") end
+	if CFG.infJumpEnabled and ctx.setInfJump then ctx.setInfJump(true); ctx.log("Auto-resume: Infinity Jump ON.") end
 
 	-- auto-resume Auto Reclaimer kalau sebelumnya aktif
 	if CFG.reclaimEnabled and ctx.startReclaim then
@@ -306,6 +309,10 @@ return function(ctx)
 		espEnabled  = false, -- label melayang (ESP) pet+egg di dunia
 		espInvEnabled = false, -- ESP base weight di tiap slot pet inventory
 		espInvMode  = "age",   -- tampilan ESP inv: "age" (base+age) / "max" (base+max@500)
+		noclipEnabled    = false, -- Player: tembus tembok
+		walkSpeedEnabled = false, -- Player: pakai custom walk speed
+		walkSpeed        = 16,    -- Player: walk speed custom (default 16)
+		infJumpEnabled   = false, -- Player: lompat tak terbatas di udara
 
 		-- Automation Leveling
 		levelingTeamUuids   = {},
@@ -563,6 +570,10 @@ return function(ctx)
 			CFG.espEnabled = st.espEnabled or false
 			CFG.espInvEnabled = st.espInvEnabled or false
 			CFG.espInvMode = st.espInvMode or "age"
+			CFG.noclipEnabled = st.noclipEnabled or false
+			CFG.walkSpeedEnabled = st.walkSpeedEnabled or false
+			CFG.walkSpeed = tonumber(st.walkSpeed) or 16
+			CFG.infJumpEnabled = st.infJumpEnabled or false
 			
 			CFG.levelingTeamUuids   = (type(st.levelingTeamUuids) == "table") and st.levelingTeamUuids or {}
 			CFG.levelingPetTypes    = (type(st.levelingPetTypes) == "table") and st.levelingPetTypes or {}
@@ -6532,6 +6543,89 @@ return function(ctx)
 	end
 end
 ]=],
+	["modules/misc/player_mods.lua"] = [=[
+--[[ player_mods.lua — utilitas Player: Noclip, Walk Speed, Infinity Jump.
+     Semua toggle-able & guarded (auto re-apply tiap frame selama aktif).
+     Toggle: CFG.noclipEnabled / CFG.walkSpeedEnabled (+CFG.walkSpeed) / CFG.infJumpEnabled. ]]
+return function(ctx)
+	local RunService = game:GetService("RunService")
+	local UIS = game:GetService("UserInputService")
+	local LP  = ctx.LP
+	local CFG = ctx.CFG
+	local DEFAULT_WS = 16
+
+	local function char() return LP.Character end
+	local function hum()
+		local c = char()
+		return c and c:FindFirstChildOfClass("Humanoid")
+	end
+
+	------------------------------------------------------------------- NOCLIP
+	local noclipConn
+	local function startNoclip()
+		if noclipConn then return end
+		noclipConn = RunService.Stepped:Connect(function()
+			local c = char()
+			if not c then return end
+			for _, p in ipairs(c:GetDescendants()) do
+				if p:IsA("BasePart") and p.CanCollide then p.CanCollide = false end
+			end
+		end)
+	end
+	local function stopNoclip()
+		if noclipConn then noclipConn:Disconnect(); noclipConn = nil end
+	end
+	function ctx.setNoclip(v)
+		CFG.noclipEnabled = v
+		if v then startNoclip() else stopNoclip() end
+	end
+
+	------------------------------------------------------------------- WALK SPEED
+	local wsConn
+	local function startWS()
+		if wsConn then return end
+		wsConn = RunService.Stepped:Connect(function()
+			local h = hum()
+			if h then
+				local target = tonumber(CFG.walkSpeed) or DEFAULT_WS
+				if h.WalkSpeed ~= target then h.WalkSpeed = target end
+			end
+		end)
+	end
+	local function stopWS()
+		if wsConn then wsConn:Disconnect(); wsConn = nil end
+		local h = hum()
+		if h then h.WalkSpeed = DEFAULT_WS end
+	end
+	function ctx.setWalkSpeed(v)
+		CFG.walkSpeedEnabled = v
+		if v then startWS() else stopWS() end
+	end
+	-- dipanggil pas nilai input berubah (biar langsung kepakai kalau lagi ON)
+	function ctx.applyWalkSpeed()
+		if not CFG.walkSpeedEnabled then return end
+		local h = hum()
+		if h then h.WalkSpeed = tonumber(CFG.walkSpeed) or DEFAULT_WS end
+	end
+
+	------------------------------------------------------------------- INFINITY JUMP
+	local jumpConn
+	local function startInfJump()
+		if jumpConn then return end
+		jumpConn = UIS.JumpRequest:Connect(function()
+			local h = hum()
+			if h then pcall(function() h:ChangeState(Enum.HumanoidStateType.Jumping) end) end
+		end)
+	end
+	local function stopInfJump()
+		if jumpConn then jumpConn:Disconnect(); jumpConn = nil end
+	end
+	function ctx.setInfJump(v)
+		CFG.infJumpEnabled = v
+		if v then startInfJump() else stopInfJump() end
+	end
+end
+]=],
 	["modules/mutation/automation_mutation_machine.lua"] = [=[
 --[[ mutation.lua — logika mesin mutasi pet otomatis (garden). ]]
 return function(ctx)
@@ -9579,6 +9673,21 @@ return function(ctx)
 
 	------------------------------------------------------------------ MISC (log & webhooks)
 	local misc = pageRef["Misc"]
+
+	-- Player Accordion (Noclip / Walk Speed / Infinity Jump)
+	local plAcc = makeAccordion(misc, "Player", 0, false)
+	makeToggle(plAcc, "Noclip", "Walk through walls and obstacles",
+		function() return CFG.noclipEnabled end,
+		function(v) if ctx.setNoclip then ctx.setNoclip(v) end; persist() end, 1)
+	makeInput(plAcc, "Walk Speed", "Player walk speed (default 16)",
+		function() return tostring(CFG.walkSpeed) end,
+		function(t) CFG.walkSpeed = tonumber(t) or 16; if ctx.applyWalkSpeed then ctx.applyWalkSpeed() end; persist() end, 2)
+	makeToggle(plAcc, "Enable Walk Speed", "Apply custom walk speed",
+		function() return CFG.walkSpeedEnabled end,
+		function(v) if ctx.setWalkSpeed then ctx.setWalkSpeed(v) end; persist() end, 3)
+	makeToggle(plAcc, "Infinity Jump", "Jump in mid-air infinitely",
+		function() return CFG.infJumpEnabled end,
+		function(v) if ctx.setInfJump then ctx.setInfJump(v) end; persist() end, 4)
 
 	-- ESP Label Accordion
 	local espAcc = makeAccordion(misc, "ESP Label (Pet & Egg)", 1, false)

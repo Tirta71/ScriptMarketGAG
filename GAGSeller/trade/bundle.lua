@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 14 modul, di-generate 2026-08-22T13:53:10.126Z
+-- 14 modul, di-generate 2026-08-22T13:59:17.084Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — inisialisasi akhir: default page, supervisor auto-claim, auto-resume. ]]

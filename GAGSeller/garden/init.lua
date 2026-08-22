@@ -142,6 +142,7 @@ local MODULES = {
 	"ui/components.lua",
 	"modules/misc/esp_label.lua",
 	"modules/misc/esp_inventory.lua",
+	"modules/misc/player_mods.lua",
 	"modules/misc/automation_reconnect.lua",
 	"ui/window.lua",
 	"ui/pages.lua",
