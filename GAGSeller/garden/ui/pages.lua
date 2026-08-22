@@ -227,7 +227,7 @@ return function(ctx)
 	------------------------------------------------------------------ GROWTH (pipeline batch per-step)
 	do
 		local growthPage = pageRef["Growth"]
-		local FLOW_OPTS = { { name = "elephant", display = "Elephant" }, { name = "mutation", display = "Mutation" }, { name = "leveling", display = "Leveling" } }
+		local FLOW_OPTS = { { name = "none", display = "None (kosong)" }, { name = "elephant", display = "Elephant" }, { name = "mutation", display = "Mutation" }, { name = "leveling", display = "Leveling" } }
 		local function capStep(s) for _, o in ipairs(FLOW_OPTS) do if o.name == s then return o.display end end return "Select" end
 
 		-- Growth Control (status + target + enable)

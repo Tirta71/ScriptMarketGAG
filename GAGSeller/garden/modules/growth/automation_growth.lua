@@ -38,6 +38,14 @@ return function(ctx)
 	-- (elephant/mutation/leveling). Kalau ikut dihitung, pet fav yg ga pernah beres
 	-- bikin step "belum semua selesai" selamanya -> growth mandek.
 	local function isFav(pd) return (pd or {}).IsFavorite == true end
+	-- Flow efektif: buang step kosong/"none" (mis. cuma mau Mutation+Leveling, Step 3 dikosongin).
+	local function effFlow()
+		local out = {}
+		for _, s in ipairs(CFG.growthFlow or {}) do
+			if s == "elephant" or s == "mutation" or s == "leveling" then out[#out + 1] = s end
+		end
+		return out
+	end
 	local function mutOf(pd) return mutDisplay((pd or {}).MutationType) end
 	local function hasMut(pd)
 		local m = (pd or {}).MutationType
@@ -93,7 +101,7 @@ return function(ctx)
 		local ok, d = pcall(function() return DataService:GetData() end)
 		local inv = ok and d and d.PetsData and d.PetsData.PetInventory and d.PetsData.PetInventory.Data or {}
 		local types = CFG.growthPetTypes or {}
-		local flow = CFG.growthFlow or {}
+		local flow = effFlow()
 		local perStep = {}
 		for _, s in ipairs(flow) do perStep[s] = { done = 0, total = 0 } end
 		for _, v in pairs(inv) do
@@ -142,7 +150,7 @@ return function(ctx)
 		local eq  = d.PetsData.EquippedPets or {}
 		local inv = d.PetsData.PetInventory and d.PetsData.PetInventory.Data or {}
 		local types = CFG.growthPetTypes or {}
-		local flow = CFG.growthFlow or {}
+		local flow = effFlow()
 		if not next(types) or #flow == 0 then
 			ctx.state.growthStatus = "Growth: set target pet & flow dulu"
 			return
