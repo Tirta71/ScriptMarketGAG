@@ -100,18 +100,17 @@ return function(ctx)
 		startPrefetch(ids)
 	end
 
-	-- opsi dropdown item: SEMUA entry di GiftData yg punya NormalId.
+	-- opsi dropdown item: cuma entry yg BENERAN bisa dibeli (NormalId ~= 0).
+	-- Item 0/0 (mis. seed) itu cuma item trade/RAP, ga dijual di shop -> skip.
 	-- Display + harga Robux (kalau udah ke-cache). Prefetch jalan di background.
 	function ctx.getPremiumItemOptions()
 		local d = giftData()
 		local out, ids = {}, {}
 		for k, v in pairs(d) do
-			if type(v) == "table" and v.NormalId then
+			if type(v) == "table" and v.NormalId and v.NormalId ~= 0 then
 				local disp = tostring(v.Display or k)
 				local p = priceCache[v.NormalId]
-				if v.NormalId == 0 then
-					disp = disp .. "  (Token)"     -- ga ada produk Robux
-				elseif type(p) == "number" then
+				if type(p) == "number" then
 					disp = disp .. ("  (R$ %d)"):format(p)
 				end
 				out[#out + 1] = { name = k, display = disp }
