@@ -31,14 +31,18 @@ return function(ctx)
 	------------------------------------------------------------- harga (Robux)
 	-- Harga token dinamis (RAP), susah/ga stabil -> tampilkan harga Robux dari
 	-- GetProductInfo. Di-cache; prefetch pelan di background (hindari rate limit).
-	local priceCache = {}                       -- id -> number | false (gagal)
+	-- id -> number (harga) | false (id ga valid / ga dijual Robux) | nil (belum kebaca)
+	-- PENTING: kegagalan karena throttle TIDAK di-cache (biar dicoba lagi), cuma
+	-- id==0 / hasil valid-tanpa-harga yg di-cache false permanen.
+	local priceCache = {}
 	local function fetchPrice(id)
-		if id == nil then return nil end
+		if id == nil or id == 0 then return nil end
 		local c = priceCache[id]
 		if c ~= nil then return c or nil end
 		local ok, info = pcall(function() return MPS:GetProductInfo(id, Enum.InfoType.Product) end)
-		local p = (ok and info and info.PriceInRobux) or false
-		priceCache[id] = p
+		if not ok then return nil end           -- throttle/error: jangan cache, coba lagi nanti
+		local p = info and info.PriceInRobux
+		priceCache[id] = p or false             -- ok tapi ga ada harga = ga dijual Robux
 		return p or nil
 	end
 
@@ -47,12 +51,19 @@ return function(ctx)
 		if prefetchStarted then return end
 		prefetchStarted = true
 		task.spawn(function()
-			for _, e in ipairs(entries) do
-				if not ctx.alive() then return end
-				if priceCache[e.id] == nil then
-					fetchPrice(e.id)
-					task.wait(0.08)             -- pelan biar ga kena throttle GetProductInfo
+			-- beberapa pass: yg kena throttle (belum ke-cache) diulang sampai kelar.
+			for pass = 1, 4 do
+				local remaining = 0
+				for _, e in ipairs(entries) do
+					if not ctx.alive() then return end
+					if e.id ~= 0 and priceCache[e.id] == nil then
+						fetchPrice(e.id)
+						if priceCache[e.id] == nil then remaining = remaining + 1 end
+						task.wait(0.1)          -- pelan biar ga kena throttle GetProductInfo
+					end
 				end
+				if remaining == 0 then break end
+				task.wait(1)
 			end
 		end)
 	end
@@ -66,7 +77,11 @@ return function(ctx)
 			if type(v) == "table" and v.NormalId then
 				local disp = tostring(v.Display or k)
 				local p = priceCache[v.NormalId]
-				if type(p) == "number" then disp = disp .. ("  (R$ %d)"):format(p) end
+				if v.NormalId == 0 then
+					disp = disp .. "  (Token)"     -- ga ada produk Robux
+				elseif type(p) == "number" then
+					disp = disp .. ("  (R$ %d)"):format(p)
+				end
 				out[#out + 1] = { name = k, display = disp }
 				ids[#ids + 1] = { id = v.NormalId }
 			end
