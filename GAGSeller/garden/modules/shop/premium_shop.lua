@@ -17,48 +17,58 @@ return function(ctx)
 		return te and te:FindFirstChild("TradeTokens")
 	end
 
-	-- katalog kurasi: {key di DevProductIds, display, giftKey?}. ID di-resolve live.
-	local CATALOG = {
-		{ "SeedShopRestock",        "Seed Shop Restock" },
-		{ "GearShopRestock",        "Gear Shop Restock" },
-		{ "DailySeedShopRestock",   "Daily Seed Shop Restock" },
-		{ "EventShopRestock",       "Event Shop Restock" },
-		{ "CosmeticShopRestock",    "Cosmetic Shop Restock" },
-		{ "RefreshPetShop",         "Pet Shop Restock" },
-		{ "GrowAll",                "Grow All",              "GrowAllGift" },
-		{ "CollectAll",             "Collect All",           "CollectAllGift" },
-		{ "StealPlant",             "Steal Plant" },
-		{ "BuyGoldenEgg",           "Golden Egg" },
-		{ "SaveSlotPurchase",       "Extra Save Slot" },
-		{ "RestoreStreak",          "Restore Streak" },
-		{ "BuySheckles100",         "Buy Sheckles (100)" },
-		{ "BuySheckles250",         "Buy Sheckles (250)" },
-		{ "BuySheckles1000",        "Buy Sheckles (1.000)" },
-		{ "BuySheckles5000",        "Buy Sheckles (5.000)" },
-		{ "SkipCrateTime",          "Skip Crate Time" },
-		{ "SkipMutationMachineTime","Skip Mutation Machine" },
-		{ "SkipPetAgeLimitTime",    "Skip Pet Age Limit" },
-		{ "SkipPetEggTime",         "Skip Pet Egg Time",     "SkipPetEggTimeGift" },
+	-- nama cakep buat key umum (override). Selain ini, nama di-generate otomatis
+	-- dari key (prettify camelCase). giftKey opsional (buat tombol Gift to Player).
+	local FRIENDLY = {
+		SeedShopRestock         = "Seed Shop Restock",
+		GearShopRestock         = "Gear Shop Restock",
+		DailySeedShopRestock    = "Daily Seed Shop Restock",
+		EventShopRestock        = "Event Shop Restock",
+		CosmeticShopRestock     = "Cosmetic Shop Restock",
+		RefreshPetShop          = "Pet Shop Restock",
+		GrowAll                 = "Grow All",
+		CollectAll              = "Collect All",
+		StealPlant              = "Steal Plant",
+		BuyGoldenEgg            = "Golden Egg",
+		SaveSlotPurchase        = "Extra Save Slot",
+		RestoreStreak           = "Restore Streak",
+		SkipMutationMachineTime = "Skip Mutation Machine",
+		SkipPetAgeLimitTime     = "Skip Pet Age Limit",
+		SkipPetEggTime          = "Skip Pet Egg Time",
+	}
+	-- key varian Gift (buat tombol Gift to Player).
+	local GIFT = {
+		GrowAll        = "GrowAllGift",
+		CollectAll     = "CollectAllGift",
+		SkipPetEggTime = "SkipPetEggTimeGift",
 	}
 
-	-- opsi dropdown item: cuma yg key-nya ada di DevProductIds.
+	-- prettify "SkipPetEggTime10" -> "Skip Pet Egg Time 10", "BuySheckles1000" -> "Buy Sheckles 1000"
+	local function prettify(key)
+		local s = key
+		s = s:gsub("(%l)(%u)", "%1 %2")      -- huruf kecil->besar
+		s = s:gsub("(%a)(%d)", "%1 %2")      -- huruf->angka
+		s = s:gsub("_", " ")
+		return s
+	end
+
+	-- opsi dropdown item: SEMUA key di DevProductIds yg punya PurchaseID.
+	-- Skip key varian *Gift (dipakai tombol Gift, bukan item terpisah).
 	function ctx.getPremiumItemOptions()
 		local D = devIds()
 		local out = {}
-		for _, e in ipairs(CATALOG) do
-			if D[e[1]] and D[e[1]].PurchaseID then
-				out[#out + 1] = { name = e[1], display = e[2] }
+		for k, v in pairs(D) do
+			if type(v) == "table" and v.PurchaseID and not k:match("Gift$") then
+				out[#out + 1] = { name = k, display = FRIENDLY[k] or prettify(k) }
 			end
 		end
+		table.sort(out, function(a, b) return a.display < b.display end)
 		return out
 	end
 	function ctx.getPremiumPayOptions()
 		return { { name = "robux", display = "Robux" }, { name = "token", display = "Token" } }
 	end
 
-	local function catEntry(key)
-		for _, e in ipairs(CATALOG) do if e[1] == key then return e end end
-	end
 	local function idOf(key)
 		local D = devIds()
 		local rec = key and D[key]
@@ -93,8 +103,7 @@ return function(ctx)
 
 	-- GIFT: prompt varian <Key>Gift (game yg minta penerima). Robux only.
 	function ctx.premiumGift()
-		local e = catEntry(CFG.premiumItem)
-		local giftKey = e and e[3]
+		local giftKey = GIFT[CFG.premiumItem]
 		local gid = giftKey and idOf(giftKey)
 		if not gid then ctx.setStatus("Premium Shop: item ini ga ada opsi Gift"); return end
 		if MC and MC.PromptPurchaseRobux then
