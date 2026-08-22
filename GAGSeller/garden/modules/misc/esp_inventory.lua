@@ -68,7 +68,7 @@ return function(ctx)
 		local base = baseKG(e.base)
 		local mode = ctx.CFG.espInvMode
 		if mode == "max" then
-			return ("%.1f>%.1f KG"):format(base, maxKG(e.base))
+			return ("%.1f \u{2192} %.1f KG"):format(base, maxKG(e.base))
 		elseif mode == "base" then
 			return ("%.1f KG"):format(base)
 		end

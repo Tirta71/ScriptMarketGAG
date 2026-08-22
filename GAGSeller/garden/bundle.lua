@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 40 modul, di-generate 2026-08-22T11:35:22.152Z
+-- 40 modul, di-generate 2026-08-22T13:53:10.097Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — init akhir garden: default tab Inventory + auto-resume automation. ]]
@@ -6278,7 +6278,7 @@ return function(ctx)
 		local base = baseKG(e.base)
 		local mode = ctx.CFG.espInvMode
 		if mode == "max" then
-			return ("%.1f>%.1f KG"):format(base, maxKG(e.base))
+			return ("%.1f \u{2192} %.1f KG"):format(base, maxKG(e.base))
 		elseif mode == "base" then
 			return ("%.1f KG"):format(base)
 		end
@@ -9598,7 +9598,7 @@ return function(ctx)
 			if v then ctx.startEspInv() else ctx.stopEspInv() end
 		end, 1)
 	local espInvModeOpts = { { name = "base", display = "Base Weight Only" }, { name = "age", display = "Base + Age" }, { name = "max", display = "Base + Max" } }
-	makeSingleDropdown(espInvAcc, "Tampilan", "Base Only: base KG. Base + Age: base KG + umur. Base + Max: base KG + max KG (umur 500).",
+	makeSingleDropdown(espInvAcc, "Tampilan", "Pilih data yang tampil di label pet.",
 		function() return espInvModeOpts end,
 		function() for _, o in ipairs(espInvModeOpts) do if o.name == CFG.espInvMode then return o.display end end return "Base + Age" end,
 		function(code) CFG.espInvMode = code; persist() end, 2)

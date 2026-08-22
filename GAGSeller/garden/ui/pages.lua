@@ -1136,7 +1136,7 @@ return function(ctx)
 			if v then ctx.startEspInv() else ctx.stopEspInv() end
 		end, 1)
 	local espInvModeOpts = { { name = "base", display = "Base Weight Only" }, { name = "age", display = "Base + Age" }, { name = "max", display = "Base + Max" } }
-	makeSingleDropdown(espInvAcc, "Tampilan", "Base Only: base KG. Base + Age: base KG + umur. Base + Max: base KG + max KG (umur 500).",
+	makeSingleDropdown(espInvAcc, "Tampilan", "Pilih data yang tampil di label pet.",
 		function() return espInvModeOpts end,
 		function() for _, o in ipairs(espInvModeOpts) do if o.name == CFG.espInvMode then return o.display end end return "Base + Age" end,
 		function(code) CFG.espInvMode = code; persist() end, 2)
