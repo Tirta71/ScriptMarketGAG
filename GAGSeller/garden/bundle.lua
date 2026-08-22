@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 41 modul, di-generate 2026-08-22T13:59:17.070Z
+-- 42 modul, di-generate 2026-08-22T14:08:36.435Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — init akhir garden: default tab Inventory + auto-resume automation. ]]
@@ -89,6 +89,11 @@ return function(ctx)
 	if CFG.noclipEnabled and ctx.setNoclip then ctx.setNoclip(true); ctx.log("Auto-resume: Noclip ON.") end
 	if CFG.walkSpeedEnabled and ctx.setWalkSpeed then ctx.setWalkSpeed(true); ctx.log("Auto-resume: Walk Speed ON.") end
 	if CFG.infJumpEnabled and ctx.setInfJump then ctx.setInfJump(true); ctx.log("Auto-resume: Infinity Jump ON.") end
+	if CFG.hideMyPlants and ctx.setHidePlants then ctx.setHidePlants("mine", true); ctx.log("Auto-resume: Hide My Plants ON.") end
+	if CFG.hideOtherPlants and ctx.setHidePlants then ctx.setHidePlants("other", true); ctx.log("Auto-resume: Hide Other Plants ON.") end
+	if CFG.autoRemoveWebFx and ctx.setAutoRemoveWeb then ctx.setAutoRemoveWeb(true); ctx.log("Auto-resume: Auto Remove Web FX ON.") end
+	if CFG.perfMode and CFG.perfMode ~= "off" and ctx.setPerfMode then ctx.setPerfMode(CFG.perfMode); ctx.log("Auto-resume: Performance Mode = " .. tostring(CFG.perfMode)) end
+	if CFG.disable3d and ctx.setDisable3d then ctx.setDisable3d(true); ctx.log("Auto-resume: Disable 3D ON.") end
 
 	-- auto-resume Auto Reclaimer kalau sebelumnya aktif
 	if CFG.reclaimEnabled and ctx.startReclaim then
@@ -313,6 +318,11 @@ return function(ctx)
 		walkSpeedEnabled = false, -- Player: pakai custom walk speed
 		walkSpeed        = 16,    -- Player: walk speed custom (default 16)
 		infJumpEnabled   = false, -- Player: lompat tak terbatas di udara
+		hideMyPlants     = false, -- Perf: sembunyiin plant kebun sendiri
+		hideOtherPlants  = false, -- Perf: sembunyiin plant kebun lain
+		autoRemoveWebFx  = false, -- Perf: auto hapus efek spider web
+		perfMode         = "off", -- Perf: off / low / extreme
+		disable3d        = false, -- Perf: matiin 3D rendering
 
 		-- Automation Leveling
 		levelingTeamUuids   = {},
@@ -574,6 +584,11 @@ return function(ctx)
 			CFG.walkSpeedEnabled = st.walkSpeedEnabled or false
 			CFG.walkSpeed = tonumber(st.walkSpeed) or 16
 			CFG.infJumpEnabled = st.infJumpEnabled or false
+			CFG.hideMyPlants = st.hideMyPlants or false
+			CFG.hideOtherPlants = st.hideOtherPlants or false
+			CFG.autoRemoveWebFx = st.autoRemoveWebFx or false
+			CFG.perfMode = st.perfMode or "off"
+			CFG.disable3d = st.disable3d or false
 			
 			CFG.levelingTeamUuids   = (type(st.levelingTeamUuids) == "table") and st.levelingTeamUuids or {}
 			CFG.levelingPetTypes    = (type(st.levelingPetTypes) == "table") and st.levelingPetTypes or {}
@@ -6543,6 +6558,131 @@ return function(ctx)
 	end
 end
 ]=],
+	["modules/misc/perf_mods.lua"] = [=[
+--[[ perf_mods.lua — Performance / Graphics Optimization.
+     - Hide My/Other Garden Plants : sembunyiin plant (LocalTransparencyModifier) buat FPS.
+     - Auto Remove Spider Web FX    : hapus particle/trail/beam efek web terus-menerus.
+     - Performance Mode (off/low/extreme) : matiin shadow & (extreme) semua efek partikel.
+     - Disable 3D Rendering          : RunService:Set3dRenderingEnabled(false).
+     Toggle: CFG.hideMyPlants / hideOtherPlants / autoRemoveWebFx / perfMode / disable3d. ]]
+return function(ctx)
+	local RS  = game:GetService("ReplicatedStorage")
+	local RunService = game:GetService("RunService")
+	local Lighting = game:GetService("Lighting")
+	local LP  = ctx.LP
+	local CFG = ctx.CFG
+
+	local function myFarm()
+		local f; pcall(function() f = require(RS.Modules.GetFarm)(LP) end)
+		return f
+	end
+	-- iterasi Plants_Physical: which = "mine" / "other"
+	local function eachPlantContainer(which, fn)
+		local Farm = workspace:FindFirstChild("Farm"); if not Farm then return end
+		local mine = myFarm()
+		for _, g in ipairs(Farm:GetChildren()) do
+			local isMine = (g == mine)
+			if (which == "mine" and isMine) or (which == "other" and not isMine) then
+				local imp = g:FindFirstChild("Important")
+				local pp = imp and imp:FindFirstChild("Plants_Physical")
+				if pp then fn(pp) end
+			end
+		end
+	end
+
+	------------------------------------------------------------------- hide plants
+	local function applyHide(which, hidden)
+		eachPlantContainer(which, function(pp)
+			for _, d in ipairs(pp:GetDescendants()) do
+				if d:IsA("BasePart") then d.LocalTransparencyModifier = hidden and 1 or 0 end
+			end
+		end)
+	end
+
+	local hideConn
+	local function hideLoopActive() return CFG.hideMyPlants or CFG.hideOtherPlants end
+	local function ensureHideLoop()
+		if hideConn then return end
+		hideConn = task.spawn(function()
+			while ctx.alive() and hideLoopActive() do
+				if CFG.hideMyPlants then applyHide("mine", true) end
+				if CFG.hideOtherPlants then applyHide("other", true) end
+				task.wait(1) -- catch plant baru; ga perlu tiap frame
+			end
+			hideConn = nil
+		end)
+	end
+	function ctx.setHidePlants(which, v)
+		if which == "mine" then CFG.hideMyPlants = v else CFG.hideOtherPlants = v end
+		if v then ensureHideLoop() else applyHide(which, false) end
+	end
+
+	------------------------------------------------------------------- spider web FX
+	local WEB_MATCH = { "web", "spider", "cobweb" }
+	local WEB_CLASS = { ParticleEmitter = true, Trail = true, Beam = true, Decal = true, Texture = true }
+	local function isWeb(d)
+		if not WEB_CLASS[d.ClassName] then return false end
+		local n = d.Name:lower()
+		for _, m in ipairs(WEB_MATCH) do if n:find(m) then return true end end
+		return false
+	end
+	local webConn
+	function ctx.setAutoRemoveWeb(v)
+		CFG.autoRemoveWebFx = v
+		if v then
+			if webConn then return end
+			webConn = task.spawn(function()
+				while ctx.alive() and CFG.autoRemoveWebFx do
+					for _, d in ipairs(workspace:GetDescendants()) do
+						if isWeb(d) then pcall(function() d:Destroy() end) end
+					end
+					task.wait(1)
+				end
+				webConn = nil
+			end)
+		end
+	end
+
+	------------------------------------------------------------------- performance mode
+	local FX_CLASS = { ParticleEmitter = true, Trail = true, Beam = true, Fire = true, Smoke = true, Sparkles = true, Explosion = true }
+	local function setAllFxEnabled(on)
+		for _, d in ipairs(workspace:GetDescendants()) do
+			if FX_CLASS[d.ClassName] then pcall(function() d.Enabled = on end) end
+		end
+	end
+	local pmConn
+	local function stopPmLoop() if pmConn then task.cancel(pmConn); pmConn = nil end end
+	function ctx.setPerfMode(mode)
+		CFG.perfMode = mode
+		stopPmLoop()
+		if mode == "off" then
+			pcall(function() Lighting.GlobalShadows = true end)
+			setAllFxEnabled(true)
+		elseif mode == "low" then
+			pcall(function() Lighting.GlobalShadows = false end)
+		elseif mode == "extreme" then
+			pcall(function() Lighting.GlobalShadows = false end)
+			-- terus-terusan matiin efek partikel (extreme FPS)
+			pmConn = task.spawn(function()
+				while ctx.alive() and CFG.perfMode == "extreme" do
+					setAllFxEnabled(false)
+					task.wait(1.5)
+				end
+			end)
+		end
+	end
+	function ctx.getPerfModeOptions()
+		return { { name = "off", display = "Off" }, { name = "low", display = "Low" }, { name = "extreme", display = "Extreme" } }
+	end
+
+	------------------------------------------------------------------- disable 3D
+	function ctx.setDisable3d(v)
+		CFG.disable3d = v
+		ctx.elevate()
+		pcall(function() RunService:Set3dRenderingEnabled(not v) end)
+	end
+end
+]=],
 	["modules/misc/player_mods.lua"] = [=[
 --[[ player_mods.lua — utilitas Player: Noclip, Walk Speed, Infinity Jump.
      Semua toggle-able & guarded (auto re-apply tiap frame selama aktif).
@@ -9792,13 +9932,25 @@ return function(ctx)
 			end)
 		end, 2)
 
-	local logCard = mk("Frame", { Size = UDim2.new(1, 0, 0, 220), BackgroundColor3 = C.row, LayoutOrder = 5 }, misc)
-	corner(logCard, 8); stroke(logCard); pad(logCard, 12, 12, 10, 10)
-	mk("TextLabel", { Size = UDim2.new(1, 0, 0, 20), BackgroundTransparency = 1, Text = "Console Log", Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = C.txt, TextXAlignment = Enum.TextXAlignment.Left }, logCard)
-	local logBox = mk("TextLabel", { Size = UDim2.new(1, 0, 1, -26), Position = UDim2.fromOffset(0, 24), BackgroundColor3 = C.panel, Text = "", Font = Enum.Font.Code, TextSize = 11, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true }, logCard)
-	corner(logBox, 6); stroke(logBox); pad(logBox, 6, 6, 6, 6)
-	ctx.ui.logBox = logBox
-	logBox.Text = table.concat(ctx.state.logLines, "\n")
+	-- Performance / Graphics Optimization Accordion
+	local perfAcc = makeAccordion(misc, "Performance", 5, false)
+	makeToggle(perfAcc, "Hide My Garden Plants", "Hide plants on your own farm for better FPS",
+		function() return CFG.hideMyPlants end,
+		function(v) if ctx.setHidePlants then ctx.setHidePlants("mine", v) end; persist() end, 1)
+	makeToggle(perfAcc, "Hide Other Gardens Plants", "Hide plants on other players' farms",
+		function() return CFG.hideOtherPlants end,
+		function(v) if ctx.setHidePlants then ctx.setHidePlants("other", v) end; persist() end, 2)
+	makeToggle(perfAcc, "Auto Remove Spider Web FX", "Continuously remove spider web particle effects",
+		function() return CFG.autoRemoveWebFx end,
+		function(v) if ctx.setAutoRemoveWeb then ctx.setAutoRemoveWeb(v) end; persist() end, 3)
+	mk("TextLabel", { Size = UDim2.new(1, 0, 0, 22), BackgroundTransparency = 1, Text = "- [ Graphics Optimization ] -", Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 4 }, perfAcc)
+	makeSingleDropdown(perfAcc, "Performance Mode", "Off: normal. Low: matiin shadow. Extreme: matiin semua efek partikel.",
+		function() return ctx.getPerfModeOptions() end,
+		function() local m = CFG.perfMode or "off"; for _, o in ipairs(ctx.getPerfModeOptions()) do if o.name == m then return o.display end end return "Off" end,
+		function(code) if ctx.setPerfMode then ctx.setPerfMode(code) end; persist() end, 5)
+	makeToggle(perfAcc, "Disable 3D Rendering", "Stop rendering the 3D world (huge FPS, black screen)",
+		function() return CFG.disable3d end,
+		function(v) if ctx.setDisable3d then ctx.setDisable3d(v) end; persist() end, 6)
 
 	ctx.refreshTradeStatus()
 end

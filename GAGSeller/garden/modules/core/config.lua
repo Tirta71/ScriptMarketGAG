@@ -80,6 +80,11 @@ return function(ctx)
 		walkSpeedEnabled = false, -- Player: pakai custom walk speed
 		walkSpeed        = 16,    -- Player: walk speed custom (default 16)
 		infJumpEnabled   = false, -- Player: lompat tak terbatas di udara
+		hideMyPlants     = false, -- Perf: sembunyiin plant kebun sendiri
+		hideOtherPlants  = false, -- Perf: sembunyiin plant kebun lain
+		autoRemoveWebFx  = false, -- Perf: auto hapus efek spider web
+		perfMode         = "off", -- Perf: off / low / extreme
+		disable3d        = false, -- Perf: matiin 3D rendering
 
 		-- Automation Leveling
 		levelingTeamUuids   = {},
@@ -341,6 +346,11 @@ return function(ctx)
 			CFG.walkSpeedEnabled = st.walkSpeedEnabled or false
 			CFG.walkSpeed = tonumber(st.walkSpeed) or 16
 			CFG.infJumpEnabled = st.infJumpEnabled or false
+			CFG.hideMyPlants = st.hideMyPlants or false
+			CFG.hideOtherPlants = st.hideOtherPlants or false
+			CFG.autoRemoveWebFx = st.autoRemoveWebFx or false
+			CFG.perfMode = st.perfMode or "off"
+			CFG.disable3d = st.disable3d or false
 			
 			CFG.levelingTeamUuids   = (type(st.levelingTeamUuids) == "table") and st.levelingTeamUuids or {}
 			CFG.levelingPetTypes    = (type(st.levelingPetTypes) == "table") and st.levelingPetTypes or {}

@@ -1236,13 +1236,25 @@ return function(ctx)
 			end)
 		end, 2)
 
-	local logCard = mk("Frame", { Size = UDim2.new(1, 0, 0, 220), BackgroundColor3 = C.row, LayoutOrder = 5 }, misc)
-	corner(logCard, 8); stroke(logCard); pad(logCard, 12, 12, 10, 10)
-	mk("TextLabel", { Size = UDim2.new(1, 0, 0, 20), BackgroundTransparency = 1, Text = "Console Log", Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = C.txt, TextXAlignment = Enum.TextXAlignment.Left }, logCard)
-	local logBox = mk("TextLabel", { Size = UDim2.new(1, 0, 1, -26), Position = UDim2.fromOffset(0, 24), BackgroundColor3 = C.panel, Text = "", Font = Enum.Font.Code, TextSize = 11, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, TextYAlignment = Enum.TextYAlignment.Top, TextWrapped = true }, logCard)
-	corner(logBox, 6); stroke(logBox); pad(logBox, 6, 6, 6, 6)
-	ctx.ui.logBox = logBox
-	logBox.Text = table.concat(ctx.state.logLines, "\n")
+	-- Performance / Graphics Optimization Accordion
+	local perfAcc = makeAccordion(misc, "Performance", 5, false)
+	makeToggle(perfAcc, "Hide My Garden Plants", "Hide plants on your own farm for better FPS",
+		function() return CFG.hideMyPlants end,
+		function(v) if ctx.setHidePlants then ctx.setHidePlants("mine", v) end; persist() end, 1)
+	makeToggle(perfAcc, "Hide Other Gardens Plants", "Hide plants on other players' farms",
+		function() return CFG.hideOtherPlants end,
+		function(v) if ctx.setHidePlants then ctx.setHidePlants("other", v) end; persist() end, 2)
+	makeToggle(perfAcc, "Auto Remove Spider Web FX", "Continuously remove spider web particle effects",
+		function() return CFG.autoRemoveWebFx end,
+		function(v) if ctx.setAutoRemoveWeb then ctx.setAutoRemoveWeb(v) end; persist() end, 3)
+	mk("TextLabel", { Size = UDim2.new(1, 0, 0, 22), BackgroundTransparency = 1, Text = "- [ Graphics Optimization ] -", Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = C.sub, TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 4 }, perfAcc)
+	makeSingleDropdown(perfAcc, "Performance Mode", "Off: normal. Low: matiin shadow. Extreme: matiin semua efek partikel.",
+		function() return ctx.getPerfModeOptions() end,
+		function() local m = CFG.perfMode or "off"; for _, o in ipairs(ctx.getPerfModeOptions()) do if o.name == m then return o.display end end return "Off" end,
+		function(code) if ctx.setPerfMode then ctx.setPerfMode(code) end; persist() end, 5)
+	makeToggle(perfAcc, "Disable 3D Rendering", "Stop rendering the 3D world (huge FPS, black screen)",
+		function() return CFG.disable3d end,
+		function(v) if ctx.setDisable3d then ctx.setDisable3d(v) end; persist() end, 6)
 
 	ctx.refreshTradeStatus()
 end
