@@ -47,6 +47,14 @@ return function(ctx)
 		return byName
 	end
 
+	-- Game: Weight = BaseWeight * (1 + 0.1*Level). Berat "dasar" (level 0/hatch)
+	-- yang biasa dilihat = BaseWeight * 1.1, di-truncate (floor) 1 desimal —
+	-- persis kaya tampilan game (5.5 base -> 6.0 KG, 5.6 -> 6.1, dst).
+	local WEIGHT_MULT = 1.1
+	local function baseKG(bw)
+		return math.floor(bw * WEIGHT_MULT * 10) / 10
+	end
+
 	-- tempel/refresh label base weight di slot; hapus dari slot non-pet.
 	local function setLabel(slot, bw)
 		local lbl = slot:FindFirstChild(LBL_NAME)
@@ -58,14 +66,15 @@ return function(ctx)
 			lbl = Instance.new("TextLabel")
 			lbl.Name = LBL_NAME
 			lbl.AnchorPoint = Vector2.new(0.5, 1)
-			lbl.Position = UDim2.new(0.5, 0, 1, -1)
-			lbl.Size = UDim2.new(1, -4, 0, 14)
-			lbl.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-			lbl.BackgroundTransparency = 0.35
+			lbl.Position = UDim2.new(0.5, 0, 1, 0)
+			lbl.Size = UDim2.new(1, 0, 0, 15)
+			lbl.BackgroundColor3 = Color3.fromRGB(10, 12, 16)
+			lbl.BackgroundTransparency = 0.15
 			lbl.Font = Enum.Font.GothamBold
 			lbl.TextSize = 11
-			lbl.TextColor3 = Color3.fromRGB(124, 240, 255)
-			lbl.TextStrokeTransparency = 0.4
+			lbl.TextColor3 = Color3.fromRGB(255, 214, 92) -- gold, senada tema
+			lbl.TextStrokeTransparency = 0.5
+			lbl.TextScaled = false
 			lbl.ZIndex = 20
 			lbl.RichText = false
 			local corner = Instance.new("UICorner")
@@ -73,7 +82,7 @@ return function(ctx)
 			corner.Parent = lbl
 			lbl.Parent = slot
 		end
-		lbl.Text = ("Base %.2f KG"):format(bw)
+		lbl.Text = ("%.1f KG"):format(baseKG(bw))
 	end
 
 	local function clearAll()
