@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 43 modul, di-generate 2026-08-22T15:09:55.047Z
+-- 43 modul, di-generate 2026-08-22T15:11:36.304Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — init akhir garden: default tab Inventory + auto-resume automation. ]]
@@ -8421,23 +8421,35 @@ return function(ctx)
 	end
 
 	local prefetchStarted = false
+	-- Prefetch PARALEL (bounded): fetchPrice yield di network, jadi N worker
+	-- coroutine bikin ~N request barengan (game aslinya izinin ~36) -> jauh
+	-- lebih cepet drpd 1-per-1. Multi-pass buat yg kena throttle (belum ke-cache).
+	local WORKERS = 24
 	local function startPrefetch(entries)
 		if prefetchStarted then return end
 		prefetchStarted = true
 		task.spawn(function()
-			-- beberapa pass: yg kena throttle (belum ke-cache) diulang sampai kelar.
-			for pass = 1, 4 do
+			for pass = 1, 6 do
+				local idx = 0
+				local finished = 0
+				for _ = 1, WORKERS do
+					task.spawn(function()
+						while ctx.alive() do
+							idx = idx + 1                 -- coroutine kooperatif: aman antar-yield
+							local e = entries[idx]
+							if not e then break end
+							if e.id ~= 0 and priceCache[e.id] == nil then fetchPrice(e.id) end
+						end
+						finished = finished + 1
+					end)
+				end
+				while finished < WORKERS and ctx.alive() do task.wait() end
 				local remaining = 0
 				for _, e in ipairs(entries) do
-					if not ctx.alive() then return end
-					if e.id ~= 0 and priceCache[e.id] == nil then
-						fetchPrice(e.id)
-						if priceCache[e.id] == nil then remaining = remaining + 1 end
-						task.wait(0.1)          -- pelan biar ga kena throttle GetProductInfo
-					end
+					if e.id ~= 0 and priceCache[e.id] == nil then remaining = remaining + 1 end
 				end
-				if remaining == 0 then break end
-				task.wait(1)
+				if remaining == 0 or not ctx.alive() then break end
+				task.wait(0.5)                            -- napas sebentar sebelum retry throttle
 			end
 		end)
 	end
