@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 42 modul, di-generate 2026-08-22T14:08:36.435Z
+-- 43 modul, di-generate 2026-08-22T14:26:52.791Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — init akhir garden: default tab Inventory + auto-resume automation. ]]
@@ -323,6 +323,8 @@ return function(ctx)
 		autoRemoveWebFx  = false, -- Perf: auto hapus efek spider web
 		perfMode         = "off", -- Perf: off / low / extreme
 		disable3d        = false, -- Perf: matiin 3D rendering
+		premiumItem      = "",     -- Premium Shop: key item terpilih (DevProductIds)
+		premiumPay       = "robux",-- Premium Shop: robux / token
 
 		-- Automation Leveling
 		levelingTeamUuids   = {},
@@ -589,6 +591,8 @@ return function(ctx)
 			CFG.autoRemoveWebFx = st.autoRemoveWebFx or false
 			CFG.perfMode = st.perfMode or "off"
 			CFG.disable3d = st.disable3d or false
+			CFG.premiumItem = st.premiumItem or ""
+			CFG.premiumPay = st.premiumPay or "robux"
 			
 			CFG.levelingTeamUuids   = (type(st.levelingTeamUuids) == "table") and st.levelingTeamUuids or {}
 			CFG.levelingPetTypes    = (type(st.levelingPetTypes) == "table") and st.levelingPetTypes or {}
@@ -8357,6 +8361,115 @@ return function(ctx)
 	function ctx.startBuyEgg() task.spawn(buyEggLoop) end
 end
 ]=],
+	["modules/shop/premium_shop.lua"] = [=[
+--[[ premium_shop.lua — Premium Shop (dev-product) beli via Robux atau Token.
+     Sumber ID: RS.Data.DevProductIds (akurat, live). Beli:
+       Robux : MarketController:PromptPurchaseRobux(id, Enum.InfoType.Product)
+       Token : GameEvents.TradeEvents.TradeTokens.Purchase:InvokeServer(id)
+     Gift  : prompt varian <Key>Gift kalau ada (game handle penerima). ]]
+return function(ctx)
+	local RS  = game:GetService("ReplicatedStorage")
+	local MPS = game:GetService("MarketplaceService")
+	local LP  = ctx.LP
+	local CFG = ctx.CFG
+
+	local MC; pcall(function() MC = require(RS.Modules.MarketController) end)
+	local function devIds() local ok, d = pcall(function() return require(RS.Data.DevProductIds) end); return ok and d or {} end
+	local function ttFolder()
+		local ge = RS:FindFirstChild("GameEvents")
+		local te = ge and ge:FindFirstChild("TradeEvents")
+		return te and te:FindFirstChild("TradeTokens")
+	end
+
+	-- katalog kurasi: {key di DevProductIds, display, giftKey?}. ID di-resolve live.
+	local CATALOG = {
+		{ "SeedShopRestock",        "Seed Shop Restock" },
+		{ "GearShopRestock",        "Gear Shop Restock" },
+		{ "DailySeedShopRestock",   "Daily Seed Shop Restock" },
+		{ "EventShopRestock",       "Event Shop Restock" },
+		{ "CosmeticShopRestock",    "Cosmetic Shop Restock" },
+		{ "RefreshPetShop",         "Pet Shop Restock" },
+		{ "GrowAll",                "Grow All",              "GrowAllGift" },
+		{ "CollectAll",             "Collect All",           "CollectAllGift" },
+		{ "StealPlant",             "Steal Plant" },
+		{ "BuyGoldenEgg",           "Golden Egg" },
+		{ "SaveSlotPurchase",       "Extra Save Slot" },
+		{ "RestoreStreak",          "Restore Streak" },
+		{ "BuySheckles100",         "Buy Sheckles (100)" },
+		{ "BuySheckles250",         "Buy Sheckles (250)" },
+		{ "BuySheckles1000",        "Buy Sheckles (1.000)" },
+		{ "BuySheckles5000",        "Buy Sheckles (5.000)" },
+		{ "SkipCrateTime",          "Skip Crate Time" },
+		{ "SkipMutationMachineTime","Skip Mutation Machine" },
+		{ "SkipPetAgeLimitTime",    "Skip Pet Age Limit" },
+		{ "SkipPetEggTime",         "Skip Pet Egg Time",     "SkipPetEggTimeGift" },
+	}
+
+	-- opsi dropdown item: cuma yg key-nya ada di DevProductIds.
+	function ctx.getPremiumItemOptions()
+		local D = devIds()
+		local out = {}
+		for _, e in ipairs(CATALOG) do
+			if D[e[1]] and D[e[1]].PurchaseID then
+				out[#out + 1] = { name = e[1], display = e[2] }
+			end
+		end
+		return out
+	end
+	function ctx.getPremiumPayOptions()
+		return { { name = "robux", display = "Robux" }, { name = "token", display = "Token" } }
+	end
+
+	local function catEntry(key)
+		for _, e in ipairs(CATALOG) do if e[1] == key then return e end end
+	end
+	local function idOf(key)
+		local D = devIds()
+		local rec = key and D[key]
+		return rec and rec.PurchaseID
+	end
+
+	-- BELI item terpilih sesuai payment method.
+	function ctx.premiumBuy()
+		local key = CFG.premiumItem
+		local id  = idOf(key)
+		if not id then ctx.setStatus("Premium Shop: pilih item dulu"); return end
+		if CFG.premiumPay == "token" then
+			local tt = ttFolder()
+			if not (tt and tt:FindFirstChild("Purchase")) then ctx.setStatus("Premium Shop: Token remote ga ada"); return end
+			-- cek dulu bisa token apa ngga
+			local canOk, can = pcall(function() return tt.CanPurchase:InvokeServer(id) end)
+			if canOk and can then
+				pcall(function() tt.Purchase:InvokeServer(id) end)
+				ctx.setStatus("Premium Shop: beli via Token…")
+			else
+				ctx.setStatus("Premium Shop: item ini ga bisa Token, pakai Robux")
+			end
+		else
+			if MC and MC.PromptPurchaseRobux then
+				pcall(function() MC:PromptPurchaseRobux(id, Enum.InfoType.Product) end)
+			else
+				pcall(function() MPS:PromptProductPurchase(LP, id) end)
+			end
+			ctx.setStatus("Premium Shop: prompt Robux dibuka")
+		end
+	end
+
+	-- GIFT: prompt varian <Key>Gift (game yg minta penerima). Robux only.
+	function ctx.premiumGift()
+		local e = catEntry(CFG.premiumItem)
+		local giftKey = e and e[3]
+		local gid = giftKey and idOf(giftKey)
+		if not gid then ctx.setStatus("Premium Shop: item ini ga ada opsi Gift"); return end
+		if MC and MC.PromptPurchaseRobux then
+			pcall(function() MC:PromptPurchaseRobux(gid, Enum.InfoType.Product) end)
+		else
+			pcall(function() MPS:PromptProductPurchase(LP, gid) end)
+		end
+		ctx.setStatus("Premium Shop: prompt Gift dibuka")
+	end
+end
+]=],
 	["ui/components.lua"] = [=[
 --[[ components.lua — kontrol UI garden (toggle, input, dropdown, accordion, page/tab). ]]
 return function(ctx)
@@ -9143,6 +9256,24 @@ return function(ctx)
 		makeToggle(gearAcc, "Enable Automation Buy Gear", "Auto-beli gear terpilih tiap ada stock",
 			function() return CFG.buyGearEnabled end,
 			function(v) CFG.buyGearEnabled = v; persist(); if v then ctx.startBuyGear() end end, 2)
+
+		-- Premium Shop (dev-product: Robux / Token + Gift)
+		local premAcc = makeAccordion(shopPage, "Premium Shop", 4, false)
+		makeSingleDropdown(premAcc, "Select Item", "Select gamepass/product to purchase",
+			function() return ctx.getPremiumItemOptions() end,
+			function()
+				for _, o in ipairs(ctx.getPremiumItemOptions()) do if o.name == CFG.premiumItem then return o.display end end
+				return "Select Option"
+			end,
+			function(code) CFG.premiumItem = code; persist() end, 1)
+		makeSingleDropdown(premAcc, "Payment Method", "Robux atau Token",
+			function() return ctx.getPremiumPayOptions() end,
+			function() return CFG.premiumPay == "token" and "Token" or "Robux" end,
+			function(code) CFG.premiumPay = code; persist() end, 2)
+		makeButton(premAcc, "Purchase Item", "Beli item terpilih dengan payment method di atas",
+			function() if ctx.premiumBuy then ctx.premiumBuy() end end, 3)
+		makeButton(premAcc, "Gift to Player", "Beli varian Gift item ini (kalau tersedia)",
+			function() if ctx.premiumGift then ctx.premiumGift() end end, 4)
 	end
 
 	------------------------------------------------------------------ ELEPHANT (V1)

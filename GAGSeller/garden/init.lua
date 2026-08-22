@@ -121,6 +121,7 @@ local MODULES = {
 	"modules/pet/automation_pickup_pet_v2.lua",
 	"modules/pet/automation_boost_pet.lua",
 	"modules/shop/automation_shop.lua",
+	"modules/shop/premium_shop.lua",
 	"modules/leveling/automation_leveling_v1.lua",
 	"modules/leveling/automation_leveling_v2.lua",
 	"modules/elephant/automation_elephant_v1.lua",

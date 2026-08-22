@@ -85,6 +85,8 @@ return function(ctx)
 		autoRemoveWebFx  = false, -- Perf: auto hapus efek spider web
 		perfMode         = "off", -- Perf: off / low / extreme
 		disable3d        = false, -- Perf: matiin 3D rendering
+		premiumItem      = "",     -- Premium Shop: key item terpilih (DevProductIds)
+		premiumPay       = "robux",-- Premium Shop: robux / token
 
 		-- Automation Leveling
 		levelingTeamUuids   = {},
@@ -351,6 +353,8 @@ return function(ctx)
 			CFG.autoRemoveWebFx = st.autoRemoveWebFx or false
 			CFG.perfMode = st.perfMode or "off"
 			CFG.disable3d = st.disable3d or false
+			CFG.premiumItem = st.premiumItem or ""
+			CFG.premiumPay = st.premiumPay or "robux"
 			
 			CFG.levelingTeamUuids   = (type(st.levelingTeamUuids) == "table") and st.levelingTeamUuids or {}
 			CFG.levelingPetTypes    = (type(st.levelingPetTypes) == "table") and st.levelingPetTypes or {}

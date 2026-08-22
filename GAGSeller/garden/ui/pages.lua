@@ -447,6 +447,24 @@ return function(ctx)
 		makeToggle(gearAcc, "Enable Automation Buy Gear", "Auto-beli gear terpilih tiap ada stock",
 			function() return CFG.buyGearEnabled end,
 			function(v) CFG.buyGearEnabled = v; persist(); if v then ctx.startBuyGear() end end, 2)
+
+		-- Premium Shop (dev-product: Robux / Token + Gift)
+		local premAcc = makeAccordion(shopPage, "Premium Shop", 4, false)
+		makeSingleDropdown(premAcc, "Select Item", "Select gamepass/product to purchase",
+			function() return ctx.getPremiumItemOptions() end,
+			function()
+				for _, o in ipairs(ctx.getPremiumItemOptions()) do if o.name == CFG.premiumItem then return o.display end end
+				return "Select Option"
+			end,
+			function(code) CFG.premiumItem = code; persist() end, 1)
+		makeSingleDropdown(premAcc, "Payment Method", "Robux atau Token",
+			function() return ctx.getPremiumPayOptions() end,
+			function() return CFG.premiumPay == "token" and "Token" or "Robux" end,
+			function(code) CFG.premiumPay = code; persist() end, 2)
+		makeButton(premAcc, "Purchase Item", "Beli item terpilih dengan payment method di atas",
+			function() if ctx.premiumBuy then ctx.premiumBuy() end end, 3)
+		makeButton(premAcc, "Gift to Player", "Beli varian Gift item ini (kalau tersedia)",
+			function() if ctx.premiumGift then ctx.premiumGift() end end, 4)
 	end
 
 	------------------------------------------------------------------ ELEPHANT (V1)
