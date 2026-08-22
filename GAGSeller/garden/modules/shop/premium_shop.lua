@@ -73,6 +73,19 @@ return function(ctx)
 		end)
 	end
 
+	-- prewarm: mulai isi cache harga di background (dipanggil pas hub kebuka),
+	-- jadi pas buka Premium Shop harga udah siap. Ringan & ga nge-block.
+	function ctx.premiumPrewarm()
+		local d = giftData()
+		local ids = {}
+		for _, v in pairs(d) do
+			if type(v) == "table" and v.NormalId and v.NormalId ~= 0 then
+				ids[#ids + 1] = { id = v.NormalId }
+			end
+		end
+		startPrefetch(ids)
+	end
+
 	-- opsi dropdown item: SEMUA entry di GiftData yg punya NormalId.
 	-- Display + harga Robux (kalau udah ke-cache). Prefetch jalan di background.
 	function ctx.getPremiumItemOptions()

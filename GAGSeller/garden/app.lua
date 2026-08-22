@@ -90,6 +90,11 @@ return function(ctx)
 	if CFG.perfMode and CFG.perfMode ~= "off" and ctx.setPerfMode then ctx.setPerfMode(CFG.perfMode); ctx.log("Auto-resume: Performance Mode = " .. tostring(CFG.perfMode)) end
 	if CFG.disable3d and ctx.setDisable3d then ctx.setDisable3d(true); ctx.log("Auto-resume: Disable 3D ON.") end
 
+	-- pre-warm harga Premium Shop di background (ditunda biar ga rebutan sama init).
+	if ctx.premiumPrewarm then
+		task.delay(6, function() if ctx.alive() then ctx.premiumPrewarm() end end)
+	end
+
 	-- auto-resume Auto Reclaimer kalau sebelumnya aktif
 	if CFG.reclaimEnabled and ctx.startReclaim then
 		ctx.startReclaim()

@@ -1,6 +1,6 @@
 -- AUTO-GENERATED oleh tools/bundle.js — JANGAN edit manual.
 -- Edit modul-nya langsung, terus run `node tools/bundle.js`.
--- 43 modul, di-generate 2026-08-22T15:07:52.834Z
+-- 43 modul, di-generate 2026-08-22T15:09:55.047Z
 return {
 	["app.lua"] = [=[
 --[[ app.lua — init akhir garden: default tab Inventory + auto-resume automation. ]]
@@ -94,6 +94,11 @@ return function(ctx)
 	if CFG.autoRemoveWebFx and ctx.setAutoRemoveWeb then ctx.setAutoRemoveWeb(true); ctx.log("Auto-resume: Auto Remove Web FX ON.") end
 	if CFG.perfMode and CFG.perfMode ~= "off" and ctx.setPerfMode then ctx.setPerfMode(CFG.perfMode); ctx.log("Auto-resume: Performance Mode = " .. tostring(CFG.perfMode)) end
 	if CFG.disable3d and ctx.setDisable3d then ctx.setDisable3d(true); ctx.log("Auto-resume: Disable 3D ON.") end
+
+	-- pre-warm harga Premium Shop di background (ditunda biar ga rebutan sama init).
+	if ctx.premiumPrewarm then
+		task.delay(6, function() if ctx.alive() then ctx.premiumPrewarm() end end)
+	end
 
 	-- auto-resume Auto Reclaimer kalau sebelumnya aktif
 	if CFG.reclaimEnabled and ctx.startReclaim then
@@ -8435,6 +8440,19 @@ return function(ctx)
 				task.wait(1)
 			end
 		end)
+	end
+
+	-- prewarm: mulai isi cache harga di background (dipanggil pas hub kebuka),
+	-- jadi pas buka Premium Shop harga udah siap. Ringan & ga nge-block.
+	function ctx.premiumPrewarm()
+		local d = giftData()
+		local ids = {}
+		for _, v in pairs(d) do
+			if type(v) == "table" and v.NormalId and v.NormalId ~= 0 then
+				ids[#ids + 1] = { id = v.NormalId }
+			end
+		end
+		startPrefetch(ids)
 	end
 
 	-- opsi dropdown item: SEMUA entry di GiftData yg punya NormalId.
