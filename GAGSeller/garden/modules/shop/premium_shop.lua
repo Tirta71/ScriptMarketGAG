@@ -35,6 +35,11 @@ return function(ctx)
 	-- PENTING: kegagalan karena throttle TIDAK di-cache (biar dicoba lagi), cuma
 	-- id==0 / hasil valid-tanpa-harga yg di-cache false permanen.
 	local priceCache = {}
+	-- Harga dari MarketplaceService:GetProductInfo(id, Product) — HARUS pakai
+	-- InfoType.Product (MC:GetProductInfo cache-nya di-key by id doang, bisa
+	-- ketuker sama info Asset). Engine nge-cache hasil per (id,infoType), jadi
+	-- id yg udah pernah kefetch (mis. sama shop asli game) balik instan.
+	-- RetryPcall manual: throttle ga di-cache -> diulang di pass prefetch berikut.
 	local function fetchPrice(id)
 		if id == nil or id == 0 then return nil end
 		local c = priceCache[id]
